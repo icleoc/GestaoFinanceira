@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis Finance Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        body { background-color: #f3f4f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+    </style>
+</head>
+<body class="p-6">
+
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 uppercase tracking-wider">Sistema Financeiro Léo - Controle Total</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-[#1e3a8a] text-white p-5 rounded-xl card-shadow border-t-4 border-blue-400">
+                <p class="text-xs font-semibold uppercase opacity-80 mb-1">Patrimônio Líquido</p>
+                <h2 class="text-2xl font-bold" id="kpi-patrimonio">R$ 0,00</h2>
+            </div>
+            <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow">
+                <p class="text-xs font-semibold uppercase text-gray-500 mb-1">Saldo Total em Bancos</p>
+                <h2 class="text-2xl font-bold" id="kpi-bancos">R$ 0,00</h2>
+            </div>
+            <div class="bg-[#ffedd5] text-[#9a3412] p-5 rounded-xl card-shadow border border-[#fdba74]">
+                <p class="text-xs font-semibold uppercase mb-1">Dívida Total Cartões (Fatura Aberta)</p>
+                <h2 class="text-2xl font-bold" id="kpi-divida">R$ 0,00</h2>
+            </div>
+            <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow">
+                <p class="text-xs font-semibold uppercase text-gray-500 mb-1">Investimentos Total</p>
+                <h2 class="text-2xl font-bold" id="kpi-invest">R$ 0,00</h2>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <div class="lg:col-span-7 space-y-6">
+                
+                <div class="bg-white rounded-xl p-6 card-shadow">
+                    <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">🏦 BANCOS (Liquidez)</h3>
+                    <div id="lista-bancos" class="space-y-3">
+                        <p class="text-sm text-gray-500">Carregando bancos...</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 card-shadow">
+                    <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">💳 CARTÕES DE CRÉDITO</h3>
+                    <div class="flex text-xs font-semibold text-gray-400 mb-3 px-2">
+                        <div class="w-1/4">NOME</div>
+                        <div class="w-2/4 text-center">USADO VS. DISPONÍVEL</div>
+                        <div class="w-1/4 text-right">VENC.</div>
+                    </div>
+                    <div id="lista-cartoes" class="space-y-4">
+                        <p class="text-sm text-gray-500">Carregando cartões...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-5 space-y-6">
+                
+                <div class="bg-white rounded-xl p-6 card-shadow">
+                    <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">🧐 ONDE ESTÁ O VAZAMENTO?</h3>
+                    <div class="relative h-64">
+                        <canvas id="graficoVazamento"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 card-shadow">
+                    <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">⚡ NOVO GASTO / RECEBIMENTO</h3>
+                    
+                    <form id="form-transacao" class="space-y-4">
+                        <div class="flex gap-4 mb-2">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="tipo" value="Despesa" checked class="form-radio text-blue-600">
+                                <span class="ml-2 text-sm font-medium">Gasto</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="tipo" value="Receita" class="form-radio text-green-600">
+                                <span class="ml-2 text-sm font-medium">Receita</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="tipo" value="Transferencia" class="form-radio text-purple-600">
+                                <span class="ml-2 text-sm font-medium">Pagar Fatura</span>
+                            </label>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase">Data</label>
+                            <input type="date" id="input-data" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase">Descrição</label>
+                            <input type="text" id="input-desc" placeholder="Ex: Gasolina, Aluguel" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                        </div>
+
+                        <div class="flex gap-4">
+                            <div class="w-1/2">
+                                <label class="block text-xs font-semibold text-gray-500 uppercase">Valor (R$)</label>
+                                <input type="number" id="input-valor" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                            </div>
+                            <div class="w-1/2">
+                                <label class="block text-xs font-semibold text-gray-500 uppercase">Conta Origem</label>
+                                <select id="select-conta" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"></select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-[#1e3a8a] text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-800 transition duration-200 mt-4 shadow-md">
+                            REGISTRAR AGORA
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Suas Credenciais do Supabase
+        const SUPABASE_URL = 'https://dqhyjrvhasmjwblidnqj.supabase.co';
+        const SUPABASE_KEY = 'sb_secret_Z7afUJuNCrVvyPn2nFzupw_h8So8gQG';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Preenche a data de hoje por padrão
+        document.getElementById('input-data').valueAsDate = new Date();
+
+        async function carregarDados() {
+            // Busca as contas
+            const { data: contas, error } = await supabase.from('contas').select('*');
+            if (error) { console.error(error); return; }
+
+            let sBanco = 0, dCard = 0, invest = 0;
+            const listaBancos = document.getElementById('lista-bancos');
+            const listaCartoes = document.getElementById('lista-cartoes');
+            const selectConta = document.getElementById('select-conta');
+            
+            listaBancos.innerHTML = '';
+            listaCartoes.innerHTML = '';
+            selectConta.innerHTML = '';
+
+            contas.forEach(c => {
+                // Popula o Select do Formulário
+                const option = document.createElement('option');
+                option.value = c.id; option.text = c.nome;
+                selectConta.appendChild(option);
+
+                // Cálculos
+                if(c.tipo === 'Corrente') sBanco += parseFloat(c.saldo_atual);
+                if(c.tipo === 'Crédito') dCard += parseFloat(c.saldo_atual);
+                if(c.tipo === 'Investimento') invest += parseFloat(c.saldo_atual);
+
+                // Renderiza Bancos
+                if(c.tipo === 'Corrente') {
+                    listaBancos.innerHTML += `
+                        <div class="flex justify-between items-center py-2 hover:bg-gray-50 rounded px-2">
+                            <span class="font-medium text-gray-700">${c.nome}</span>
+                            <span class="font-bold text-green-600">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        </div>`;
+                }
+
+                // Renderiza Cartões (Igual à imagem)
+                if(c.tipo === 'Crédito') {
+                    let usado = Math.abs(c.saldo_atual);
+                    let limite = c.limite_total;
+                    let percentual = limite > 0 ? (usado / limite) * 100 : 0;
+                    if(percentual > 100) percentual = 100;
+                    
+                    // Cor da barra baseada no uso
+                    let corBarra = percentual > 80 ? 'bg-red-500' : (percentual > 50 ? 'bg-yellow-400' : 'bg-[#1e3a8a]');
+
+                    listaCartoes.innerHTML += `
+                        <div class="flex items-center text-sm py-2 px-2 hover:bg-gray-50 rounded">
+                            <div class="w-1/4 font-bold text-gray-800">${c.nome}</div>
+                            <div class="w-2/4 px-4">
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="${corBarra} h-2 rounded-full" style="width: ${percentual}%"></div>
+                                </div>
+                                <div class="text-[10px] text-gray-500 mt-1 text-center">Usado: R$ ${usado.toLocaleString('pt-BR')} / Limite: R$ ${limite.toLocaleString('pt-BR')}</div>
+                            </div>
+                            <div class="w-1/4 text-right font-bold text-gray-600">Dia ${String(c.dia_vencimento).padStart(2, '0')}</div>
+                        </div>`;
+                }
+            });
+
+            // Atualiza KPIs
+            let patrimonio = sBanco + dCard + invest;
+            document.getElementById('kpi-patrimonio').innerText = `R$ ${patrimonio.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            document.getElementById('kpi-bancos').innerText = `R$ ${sBanco.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            document.getElementById('kpi-divida').innerText = `R$ ${Math.abs(dCard).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            document.getElementById('kpi-invest').innerText = `R$ ${invest.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            
+            renderizarGrafico();
+        }
+
+        async function renderizarGrafico() {
+            // Busca transações para o gráfico de pizza
+            const { data: transacoes } = await supabase.from('transacoes').select('valor, categorias(nome)');
+            if(!transacoes) return;
+
+            let gastosPorCategoria = {};
+            transacoes.forEach(t => {
+                if(t.valor < 0) {
+                    let catName = t.categorias ? t.categorias.nome : 'Outros';
+                    gastosPorCategoria[catName] = (gastosPorCategoria[catName] || 0) + Math.abs(t.valor);
+                }
+            });
+
+            const ctx = document.getElementById('graficoVazamento').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(gastosPorCategoria),
+                    datasets: [{
+                        data: Object.values(gastosPorCategoria),
+                        backgroundColor: ['#1e3a8a', '#3b82f6', '#93c5fd', '#f97316', '#fdba74', '#10b981'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
+                }
+            });
+        }
+
+        carregarDados();
+    </script>
+</body>
+</html>
