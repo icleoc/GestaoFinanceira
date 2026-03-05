@@ -19,8 +19,8 @@
     <style>
         body { background-color: #f3f4f6; color: #1e293b; }
         .card-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); border: 1px solid #e2e8f0; }
-        .form-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 13px; background-color: #f8fafc; color: #334155; }
-        .form-input:focus { outline: none; border-color: #94a3b8; box-shadow: 0 0 0 1px #94a3b8; }
+        .form-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 13px; background-color: #f8fafc; color: #334155; transition: all 0.3s ease; }
+        .form-input:focus { outline: none; border-color: #3e9383; box-shadow: 0 0 0 1px #3e9383; }
         .section-header { font-size: 14px; font-weight: 700; color: #334155; background-color: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 12px; }
     </style>
 </head>
@@ -52,12 +52,15 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
         <div class="lg:col-span-7 space-y-6">
             <h2 class="text-lg font-bold uppercase text-gray-800">Visão Geral de Contas e Cartões</h2>
+            
             <div class="bg-white rounded-xl p-5 card-shadow">
                 <div class="section-header">˅ BANCOS (Liquidez)</div>
                 <div id="lista-bancos" class="space-y-1"><p class="text-sm text-gray-500">Carregando...</p></div>
             </div>
+            
             <div class="bg-white rounded-xl p-5 card-shadow">
                 <div class="section-header">˅ CARTÕES DE CRÉDITO</div>
                 <div class="flex text-[11px] text-gray-400 font-bold border-b border-gray-100 pb-2 mb-3 px-2">
@@ -71,64 +74,94 @@
 
         <div class="lg:col-span-5 space-y-6">
             <h2 class="text-lg font-bold uppercase text-gray-800">Onde está o vazamento?</h2>
+            
             <div class="bg-white rounded-xl p-5 card-shadow">
                 <h3 class="text-xs font-bold text-center text-gray-600 mb-2 uppercase">Gastos por Categoria (Este Mês)</h3>
                 <div class="w-full h-48 relative flex justify-center">
                     <canvas id="graficoVazamento"></canvas>
                 </div>
             </div>
+
             <div class="bg-white rounded-xl p-5 card-shadow">
-                <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase">Novo Gasto/Recebimento</h3>
+                <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase">Novo Gasto / Transferência</h3>
+                
                 <form id="form-transacao" class="space-y-4">
+                    
                     <div class="flex gap-4">
                         <div class="w-1/3">
                             <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Data</label>
                             <input type="date" id="input-data" class="form-input" required>
                         </div>
                         <div class="w-2/3">
-                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Descrição</label>
-                            <input type="text" id="input-desc" class="form-input" placeholder="Ex: Mercado" required>
-                        </div>
-                    </div>
-                    <div class="flex gap-4">
-                        <div class="w-1/2">
-                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Valor (R$)</label>
-                            <input type="number" id="input-valor" step="0.01" class="form-input" required>
-                        </div>
-                        <div class="w-1/2">
-                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Conta Origem</label>
-                            <select id="select-conta" class="form-input"></select>
-                        </div>
-                    </div>
-                    <div class="flex gap-4 items-end">
-                        <div class="w-1/2">
-                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Categoria</label>
-                            <select id="select-cat" class="form-input">
+                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Categoria / Operação</label>
+                            <select id="select-cat" class="form-input font-semibold text-[#102a43]">
                                 <option value="Despesa">Despesa Geral</option>
                                 <option value="Receita">Receita / Entrada</option>
-                                <option value="Fatura">Pagamento de Fatura</option>
+                                <option value="Fatura">Transf. / Pagar Fatura</option>
                             </select>
                         </div>
-                        <div class="w-1/2 flex items-center mb-2">
-                            <button type="submit" class="w-full bg-[#3e9383] text-white text-xs font-bold py-2.5 rounded hover:bg-teal-700 transition shadow">
-                                REGISTRAR
-                            </button>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <div class="w-2/3">
+                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Descrição</label>
+                            <input type="text" id="input-desc" class="form-input" placeholder="Ex: Mercado, Fatura Cartão" required>
+                        </div>
+                        <div class="w-1/3">
+                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Valor (R$)</label>
+                            <input type="number" id="input-valor" step="0.01" class="form-input" placeholder="0.00" required>
                         </div>
                     </div>
+
+                    <div class="flex gap-4 items-end transition-all">
+                        <div class="w-full transition-all duration-300" id="box-origem">
+                            <label id="label-origem" class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Conta Origem</label>
+                            <select id="select-conta" class="form-input"></select>
+                        </div>
+                        
+                        <div class="w-1/2 hidden transition-all duration-300" id="box-destino">
+                            <label class="block text-[11px] font-bold text-emerald-600 mb-1 uppercase">Conta Destino</label>
+                            <select id="select-destino" class="form-input border-emerald-300 bg-emerald-50"></select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-[#3e9383] text-white text-xs font-bold py-3 mt-2 rounded hover:bg-teal-700 transition shadow">
+                        REGISTRAR OPERAÇÃO
+                    </button>
                 </form>
             </div>
         </div>
     </div>
 
     <script>
-        // ======= CHAVE ANON CONFIGURADA =======
         const SUPABASE_URL = 'https://dqhyjrvhasmjwblidnqj.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxaHlqcnZoYXNtandibGlkbnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjMwOTIsImV4cCI6MjA4ODI5OTA5Mn0.F13N0yyQPOlkiR_tNIhSd1gKerJew5mIuHrj4lIk3qU'; 
-        // ======================================
 
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let graficoInstance = null;
         document.getElementById('input-data').valueAsDate = new Date();
+
+        // LÓGICA DE MOSTRAR/ESCONDER A CONTA DESTINO
+        document.getElementById('select-cat').addEventListener('change', function(e) {
+            const val = e.target.value;
+            const boxOrigem = document.getElementById('box-origem');
+            const boxDestino = document.getElementById('box-destino');
+            const lblOrigem = document.getElementById('label-origem');
+
+            if (val === 'Fatura') {
+                boxDestino.classList.remove('hidden');
+                boxOrigem.classList.remove('w-full');
+                boxOrigem.classList.add('w-1/2');
+                lblOrigem.innerText = 'SAIR DE (ORIGEM)';
+                lblOrigem.classList.add('text-red-600');
+            } else {
+                boxDestino.classList.add('hidden');
+                boxOrigem.classList.remove('w-1/2');
+                boxOrigem.classList.add('w-full');
+                lblOrigem.innerText = 'CONTA ORIGEM';
+                lblOrigem.classList.remove('text-red-600');
+            }
+        });
 
         async function carregarDados() {
             try {
@@ -139,10 +172,16 @@
                 const divBancos = document.getElementById('lista-bancos');
                 const divCartoes = document.getElementById('lista-cartoes');
                 const selectConta = document.getElementById('select-conta');
+                const selectDestino = document.getElementById('select-destino');
                 
                 divBancos.innerHTML = ''; divCartoes.innerHTML = '';
+                
+                // Preenche os dois selects se estiverem vazios
                 if(selectConta.options.length === 0) {
-                    contas.forEach(c => selectConta.add(new Option(c.nome, c.id)));
+                    contas.forEach(c => {
+                        selectConta.add(new Option(c.nome, c.id));
+                        selectDestino.add(new Option(c.nome, c.id));
+                    });
                 }
 
                 contas.forEach(c => {
@@ -227,27 +266,57 @@
             });
         }
 
+        // LÓGICA DE REGISTRO (INCLUINDO DUPLO REGISTRO PARA TRANSFERÊNCIAS)
         document.getElementById('form-transacao').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = e.target.querySelector('button');
-            btn.innerText = "Aguarde...";
+            btn.innerText = "Processando...";
             
+            const dataInp = document.getElementById('input-data').value;
             const desc = document.getElementById('input-desc').value;
             let valor = parseFloat(document.getElementById('input-valor').value);
             const contaId = document.getElementById('select-conta').value;
             const tipoCat = document.getElementById('select-cat').value;
 
-            if(tipoCat === 'Despesa') valor = -Math.abs(valor);
+            try {
+                if(tipoCat !== 'Fatura') {
+                    // Lógica normal de Receita/Despesa
+                    if(tipoCat === 'Despesa') valor = -Math.abs(valor);
+                    const { data: cat } = await db.from('categorias').select('id').eq('tipo', tipoCat).limit(1);
+                    
+                    const { error } = await db.from('transacoes').insert({
+                        data: dataInp, descricao: desc, valor: valor, conta_origem_id: contaId, categoria_id: cat?.[0]?.id || null
+                    });
+                    if(error) throw error;
+                    
+                } else {
+                    // Lógica de Transferência / Fatura
+                    const destinoId = document.getElementById('select-destino').value;
+                    if(contaId === destinoId) throw new Error("A conta de origem e destino não podem ser as mesmas!");
 
-            const { data: cat } = await db.from('categorias').select('id').eq('tipo', tipoCat === 'Receita' ? 'Receita' : 'Despesa').limit(1);
-            
-            const { error } = await db.from('transacoes').insert({
-                descricao: desc, valor: valor, conta_origem_id: contaId, categoria_id: cat?.[0]?.id || null
-            });
+                    // 1. Tira o dinheiro da Origem
+                    const { error: err1 } = await db.from('transacoes').insert({
+                        data: dataInp, descricao: `Transf para: ${desc}`, valor: -Math.abs(valor), conta_origem_id: contaId
+                    });
+                    if(err1) throw err1;
 
-            if(!error) { alert("Registrado!"); carregarDados(); e.target.reset(); } 
-            else { alert("Erro: " + error.message); }
-            btn.innerText = "REGISTRAR";
+                    // 2. Coloca o dinheiro no Destino
+                    const { error: err2 } = await db.from('transacoes').insert({
+                        data: dataInp, descricao: `Recebido de: ${desc}`, valor: Math.abs(valor), conta_origem_id: destinoId
+                    });
+                    if(err2) throw err2;
+                }
+
+                alert("Operação registrada com sucesso!"); 
+                e.target.reset();
+                document.getElementById('input-data').valueAsDate = new Date();
+                document.getElementById('select-cat').dispatchEvent(new Event('change')); // Reseta o visual do form
+                carregarDados(); 
+
+            } catch (error) {
+                alert("Erro: " + error.message);
+            }
+            btn.innerText = "REGISTRAR OPERAÇÃO";
         });
 
         carregarDados();
