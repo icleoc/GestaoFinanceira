@@ -22,15 +22,21 @@
         .form-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 13px; background-color: #f8fafc; color: #334155; transition: all 0.3s ease; }
         .form-input:focus { outline: none; border-color: #3e9383; box-shadow: 0 0 0 1px #3e9383; }
         .section-header { font-size: 14px; font-weight: 700; color: #334155; background-color: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 12px; }
+        
+        /* Estilo para Janelas Pop-up (Modais) */
+        .modal-bg { background-color: rgba(0,0,0,0.6); backdrop-filter: blur(2px); }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="p-4 md:p-8 max-w-[1200px] mx-auto antialiased">
 
-    <div id="aviso-erro" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded text-sm shadow-sm">
-        <strong>Erro:</strong> <span id="msg-erro"></span>
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-extrabold text-gray-900 uppercase tracking-tight">SISTEMA FINANCEIRO LÉO</h1>
+        <div class="flex gap-3">
+            <button onclick="abrirHistorico()" class="bg-blue-100 text-blue-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-blue-200 transition">📜 VER EXTRATO</button>
+            <button onclick="abrirCategorias()" class="bg-gray-800 text-white text-xs font-bold py-2 px-4 rounded shadow hover:bg-gray-700 transition">⚙️ CATEGORIAS</button>
+        </div>
     </div>
-
-    <h1 class="text-2xl font-extrabold text-gray-900 mb-6 uppercase tracking-tight">SISTEMA FINANCEIRO LÉO - CONTROLE TOTAL</h1>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div class="bg-[#102a43] text-white p-5 rounded-xl shadow-md">
@@ -38,7 +44,7 @@
             <h2 class="text-2xl font-bold" id="kpi-patrimonio">R$ 0,00</h2>
         </div>
         <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Saldo Total em Bancos</p>
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-1">Saldo Total Bancos</p>
             <h2 class="text-2xl font-bold" id="kpi-bancos">R$ 0,00</h2>
         </div>
         <div class="bg-[#ffedd5] text-[#9a3412] p-5 rounded-xl shadow-sm border border-[#fdba74]">
@@ -54,8 +60,6 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         <div class="lg:col-span-7 space-y-6">
-            <h2 class="text-lg font-bold uppercase text-gray-800">Visão Geral Detalhada</h2>
-            
             <div class="bg-white rounded-xl p-5 card-shadow">
                 <div class="section-header">˅ BANCOS (Liquidez)</div>
                 <div id="lista-bancos" class="space-y-1"><p class="text-sm text-gray-500">Carregando...</p></div>
@@ -78,17 +82,15 @@
         </div>
 
         <div class="lg:col-span-5 space-y-6">
-            <h2 class="text-lg font-bold uppercase text-gray-800">Inteligência & Ações</h2>
-            
             <div class="bg-white rounded-xl p-5 card-shadow">
-                <h3 class="text-xs font-bold text-center text-gray-600 mb-2 uppercase">Gastos por Categoria (Este Mês)</h3>
+                <h3 class="text-xs font-bold text-center text-gray-600 mb-2 uppercase">Gastos por Categoria</h3>
                 <div class="w-full h-48 relative flex justify-center">
                     <canvas id="graficoVazamento"></canvas>
                 </div>
             </div>
 
             <div class="bg-white rounded-xl p-5 card-shadow border-t-4 border-[#3e9383]">
-                <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase">Novo Gasto / Transferência</h3>
+                <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase">Novo Lançamento</h3>
                 
                 <form id="form-transacao" class="space-y-4">
                     <div class="flex gap-4">
@@ -97,11 +99,12 @@
                             <input type="date" id="input-data" class="form-input" required>
                         </div>
                         <div class="w-2/3">
-                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Categoria / Operação</label>
+                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Operação / Categoria</label>
                             <select id="select-cat" class="form-input font-semibold text-[#102a43]">
-                                <option value="Despesa">Despesa Geral</option>
-                                <option value="Receita">Receita / Entrada</option>
-                                <option value="Fatura">Transf. / Pagar Fatura</option>
+                                <option value="Transferencia">🔄 Transferência / Pagar Fatura</option>
+                                <optgroup label="Despesas" id="opt-despesas"></optgroup>
+                                <optgroup label="Receitas" id="opt-receitas"></optgroup>
+                                <optgroup label="Investimentos" id="opt-invest"></optgroup>
                             </select>
                         </div>
                     </div>
@@ -112,32 +115,32 @@
                             <input type="text" id="input-desc" class="form-input" placeholder="Ex: Mercado, Fatura Cartão" required>
                         </div>
                         <div class="w-1/3">
-                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Valor Total (R$)</label>
+                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Valor (R$)</label>
                             <input type="number" id="input-valor" step="0.01" class="form-input" placeholder="0.00" required>
                         </div>
                     </div>
 
                     <div class="flex gap-4 items-end transition-all">
                         <div class="w-1/3">
-                            <label class="block text-[11px] font-bold text-[#102a43] mb-1 uppercase">Filtrar Origem</label>
+                            <label class="block text-[11px] font-bold text-[#102a43] mb-1 uppercase">Origem</label>
                             <select id="select-filtro-origem" class="form-input bg-blue-50">
                                 <option value="Todos">Todos</option>
                                 <option value="Corrente">Contas</option>
                                 <option value="Crédito">Cartões</option>
                             </select>
                         </div>
-                        <div class="w-2/3 transition-all duration-300" id="box-origem">
+                        <div class="w-2/3" id="box-origem">
                             <label id="label-origem" class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Conta / Cartão</label>
                             <select id="select-conta" class="form-input"></select>
                         </div>
                     </div>
 
                     <div class="flex gap-4 items-end transition-all">
-                        <div class="w-1/2 hidden transition-all duration-300" id="box-destino">
+                        <div class="w-1/2" id="box-destino">
                             <label class="block text-[11px] font-bold text-emerald-600 mb-1 uppercase">Conta Destino</label>
                             <select id="select-destino" class="form-input border-emerald-300 bg-emerald-50"></select>
                         </div>
-                        <div class="w-full hidden transition-all duration-300" id="box-parcelas">
+                        <div class="w-full hidden" id="box-parcelas">
                             <label class="block text-[11px] font-bold text-[#d97706] mb-1 uppercase">Parcelamento no Cartão</label>
                             <select id="select-parcelas" class="form-input border-[#d97706] bg-[#fffbeb]"></select>
                         </div>
@@ -151,6 +154,52 @@
         </div>
     </div>
 
+    <div id="modal-historico" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold uppercase tracking-wider">Histórico de Lançamentos</h3>
+                <button onclick="fecharHistorico()" class="text-white hover:text-red-400 font-bold text-xl">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto scrollbar-hide flex-1">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-[11px] text-gray-500 uppercase border-b-2">
+                            <th class="p-2">Data</th>
+                            <th class="p-2">Descrição</th>
+                            <th class="p-2">Categoria</th>
+                            <th class="p-2">Conta Origem</th>
+                            <th class="p-2 text-right">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-historico" class="text-sm">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-categorias" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div class="bg-[#102a43] text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold uppercase tracking-wider">Gerenciar Categorias</h3>
+                <button onclick="fecharCategorias()" class="text-white hover:text-red-400 font-bold text-xl">&times;</button>
+            </div>
+            <div class="p-5">
+                <form id="form-nova-categoria" class="flex gap-2 mb-4">
+                    <input type="text" id="cat-nome" placeholder="Nova Categoria..." required class="form-input w-1/2">
+                    <select id="cat-tipo" class="form-input w-1/3">
+                        <option value="Despesa">Despesa</option>
+                        <option value="Receita">Receita</option>
+                        <option value="Investimento">Investimento</option>
+                    </select>
+                    <button type="submit" class="bg-[#3e9383] text-white font-bold px-4 rounded text-xs">ADD</button>
+                </form>
+                <div class="max-h-64 overflow-y-auto scrollbar-hide border rounded p-2" id="lista-categorias-modal">
+                    </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const SUPABASE_URL = 'https://dqhyjrvhasmjwblidnqj.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxaHlqcnZoYXNtandibGlkbnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjMwOTIsImV4cCI6MjA4ODI5OTA5Mn0.F13N0yyQPOlkiR_tNIhSd1gKerJew5mIuHrj4lIk3qU'; 
@@ -158,42 +207,30 @@
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let graficoInstance = null;
         let contasGlobais = []; 
+        let categoriasGlobais = [];
 
         document.getElementById('input-data').valueAsDate = new Date();
 
+        // Popula Parcelas
         const selectParcelas = document.getElementById('select-parcelas');
-        for(let i = 1; i <= 24; i++) {
-            selectParcelas.add(new Option(i === 1 ? '1x (À vista)' : `${i}x`, i));
-        }
+        for(let i = 1; i <= 24; i++) selectParcelas.add(new Option(i === 1 ? '1x (À vista)' : `${i}x`, i));
 
-        function filtrarContas() {
-            const filtro = document.getElementById('select-filtro-origem').value;
-            const selectConta = document.getElementById('select-conta');
-            const contaAntiga = selectConta.value; 
-            
-            selectConta.innerHTML = '';
-            contasGlobais.forEach(c => {
-                if(filtro === 'Todos' || c.tipo === filtro) {
-                    selectConta.add(new Option(c.nome, c.id));
-                }
-            });
+        // CONTROLES DE MODAL
+        function abrirHistorico() { document.getElementById('modal-historico').classList.remove('hidden'); carregarHistorico(); }
+        function fecharHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
+        function abrirCategorias() { document.getElementById('modal-categorias').classList.remove('hidden'); renderizarModalCategorias(); }
+        function fecharCategorias() { document.getElementById('modal-categorias').classList.add('hidden'); }
 
-            if([...selectConta.options].some(opt => opt.value === contaAntiga)) {
-                selectConta.value = contaAntiga;
-            }
-            atualizarFormulario();
-        }
-
+        // DINÂMICA DO FORMULÁRIO PRINCIPAL
         function atualizarFormulario() {
             const cat = document.getElementById('select-cat').value;
             const contaId = document.getElementById('select-conta').value;
             const contaInfo = contasGlobais.find(c => c.id == contaId);
-            
             const boxDestino = document.getElementById('box-destino');
             const boxParcelas = document.getElementById('box-parcelas');
             const lblOrigem = document.getElementById('label-origem');
 
-            if (cat === 'Fatura') {
+            if (cat === 'Transferencia') {
                 boxDestino.classList.remove('hidden');
                 boxParcelas.classList.add('hidden');
                 lblOrigem.innerText = 'SAIR DE (ORIGEM)';
@@ -203,7 +240,9 @@
                 lblOrigem.innerText = 'CONTA / CARTÃO';
                 lblOrigem.classList.remove('text-red-600');
                 
-                if(contaInfo && contaInfo.tipo === 'Crédito' && cat === 'Despesa') {
+                // Pega a categoria selecionada para saber o tipo
+                const catInfo = categoriasGlobais.find(c => c.id == cat);
+                if(contaInfo && contaInfo.tipo === 'Crédito' && catInfo && catInfo.tipo === 'Despesa') {
                     boxParcelas.classList.remove('hidden');
                 } else {
                     boxParcelas.classList.add('hidden');
@@ -214,163 +253,212 @@
 
         document.getElementById('select-cat').addEventListener('change', atualizarFormulario);
         document.getElementById('select-conta').addEventListener('change', atualizarFormulario);
-        document.getElementById('select-filtro-origem').addEventListener('change', filtrarContas);
+        
+        document.getElementById('select-filtro-origem').addEventListener('change', () => {
+            const filtro = document.getElementById('select-filtro-origem').value;
+            const selectConta = document.getElementById('select-conta');
+            const contaAntiga = selectConta.value; 
+            selectConta.innerHTML = '';
+            contasGlobais.forEach(c => {
+                if(filtro === 'Todos' || c.tipo === filtro) selectConta.add(new Option(c.nome, c.id));
+            });
+            if([...selectConta.options].some(opt => opt.value === contaAntiga)) selectConta.value = contaAntiga;
+            atualizarFormulario();
+        });
 
+        // CARGA INICIAL
         async function carregarDados() {
             try {
-                const { data: contas, error } = await db.from('contas').select('*');
-                if (error) throw error;
+                // Busca Contas
+                const { data: contas, error: err1 } = await db.from('contas').select('*');
+                if (err1) throw err1;
                 contasGlobais = contas; 
                 
-                let sBanco = 0, dCard = 0, invest = 0;
-                const divBancos = document.getElementById('lista-bancos');
-                const divCartoes = document.getElementById('lista-cartoes');
-                const divInvestimentos = document.getElementById('lista-investimentos');
+                // Busca Categorias (NOVO)
+                const { data: categorias, error: err2 } = await db.from('categorias').select('*').order('nome');
+                if (err2) throw err2;
+                categoriasGlobais = categorias;
                 
-                const selectConta = document.getElementById('select-conta');
-                const selectDestino = document.getElementById('select-destino');
-                
-                divBancos.innerHTML = ''; divCartoes.innerHTML = ''; divInvestimentos.innerHTML = '';
-                
-                if(selectConta.options.length === 0) {
-                    contas.forEach(c => {
-                        selectConta.add(new Option(c.nome, c.id));
-                        selectDestino.add(new Option(c.nome, c.id));
-                    });
-                    atualizarFormulario(); 
-                }
-
-                contas.forEach(c => {
-                    if(c.tipo === 'Corrente') sBanco += parseFloat(c.saldo_atual);
-                    if(c.tipo === 'Crédito') dCard += parseFloat(c.saldo_atual);
-                    if(c.tipo === 'Investimento') invest += parseFloat(c.saldo_atual);
-
-                    if(c.tipo === 'Corrente') {
-                        divBancos.innerHTML += `
-                            <div class="flex justify-between items-center py-2 px-2 hover:bg-gray-50 border-b border-gray-50 last:border-0">
-                                <span class="text-[12px] text-gray-700 font-medium">› ${c.nome}</span>
-                                <span class="text-[12px] font-bold text-[#3e9383]">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                            </div>`;
-                    }
-                    if(c.tipo === 'Crédito') {
-                        let usado = Math.abs(c.saldo_atual);
-                        let lim = c.limite_total || 1;
-                        let disponivel = lim - usado;
-                        let percUsado = Math.min((usado / lim) * 100, 100);
-                        let percRestante = 100 - percUsado;
-                        
-                        let corBarra = percUsado > 80 ? 'bg-red-500' : (percUsado > 50 ? 'bg-[#d97706]' : 'bg-[#102a43]');
-                        let badgeAlerta = percRestante <= 20 ? `<span class="bg-red-100 text-red-700 border border-red-200 px-1 py-0.5 rounded text-[8px] uppercase tracking-wider font-bold shadow-sm">LIMITE BAIXO</span>` : '';
-
-                        divCartoes.innerHTML += `
-                            <div class="flex items-center text-[12px] py-3 px-2 border-b border-gray-50 last:border-0">
-                                <div class="w-1/3 font-bold text-gray-800 flex items-center gap-2">
-                                    <div class="w-3 h-3 bg-gray-800 rounded-sm shadow-sm"></div> ${c.nome}
-                                </div>
-                                <div class="w-1/2 pr-6">
-                                    <div class="flex justify-between items-center text-[10px] text-gray-500 mb-1 font-semibold">
-                                        <span>Restante: ${percRestante.toFixed(0)}% (R$ ${disponivel.toLocaleString('pt-BR')})</span>
-                                        ${badgeAlerta}
-                                    </div>
-                                    <div class="w-full bg-gray-200 rounded-full h-1.5 relative overflow-hidden">
-                                        <div class="${corBarra} h-1.5 rounded-full" style="width: ${percUsado}%"></div>
-                                    </div>
-                                </div>
-                                <div class="w-1/6 text-right font-bold text-gray-600">${String(c.dia_vencimento).padStart(2, '0')}</div>
-                            </div>`;
-                    }
-                    if(c.tipo === 'Investimento') {
-                        divInvestimentos.innerHTML += `
-                            <div class="flex justify-between items-center py-2 px-2 hover:bg-gray-50 border-b border-gray-50 last:border-0">
-                                <span class="text-[12px] text-gray-700 font-medium">› ${c.nome}</span>
-                                <span class="text-[12px] font-bold text-blue-700">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                            </div>`;
-                    }
-                });
-
-                document.getElementById('kpi-patrimonio').innerText = `R$ ${(sBanco + dCard + invest).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-                document.getElementById('kpi-bancos').innerText = `R$ ${sBanco.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-                document.getElementById('kpi-divida').innerText = `R$ ${Math.abs(dCard).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-                document.getElementById('kpi-invest').innerText = `R$ ${invest.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-
+                renderizarCategoriasDropdown();
+                renderizarContasNaTela(contas);
                 buscarERenderizarGrafico();
-                document.getElementById('aviso-erro').classList.add('hidden');
-
             } catch (err) {
-                document.getElementById('aviso-erro').classList.remove('hidden');
-                document.getElementById('msg-erro').innerText = err.message;
+                console.error(err);
             }
         }
 
-        async function buscarERenderizarGrafico() {
-            const { data: transacoes } = await db.from('transacoes').select('valor, categorias(nome)');
-            if(!transacoes) return;
+        function renderizarCategoriasDropdown() {
+            const optDespesas = document.getElementById('opt-despesas');
+            const optReceitas = document.getElementById('opt-receitas');
+            const optInvest = document.getElementById('opt-invest');
             
-            let gastos = {};
-            transacoes.forEach(t => {
-                if(t.valor < 0) {
-                    let c = t.categorias ? t.categorias.nome : 'Outros';
-                    gastos[c] = (gastos[c] || 0) + Math.abs(t.valor);
+            optDespesas.innerHTML = ''; optReceitas.innerHTML = ''; optInvest.innerHTML = '';
+            
+            categoriasGlobais.forEach(cat => {
+                const opt = new Option(cat.nome, cat.id);
+                if(cat.tipo === 'Despesa') optDespesas.appendChild(opt);
+                else if(cat.tipo === 'Receita') optReceitas.appendChild(opt);
+                else if(cat.tipo === 'Investimento') optInvest.appendChild(opt);
+            });
+            atualizarFormulario();
+        }
+
+        function renderizarContasNaTela(contas) {
+            let sBanco = 0, dCard = 0, invest = 0;
+            const divBancos = document.getElementById('lista-bancos');
+            const divCartoes = document.getElementById('lista-cartoes');
+            const divInvestimentos = document.getElementById('lista-investimentos');
+            const selectConta = document.getElementById('select-conta');
+            const selectDestino = document.getElementById('select-destino');
+            
+            divBancos.innerHTML = ''; divCartoes.innerHTML = ''; divInvestimentos.innerHTML = '';
+            
+            if(selectConta.options.length === 0) {
+                contas.forEach(c => {
+                    selectConta.add(new Option(c.nome, c.id));
+                    selectDestino.add(new Option(c.nome, c.id));
+                });
+                atualizarFormulario(); 
+            }
+
+            contas.forEach(c => {
+                if(c.tipo === 'Corrente') sBanco += parseFloat(c.saldo_atual);
+                if(c.tipo === 'Crédito') dCard += parseFloat(c.saldo_atual);
+                if(c.tipo === 'Investimento') invest += parseFloat(c.saldo_atual);
+
+                if(c.tipo === 'Corrente') {
+                    divBancos.innerHTML += `
+                        <div class="flex justify-between items-center py-2 px-2 hover:bg-gray-50 border-b border-gray-50 last:border-0">
+                            <span class="text-[12px] text-gray-700 font-medium">› ${c.nome}</span>
+                            <span class="text-[12px] font-bold text-[#3e9383]">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        </div>`;
+                }
+                if(c.tipo === 'Crédito') {
+                    let usado = Math.abs(c.saldo_atual);
+                    let lim = c.limite_total || 1;
+                    let disponivel = lim - usado;
+                    let percUsado = Math.min((usado / lim) * 100, 100);
+                    let percRestante = 100 - percUsado;
+                    
+                    let corBarra = percUsado > 80 ? 'bg-red-500' : (percUsado > 50 ? 'bg-[#d97706]' : 'bg-[#102a43]');
+                    let badgeAlerta = percRestante <= 20 ? `<span class="bg-red-100 text-red-700 border border-red-200 px-1 rounded text-[9px] uppercase font-bold shadow-sm">LIMITE BAIXO</span>` : '';
+
+                    divCartoes.innerHTML += `
+                        <div class="flex items-center text-[12px] py-3 px-2 border-b border-gray-50 last:border-0">
+                            <div class="w-1/3 font-bold text-gray-800 flex items-center gap-2">
+                                <div class="w-3 h-3 bg-gray-800 rounded-sm"></div> ${c.nome}
+                            </div>
+                            <div class="w-1/2 pr-6">
+                                <div class="flex justify-between items-center text-[10px] text-gray-500 mb-1 font-semibold">
+                                    <span>Restante: ${percRestante.toFixed(0)}% (R$ ${disponivel.toLocaleString('pt-BR')})</span>
+                                    ${badgeAlerta}
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                    <div class="${corBarra} h-1.5" style="width: ${percUsado}%"></div>
+                                </div>
+                            </div>
+                            <div class="w-1/6 text-right font-bold text-gray-600">${String(c.dia_vencimento).padStart(2, '0')}</div>
+                        </div>`;
+                }
+                if(c.tipo === 'Investimento') {
+                    divInvestimentos.innerHTML += `
+                        <div class="flex justify-between items-center py-2 px-2 hover:bg-gray-50 border-b border-gray-50 last:border-0">
+                            <span class="text-[12px] text-gray-700 font-medium">› ${c.nome}</span>
+                            <span class="text-[12px] font-bold text-blue-700">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        </div>`;
                 }
             });
 
-            const ctx = document.getElementById('graficoVazamento').getContext('2d');
-            if(graficoInstance) graficoInstance.destroy();
-            graficoInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(gastos).length ? Object.keys(gastos) : ['Sem Gastos'],
-                    datasets: [{
-                        data: Object.values(gastos).length ? Object.values(gastos) : [1],
-                        backgroundColor: ['#102a43', '#475569', '#3e9383', '#d97706', '#3b82f6'],
-                        borderWidth: 0
-                    }]
-                },
-                options: { 
-                    responsive: true, maintainAspectRatio: false, cutout: '55%',
-                    plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 6, font: {size: 10} } } }
-                }
+            document.getElementById('kpi-patrimonio').innerText = `R$ ${(sBanco + dCard + invest).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            document.getElementById('kpi-bancos').innerText = `R$ ${sBanco.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            document.getElementById('kpi-divida').innerText = `R$ ${Math.abs(dCard).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            document.getElementById('kpi-invest').innerText = `R$ ${invest.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+        }
+
+        // CARREGA HISTÓRICO NO MODAL
+        async function carregarHistorico() {
+            const tbody = document.getElementById('tabela-historico');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Carregando...</td></tr>';
+            
+            const { data, error } = await db.from('transacoes').select('data, descricao, valor, contas(nome), categorias(nome)').order('data', { ascending: false }).limit(50);
+            if(error) { tbody.innerHTML = `<tr><td colspan="5">Erro: ${error.message}</td></tr>`; return; }
+
+            tbody.innerHTML = '';
+            data.forEach(t => {
+                let corValor = t.valor < 0 ? 'text-red-600' : 'text-emerald-600';
+                let dataBR = t.data.split('-').reverse().join('/');
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-2">${dataBR}</td>
+                        <td class="p-2 font-medium">${t.descricao}</td>
+                        <td class="p-2 text-gray-500">${t.categorias ? t.categorias.nome : 'Transferência'}</td>
+                        <td class="p-2 text-gray-500">${t.contas ? t.contas.nome : '-'}</td>
+                        <td class="p-2 text-right font-bold ${corValor}">R$ ${Math.abs(t.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                    </tr>`;
             });
         }
 
+        // GERENCIAR CATEGORIAS NO MODAL
+        function renderizarModalCategorias() {
+            const div = document.getElementById('lista-categorias-modal');
+            div.innerHTML = '';
+            categoriasGlobais.forEach(c => {
+                let corBadge = c.tipo === 'Despesa' ? 'bg-red-100 text-red-700' : (c.tipo === 'Receita' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700');
+                div.innerHTML += `
+                    <div class="flex justify-between items-center p-2 border-b last:border-0 text-sm">
+                        <span class="font-medium">${c.nome}</span>
+                        <span class="${corBadge} px-2 py-0.5 rounded text-[10px] uppercase">${c.tipo}</span>
+                    </div>`;
+            });
+        }
+
+        document.getElementById('form-nova-categoria').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nome = document.getElementById('cat-nome').value;
+            const tipo = document.getElementById('cat-tipo').value;
+            
+            const { error } = await db.from('categorias').insert({ nome, tipo });
+            if(!error) {
+                document.getElementById('cat-nome').value = '';
+                await carregarDados(); // Recarrega tudo
+                renderizarModalCategorias(); // Atualiza a lista no modal
+            } else {
+                alert("Erro ao adicionar categoria: " + error.message);
+            }
+        });
+
+        // SALVAR NOVO LANÇAMENTO
         document.getElementById('form-transacao').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const valorTotal = parseFloat(document.getElementById('input-valor').value);
             const contaId = document.getElementById('select-conta').value;
-            const tipoCat = document.getElementById('select-cat').value;
+            const catIdOuTransf = document.getElementById('select-cat').value; // Pode ser ID ou "Transferencia"
+            
             const contaInfo = contasGlobais.find(c => c.id == contaId);
+            const catInfo = categoriasGlobais.find(c => c.id == catIdOuTransf);
 
-            // VALIDAÇÃO E BLOQUEIO (SEGURANÇA JARVIS)
-            if(contaInfo) {
-                if(contaInfo.tipo === 'Crédito' && tipoCat === 'Despesa') {
+            // VALIDAÇÃO (Limites)
+            if(contaInfo && catInfo && catInfo.tipo === 'Despesa') {
+                if(contaInfo.tipo === 'Crédito') {
                     let disponivel = contaInfo.limite_total - Math.abs(contaInfo.saldo_atual);
-                    if(valorTotal > disponivel) {
-                        alert(`🚫 BLOQUEADO: O cartão "${contaInfo.nome}" não tem limite suficiente.\n\nDisponível: R$ ${disponivel.toFixed(2)}\nTentativa: R$ ${valorTotal.toFixed(2)}`);
-                        return; // O SCRIPT PARA AQUI! NADA VAI PARA O BANCO.
-                    }
-                } else if (contaInfo.tipo === 'Corrente' && tipoCat === 'Despesa') {
-                    if(valorTotal > contaInfo.saldo_atual) {
-                        alert(`🚫 BLOQUEADO: A conta "${contaInfo.nome}" não tem saldo suficiente.\n\nSaldo Atual: R$ ${contaInfo.saldo_atual.toFixed(2)}\nTentativa: R$ ${valorTotal.toFixed(2)}`);
-                        return; 
-                    }
+                    if(valorTotal > disponivel) { alert(`🚫 LIMITE INSUFICIENTE no ${contaInfo.nome}.`); return; }
+                } else if (contaInfo.tipo === 'Corrente') {
+                    if(valorTotal > contaInfo.saldo_atual) { alert(`🚫 SALDO INSUFICIENTE na ${contaInfo.nome}.`); return; }
                 }
             }
 
             const btn = e.target.querySelector('button');
             btn.innerText = "Processando...";
-            
             const dataInp = document.getElementById('input-data').value;
             const desc = document.getElementById('input-desc').value;
             const parcelas = parseInt(document.getElementById('select-parcelas').value) || 1;
 
             try {
-                if(tipoCat !== 'Fatura') {
-                    const { data: cat } = await db.from('categorias').select('id').eq('tipo', tipoCat).limit(1);
-                    const catId = cat?.[0]?.id || null;
-                    
+                if(catIdOuTransf !== 'Transferencia') {
+                    // DESPESA, RECEITA OU INVESTIMENTO (Vincular à Categoria)
                     let valorParcela = valorTotal / parcelas;
-                    if(tipoCat === 'Despesa') valorParcela = -Math.abs(valorParcela);
+                    if(catInfo.tipo === 'Despesa') valorParcela = -Math.abs(valorParcela);
 
                     let inserts = [];
                     let [ano, mes, dia] = dataInp.split('-');
@@ -378,46 +466,57 @@
                     for(let i = 0; i < parcelas; i++) {
                         let dataObj = new Date(ano, parseInt(mes) - 1 + i, dia);
                         let dataFormatada = dataObj.toISOString().split('T')[0];
-                        let descFinal = parcelas > 1 ? `${desc} (${i+1}/${parcelas})` : desc;
-
                         inserts.push({
                             data: dataFormatada,
-                            descricao: descFinal,
+                            descricao: parcelas > 1 ? `${desc} (${i+1}/${parcelas})` : desc,
                             valor: valorParcela,
                             conta_origem_id: contaId,
-                            categoria_id: catId
+                            categoria_id: catIdOuTransf // Salva o ID da Categoria Real
                         });
                     }
-
                     const { error } = await db.from('transacoes').insert(inserts);
                     if(error) throw error;
                     
                 } else {
+                    // TRANSFERÊNCIA
                     const destinoId = document.getElementById('select-destino').value;
-                    if(contaId === destinoId) throw new Error("A conta de origem e destino devem ser diferentes!");
+                    if(contaId === destinoId) throw new Error("Contas de origem e destino iguais!");
 
                     const { error: err1 } = await db.from('transacoes').insert({
-                        data: dataInp, descricao: `Transf para: ${desc}`, valor: -Math.abs(valorTotal), conta_origem_id: contaId
+                        data: dataInp, descricao: `Transf p/: ${desc}`, valor: -Math.abs(valorTotal), conta_origem_id: contaId
                     });
                     if(err1) throw err1;
-
                     const { error: err2 } = await db.from('transacoes').insert({
-                        data: dataInp, descricao: `Recebido de: ${desc}`, valor: Math.abs(valorTotal), conta_origem_id: destinoId
+                        data: dataInp, descricao: `Rec. de: ${desc}`, valor: Math.abs(valorTotal), conta_origem_id: destinoId
                     });
                     if(err2) throw err2;
                 }
 
-                alert(parcelas > 1 ? `✅ Sucesso! Compra parcelada em ${parcelas}x.` : "✅ Operação registrada com sucesso!"); 
-                e.target.reset();
-                document.getElementById('input-data').valueAsDate = new Date();
-                atualizarFormulario(); 
-                carregarDados(); 
-
-            } catch (error) {
-                alert("Erro: " + error.message);
-            }
+                alert(parcelas > 1 ? `✅ Parcelado em ${parcelas}x.` : "✅ Registrado!"); 
+                e.target.reset(); document.getElementById('input-data').valueAsDate = new Date();
+                atualizarFormulario(); carregarDados(); 
+            } catch (error) { alert("Erro: " + error.message); }
             btn.innerText = "REGISTRAR OPERAÇÃO";
         });
+
+        async function buscarERenderizarGrafico() {
+            const { data: transacoes } = await db.from('transacoes').select('valor, categorias(nome)');
+            if(!transacoes) return;
+            let gastos = {};
+            transacoes.forEach(t => {
+                if(t.valor < 0 && t.categorias) {
+                    gastos[t.categorias.nome] = (gastos[t.categorias.nome] || 0) + Math.abs(t.valor);
+                }
+            });
+            const ctx = document.getElementById('graficoVazamento').getContext('2d');
+            if(graficoInstance) graficoInstance.destroy();
+            graficoInstance = new Chart(ctx, {
+                type: 'doughnut', data: {
+                    labels: Object.keys(gastos).length ? Object.keys(gastos) : ['Sem Gastos'],
+                    datasets: [{ data: Object.values(gastos).length ? Object.values(gastos) : [1], backgroundColor: ['#102a43', '#475569', '#3e9383', '#d97706', '#3b82f6'], borderWidth: 0 }]
+                }, options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 6, font: {size: 10} } } } }
+            });
+        }
 
         carregarDados();
     </script>
