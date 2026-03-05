@@ -3,36 +3,37 @@ from st_supabase_connection import SupabaseConnection
 import pandas as pd
 import plotly.express as px
 
-# 1. Configuração de Layout
+# 1. Configuração do App
 st.set_page_config(page_title="Jarvis Finance Pro", layout="wide")
 
-# 2. Conexão
-conn = st.connection("supabase", type=SupabaseConnection)
-
-# 3. CSS para os Cards Coloridos do seu Print
+# 2. CSS para os Cards Coloridos do seu Print (Fundo Escuro)
 st.markdown("""
     <style>
-    .card { padding: 20px; border-radius: 10px; margin-bottom: 10px; height: 120px; }
-    .azul-escuro { background-color: #0e2135; color: white; border-left: 8px solid #00d4ff; }
-    .branco-card { background-color: #ffffff; color: #333; border: 1px solid #ddd; }
+    .card { padding: 20px; border-radius: 10px; margin-bottom: 10px; height: 130px; }
+    .azul-escuro { background-color: #0b1e33; color: white; border-top: 5px solid #00d4ff; }
+    .branco-card { background-color: #ffffff; color: #1e1e1e; border: 1px solid #ddd; }
     .salmao-card { background-color: #fff2ea; color: #d35400; border: 1px solid #fab1a0; }
     .stProgress > div > div > div > div { background-color: #00d4ff !important; }
+    [data-testid="stMetricValue"] { font-size: 24px !important; }
     </style>
     """, unsafe_allow_html=True)
 
+# 3. Conexão Protegida
 try:
-    # Busca de dados do Supabase
+    conn = st.connection("supabase", type=SupabaseConnection)
+    
+    # Busca de dados
     contas = conn.client.table("contas").select("*").execute().data
     categorias = conn.client.table("categorias").select("*").execute().data
     trans_raw = conn.client.table("transacoes").select("valor, categorias(nome)").execute().data
 
-    # Cálculos
+    # Cálculos das Métricas
     s_banco = sum(c['saldo_atual'] for c in contas if c['tipo'] == 'Corrente')
     d_card = sum(c['saldo_atual'] for c in contas if c['tipo'] == 'Crédito')
     invest = sum(c['saldo_atual'] for c in contas if c['tipo'] == 'Investimento')
     patrimonio = s_banco + d_card + invest
 
-    # --- HEADER (IGUAL AO SEU PRINT) ---
+    # --- HEADER IGUAL AO PRINT ---
     st.markdown("### SISTEMA FINANCEIRO LÉO - CONTROLE TOTAL")
     
     k1, k2, k3, k4 = st.columns(4)
@@ -43,13 +44,12 @@ try:
 
     st.write("")
 
-    # --- DUAS COLUNAS PRINCIPAIS ---
-    col_lista, col_acoes = st.columns([1.3, 1], gap="large")
+    # --- DUAS COLUNAS PRINCIPAIS (1.2 : 1) ---
+    col_lista, col_acoes = st.columns([1.2, 1], gap="large")
 
     with col_lista:
         st.markdown("#### VISÃO GERAL DE CONTAS E CARTÕES")
         
-        # Bloco de Bancos
         with st.expander("🏦 BANCOS (Liquidez)", expanded=True):
             for b in [c for c in contas if c['tipo'] == 'Corrente']:
                 b1, b2 = st.columns([4, 1])
@@ -58,7 +58,6 @@ try:
         
         st.write("")
         
-        # Bloco de Cartões (Fiel ao design)
         with st.expander("💳 CARTÕES DE CRÉDITO", expanded=True):
             st.markdown("<small>Name | Limite Usado vs. Disponível | Venc.</small>", unsafe_allow_html=True)
             for c in [c for c in contas if c['tipo'] == 'Crédito']:
@@ -78,20 +77,19 @@ try:
             df = pd.DataFrame(trans_raw)
             df_g = df[df['valor'] < 0].copy()
             if not df_g.empty:
-                df_g['Categoria'] = df_g['categorias'].apply(lambda x: x['nome'])
-                # GRÁFICO DE PIZZA (DONUT) IGUAL AO PRINT
-                fig = px.pie(df_g, values=df_g['valor'].abs(), names='Categoria', hole=0.5,
-                             color_discrete_sequence=px.colors.qualitative.Pastel)
-                fig.update_layout(margin=dict(t=0, b=0, l=0, r=0), showlegend=True)
+                df_g['Categoria'] = df_g['categorias'].apply(lambda x: x['nome'] if x else 'Sem Categoria')
+                # GRÁFICO DE DONUT CENTRALIZADO
+                fig = px.pie(df_g, values=df_g['valor'].abs(), names='Categoria', hole=0.5)
+                fig.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=300)
                 st.plotly_chart(fig, use_container_width=True)
         
         st.divider()
         
-        # FORMULÁRIO DE AÇÕES
+        # FORMULÁRIO DE REGISTRO
         st.markdown("#### ⚡ AÇÕES RÁPIDAS")
-        tipo_op = st.radio("Operação:", ["Novo Gasto", "Recebimento", "Pagar Fatura"], horizontal=True)
+        tipo_op = st.radio("Operação:", ["Novo Gasto", "Receita", "Pagar Fatura"], horizontal=True)
 
-        with st.form("form_final", clear_on_submit=True):
+        with st.form("form_v3", clear_on_submit=True):
             if tipo_op != "Pagar Fatura":
                 desc = st.text_input("Descrição")
                 val = st.number_input("Valor R$", min_value=0.0)
@@ -100,21 +98,22 @@ try:
             else:
                 desc = "Pagamento de Fatura"
                 val = st.number_input("Valor Pago R$", min_value=0.0)
-                conta_op = st.selectbox("Sair dinheiro de:", [c['nome'] for c in contas if c['tipo'] == 'Corrente'])
+                conta_op = st.selectbox("Sair dinheiro de (Banco):", [c['nome'] for c in contas if c['tipo'] == 'Corrente'])
                 destino = st.selectbox("Pagar Cartão:", [c['nome'] for c in contas if c['tipo'] == 'Crédito'])
 
             if st.form_submit_button("REGISTRAR", use_container_width=True):
-                # Lógica de inserção no Supabase
-                id_c = next(i['id'] for i in contas if i['nome'] == conta_op)
+                # Execução no Supabase
+                c_id = next(i['id'] for i in contas if i['nome'] == conta_op)
                 if tipo_op != "Pagar Fatura":
-                    id_cat = next(i['id'] for i in categorias if i['nome'] == cat_op)
-                    val_final = -val if tipo_op == "Novo Gasto" else val
-                    conn.client.table("transacoes").insert({"descricao": desc, "valor": val_final, "conta_origem_id": id_c, "categoria_id": id_cat}).execute()
+                    cat_id = next(i['id'] for i in categorias if i['nome'] == cat_op)
+                    v_final = -val if tipo_op == "Novo Gasto" else val
+                    conn.client.table("transacoes").insert({"descricao": desc, "valor": v_final, "conta_origem_id": c_id, "categoria_id": cat_id}).execute()
                 else:
-                    id_d = next(i['id'] for i in contas if i['nome'] == destino)
-                    conn.client.table("transacoes").insert({"descricao": f"Pagto Fatura {destino}", "valor": -val, "conta_origem_id": id_c}).execute()
-                    conn.client.table("transacoes").insert({"descricao": "Recebimento Fatura", "valor": val, "conta_origem_id": id_d}).execute()
+                    d_id = next(i['id'] for i in contas if i['nome'] == destino)
+                    conn.client.table("transacoes").insert({"descricao": f"Pagto {destino}", "valor": -val, "conta_origem_id": c_id}).execute()
+                    conn.client.table("transacoes").insert({"descricao": "Recebimento Fatura", "valor": val, "conta_origem_id": d_id}).execute()
                 st.rerun()
 
 except Exception as e:
-    st.error(f"Erro: {e}")
+    st.error("Erro de Conexão com o Supabase. Verifique suas Secrets!")
+    st.exception(e)
