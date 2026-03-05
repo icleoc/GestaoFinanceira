@@ -3,74 +3,87 @@ from st_supabase_connection import SupabaseConnection
 import pandas as pd
 from datetime import datetime
 
-# 1. Configuração do App
+# 1. Configuração do App (Layout de Tablet como no print)
 st.set_page_config(page_title="Jarvis Finance", layout="wide")
 
 # 2. Conexão Supabase
 conn = st.connection("supabase", type=SupabaseConnection)
 
-def get_db(table):
+def get_data(table):
     return conn.client.table(table).select("*").execute().data
 
-# 3. Carregamento de Dados
+# --- CSS PARA FORÇAR O VISUAL DO PRINT ---
+st.markdown("""
+    <style>
+    .kpi-card { background-color: #1e2130; padding: 15px; border-radius: 5px; border-top: 4px solid #00d4ff; }
+    .stProgress > div > div > div > div { background-color: #00d4ff !important; }
+    .vencimento-alerta { color: #ff4b4b; font-weight: bold; }
+    </style>
+    """, unsafe_allow_html=True)
+
 try:
-    contas = get_db("contas")
-    categorias = get_db("categorias")
+    # Carregamento
+    contas = get_data("contas")
+    categorias = get_data("categorias")
     
-    # Cálculos das Métricas Superiores
+    # 3. HEADER (Fiel ao print)
+    st.markdown("### 🏦 SISTEMA FINANCEIRO LÉO - CONTROLE TOTAL")
+    
+    # Métricas Superiores
     saldo_bancos = sum(c['saldo_atual'] for c in contas if c['tipo'] == 'Corrente')
     divida_cards = sum(c['saldo_atual'] for c in contas if c['tipo'] == 'Crédito')
     invest_total = sum(c['saldo_atual'] for c in contas if c['tipo'] == 'Investimento')
     patrimonio = saldo_bancos + divida_cards + invest_total
 
-    # --- TÍTULO PRINCIPAL ---
-    st.title("SISTEMA FINANCEIRO LÉO - CONTROLE TOTAL")
-
-    # --- QUADROS DE RESUMO (KPIs) ---
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    kpi1.metric("PATRIMÔNIO LÍQUIDO", f"R$ {patrimonio:,.2f}")
-    kpi2.metric("SALDO TOTAL EM BANCOS", f"R$ {saldo_bancos:,.2f}")
-    kpi3.metric("DÍVIDA TOTAL CARTÕES", f"R$ {abs(divida_cards):,.2f}")
-    kpi4.metric("INVESTIMENTOS TOTAL", f"R$ {invest_total:,.2f}")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("PATRIMÔNIO LÍQUIDO", f"R$ {patrimonio:,.2f}")
+    m2.metric("SALDO TOTAL EM BANCOS", f"R$ {saldo_bancos:,.2f}")
+    m3.metric("DÍVIDA TOTAL CARTÕES", f"R$ {abs(divida_cards):,.2f}")
+    m4.metric("INVESTIMENTOS TOTAL", f"R$ {invest_total:,.2f}")
 
     st.divider()
 
-    # --- DIVISÃO EM DUAS COLUNAS (LADO A LADO) ---
+    # 4. COLUNA DA ESQUERDA (VISÃO GERAL)
     col_left, col_right = st.columns([1.2, 1], gap="large")
 
-    # --- COLUNA ESQUERDA: LISTAGEM DE CONTAS E CARTÕES ---
     with col_left:
-        st.subheader("VISÃO GERAL DE CONTAS E CARTÕES")
+        st.markdown("#### VISÃO GERAL DE CONTAS E CARTÕES")
         
+        # BANCOS (Liquidez)
         with st.expander("🏦 BANCOS (Liquidez)", expanded=True):
             for b in [c for c in contas if c['tipo'] == 'Corrente']:
-                c_b1, c_b2 = st.columns([4, 1])
-                c_b1.write(f"› {b['nome']}")
-                c_b2.write(f"**R$ {b['saldo_atual']:,.2f}**")
+                cl1, cl2 = st.columns([4, 1])
+                cl1.write(f"› {b['nome']}")
+                cl2.write(f"**R$ {b['saldo_atual']:,.2f}**")
         
         st.write("")
         
+        # CARTÕES DE CRÉDITO (Exatamente como o print)
         with st.expander("💳 CARTÕES DE CRÉDITO", expanded=True):
+            st.markdown("**Name | Limite Usado vs. Disponível | Venc.**")
+            dia_hoje = datetime.now().day
+            
             for c in [c for c in contas if c['tipo'] == 'Crédito']:
                 usado = abs(c['saldo_atual'])
                 limite = c['limite_total']
                 percent = (usado / limite) if limite > 0 else 0
+                venc = c['dia_vencimento']
                 
-                # Nome e Vencimento na mesma linha
-                c_n, c_v = st.columns([4, 1])
-                c_n.markdown(f"**{c['nome']}**")
-                c_v.write(f"Venc: {c['dia_vencimento']:02d}")
+                row1, row2, row3 = st.columns([1, 2.5, 0.5])
+                row1.write(f"**{c['nome']}**")
+                row2.progress(min(percent, 1.0))
                 
-                # Barra de preenchimento
-                st.progress(min(percent, 1.0))
+                # Alerta de Vencimento
+                venc_style = "vencimento-alerta" if 0 <= (venc - dia_hoje) <= 5 else ""
+                row3.markdown(f"<span class='{venc_style}'>Dia {venc:02d}</span>", unsafe_allow_html=True)
                 st.caption(f"Usado: R$ {usado:,.2f} / Limite: R$ {limite:,.2f}")
                 st.write("")
 
-    # --- COLUNA DIREITA: GRÁFICO E REGISTROS ---
+    # 5. COLUNA DA DIREITA (VAZAMENTO E LANÇAMENTO)
     with col_right:
-        st.subheader("🧐 ONDE ESTÁ O VAZAMENTO?")
+        st.markdown("#### 🧐 ONDE ESTÁ O VAZAMENTO?")
         
-        # Gráfico Simples de Gastos
+        # Gráfico (Vazamento por Categoria)
         trans_data = conn.client.table("transacoes").select("valor, categorias(nome)").execute().data
         if trans_data:
             df = pd.DataFrame(trans_data)
@@ -79,41 +92,40 @@ try:
                 df_g['Categoria'] = df_g['categorias'].apply(lambda x: x['nome'])
                 st.bar_chart(df_g.groupby('Categoria')['valor'].sum().abs())
         
-        st.divider()
+        st.write("")
+        st.markdown("#### ⚡ AÇÕES RÁPIDAS")
+        tab1, tab2 = st.tabs(["Lançamento", "Pagar Fatura"])
         
-        st.subheader("⚡ NOVO LANÇAMENTO / PAGAMENTO")
-        tab_gasto, tab_pagamento = st.tabs(["💸 Gasto/Receita", "💳 Pagar Fatura"])
-        
-        with tab_gasto:
-            with st.form("form_gasto", clear_on_submit=True):
-                desc = st.text_input("Descrição")
-                val = st.number_input("Valor R$", min_value=0.0)
-                tipo = st.radio("Tipo", ["Despesa", "Receita"], horizontal=True)
-                conta_origem = st.selectbox("Conta/Cartão", [c['nome'] for c in contas])
-                cat_nome = st.selectbox("Categoria", [cat['nome'] for cat in categorias if cat['tipo'] == ("Despesa" if tipo == "Despesa" else "Receita")])
+        with tab1:
+            with st.form("form_lançar", clear_on_submit=True):
+                tipo = st.radio("Operação:", ["Despesa", "Receita"], horizontal=True)
+                desc = st.text_input("Descrição (Ex: Gasolina)")
+                val = st.number_input("Valor R$", min_value=0.01)
+                conta = st.selectbox("Conta/Cartão", [c['nome'] for c in contas])
+                cat = st.selectbox("Categoria", [cat['nome'] for cat in categorias if cat['tipo'] == tipo])
                 
                 if st.form_submit_button("REGISTRAR", use_container_width=True):
-                    cid = next(i['id'] for i in contas if i['nome'] == conta_origem)
-                    catid = next(i['id'] for i in categorias if i['nome'] == cat_nome)
-                    val_final = -val if tipo == "Despesa" else val
-                    conn.client.table("transacoes").insert({"descricao": desc, "valor": val_final, "conta_origem_id": cid, "categoria_id": catid}).execute()
+                    c_id = next(i['id'] for i in contas if i['nome'] == conta)
+                    cat_id = next(i['id'] for i in categorias if i['nome'] == cat)
+                    v_final = -val if tipo == "Despesa" else val
+                    conn.client.table("transacoes").insert({"descricao": desc, "valor": v_final, "conta_origem_id": c_id, "categoria_id": cat_id}).execute()
                     st.rerun()
 
-        with tab_pagamento:
+        with tab2:
             with st.form("form_fatura", clear_on_submit=True):
-                st.caption("Use para transferir saldo de banco para o cartão ou entre cartões.")
-                banco_sai = st.selectbox("Sair dinheiro de:", [c['nome'] for c in contas])
-                cartao_entra = st.selectbox("Pagar / Enviar para:", [c['nome'] for c in contas])
-                val_pago = st.number_input("Valor do Pagamento", min_value=0.0)
+                st.caption("Pagar fatura de cartão com saldo de banco")
+                sai = st.selectbox("Sair de (Banco):", [c['nome'] for c in contas if c['tipo'] == 'Corrente'])
+                entra = st.selectbox("Pagar (Cartão):", [c['nome'] for c in contas if c['tipo'] == 'Crédito'])
+                valor_pago = st.number_input("Valor do Pagamento", min_value=0.01)
                 
                 if st.form_submit_button("CONFIRMAR PAGAMENTO", use_container_width=True):
-                    id_s = next(i['id'] for i in contas if i['nome'] == banco_sai)
-                    id_e = next(i['id'] for i in contas if i['nome'] == cartao_entra)
-                    # Tira de um
-                    conn.client.table("transacoes").insert({"descricao": f"Pagto para {cartao_entra}", "valor": -val_pago, "conta_origem_id": id_s}).execute()
-                    # Entra no outro
-                    conn.client.table("transacoes").insert({"descricao": f"Recebido de {banco_sai}", "valor": val_pago, "conta_origem_id": id_e}).execute()
+                    id_s = next(i['id'] for i in contas if i['nome'] == sai)
+                    id_e = next(i['id'] for i in contas if i['nome'] == entra)
+                    # 1. Sai do Banco
+                    conn.client.table("transacoes").insert({"descricao": f"Pagto Fatura {entra}", "valor": -valor_pago, "conta_origem_id": id_s}).execute()
+                    # 2. Entra no Cartão
+                    conn.client.table("transacoes").insert({"descricao": "Recebimento Pagto", "valor": valor_pago, "conta_origem_id": id_e}).execute()
                     st.rerun()
 
 except Exception as e:
-    st.error(f"Erro: {e}")
+    st.error(f"Erro no Jarvis: {e}")
