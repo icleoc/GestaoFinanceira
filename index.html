@@ -54,7 +54,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         <div class="lg:col-span-7 space-y-6">
-            <h2 class="text-lg font-bold uppercase text-gray-800">Visão Geral de Contas e Cartões</h2>
+            <h2 class="text-lg font-bold uppercase text-gray-800">Visão Geral Detalhada</h2>
             
             <div class="bg-white rounded-xl p-5 card-shadow">
                 <div class="section-header">˅ BANCOS (Liquidez)</div>
@@ -70,10 +70,15 @@
                 </div>
                 <div id="lista-cartoes" class="space-y-1"><p class="text-sm text-gray-500">Carregando...</p></div>
             </div>
+
+            <div class="bg-white rounded-xl p-5 card-shadow">
+                <div class="section-header text-blue-800">˅ INVESTIMENTOS</div>
+                <div id="lista-investimentos" class="space-y-1"><p class="text-sm text-gray-500">Carregando...</p></div>
+            </div>
         </div>
 
         <div class="lg:col-span-5 space-y-6">
-            <h2 class="text-lg font-bold uppercase text-gray-800">Onde está o vazamento?</h2>
+            <h2 class="text-lg font-bold uppercase text-gray-800">Inteligência & Ações</h2>
             
             <div class="bg-white rounded-xl p-5 card-shadow">
                 <h3 class="text-xs font-bold text-center text-gray-600 mb-2 uppercase">Gastos por Categoria (Este Mês)</h3>
@@ -113,17 +118,28 @@
                     </div>
 
                     <div class="flex gap-4 items-end transition-all">
-                        <div class="w-full transition-all duration-300" id="box-origem">
-                            <label id="label-origem" class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Conta Origem</label>
+                        <div class="w-1/3">
+                            <label class="block text-[11px] font-bold text-[#102a43] mb-1 uppercase">Filtro Origem</label>
+                            <select id="select-filtro-origem" class="form-input bg-blue-50">
+                                <option value="Todos">Todos</option>
+                                <option value="Corrente">Apenas Contas</option>
+                                <option value="Crédito">Apenas Cartões</option>
+                            </select>
+                        </div>
+
+                        <div class="w-2/3 transition-all duration-300" id="box-origem">
+                            <label id="label-origem" class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Conta / Cartão</label>
                             <select id="select-conta" class="form-input"></select>
                         </div>
-                        
+                    </div>
+
+                    <div class="flex gap-4 items-end transition-all">
                         <div class="w-1/2 hidden transition-all duration-300" id="box-destino">
                             <label class="block text-[11px] font-bold text-emerald-600 mb-1 uppercase">Conta Destino</label>
                             <select id="select-destino" class="form-input border-emerald-300 bg-emerald-50"></select>
                         </div>
 
-                        <div class="w-1/3 hidden transition-all duration-300" id="box-parcelas">
+                        <div class="w-1/2 hidden transition-all duration-300" id="box-parcelas">
                             <label class="block text-[11px] font-bold text-[#d97706] mb-1 uppercase">Parcelas</label>
                             <select id="select-parcelas" class="form-input border-[#d97706] bg-[#fffbeb]"></select>
                         </div>
@@ -143,7 +159,7 @@
 
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let graficoInstance = null;
-        let contasGlobais = []; // Guarda as contas na memória para checar limite
+        let contasGlobais = []; 
 
         document.getElementById('input-data').valueAsDate = new Date();
 
@@ -153,13 +169,34 @@
             selectParcelas.add(new Option(i === 1 ? '1x (À vista)' : `${i}x`, i));
         }
 
+        // FUNÇÃO PARA FILTRAR O DROPDOWN DE ORIGEM
+        function filtrarContas() {
+            const filtro = document.getElementById('select-filtro-origem').value;
+            const selectConta = document.getElementById('select-conta');
+            const contaSelecionadaAnterior = selectConta.value; // Tenta manter a seleção
+            
+            selectConta.innerHTML = '';
+            
+            contasGlobais.forEach(c => {
+                // Filtra baseado no dropdown (Todos, Corrente, Crédito) - Note que excluímos investimentos da origem de gastos diretos na maioria das vezes, mas mantive na regra 'Todos' por segurança.
+                if(filtro === 'Todos' || c.tipo === filtro) {
+                    selectConta.add(new Option(c.nome, c.id));
+                }
+            });
+
+            // Tenta reselecionar o que estava antes, se ainda existir na lista
+            if([...selectConta.options].some(opt => opt.value === contaSelecionadaAnterior)) {
+                selectConta.value = contaSelecionadaAnterior;
+            }
+            atualizarFormulario();
+        }
+
         // LÓGICA DO FORMULÁRIO DINÂMICO
         function atualizarFormulario() {
             const cat = document.getElementById('select-cat').value;
             const contaId = document.getElementById('select-conta').value;
             const contaInfo = contasGlobais.find(c => c.id == contaId);
             
-            const boxOrigem = document.getElementById('box-origem');
             const boxDestino = document.getElementById('box-destino');
             const boxParcelas = document.getElementById('box-parcelas');
             const lblOrigem = document.getElementById('label-origem');
@@ -167,49 +204,49 @@
             if (cat === 'Fatura') {
                 boxDestino.classList.remove('hidden');
                 boxParcelas.classList.add('hidden');
-                boxOrigem.className = "w-1/2 transition-all duration-300";
                 lblOrigem.innerText = 'SAIR DE (ORIGEM)';
                 lblOrigem.classList.add('text-red-600');
             } else {
                 boxDestino.classList.add('hidden');
-                lblOrigem.innerText = 'CONTA ORIGEM';
+                lblOrigem.innerText = 'CONTA / CARTÃO';
                 lblOrigem.classList.remove('text-red-600');
                 
                 // Se for Crédito e Despesa, mostra parcelas
                 if(contaInfo && contaInfo.tipo === 'Crédito' && cat === 'Despesa') {
                     boxParcelas.classList.remove('hidden');
-                    boxOrigem.className = "w-2/3 transition-all duration-300";
                 } else {
                     boxParcelas.classList.add('hidden');
-                    boxOrigem.className = "w-full transition-all duration-300";
-                    document.getElementById('select-parcelas').value = "1"; // reseta pra 1x
+                    document.getElementById('select-parcelas').value = "1"; 
                 }
             }
         }
 
         document.getElementById('select-cat').addEventListener('change', atualizarFormulario);
         document.getElementById('select-conta').addEventListener('change', atualizarFormulario);
+        document.getElementById('select-filtro-origem').addEventListener('change', filtrarContas);
 
         async function carregarDados() {
             try {
                 const { data: contas, error } = await db.from('contas').select('*');
                 if (error) throw error;
-                contasGlobais = contas; // Salva para validação futura
+                contasGlobais = contas; 
                 
                 let sBanco = 0, dCard = 0, invest = 0;
                 const divBancos = document.getElementById('lista-bancos');
                 const divCartoes = document.getElementById('lista-cartoes');
+                const divInvestimentos = document.getElementById('lista-investimentos');
+                
                 const selectConta = document.getElementById('select-conta');
                 const selectDestino = document.getElementById('select-destino');
                 
-                divBancos.innerHTML = ''; divCartoes.innerHTML = '';
+                divBancos.innerHTML = ''; divCartoes.innerHTML = ''; divInvestimentos.innerHTML = '';
                 
                 if(selectConta.options.length === 0) {
                     contas.forEach(c => {
                         selectConta.add(new Option(c.nome, c.id));
                         selectDestino.add(new Option(c.nome, c.id));
                     });
-                    atualizarFormulario(); // Executa a verificação inicial
+                    atualizarFormulario(); 
                 }
 
                 contas.forEach(c => {
@@ -232,8 +269,6 @@
                         let percRestante = 100 - percUsado;
                         
                         let corBarra = percUsado > 80 ? 'bg-red-500' : (percUsado > 50 ? 'bg-[#d97706]' : 'bg-[#102a43]');
-                        
-                        // Badge de Alerta se Limite <= 20%
                         let badgeAlerta = percRestante <= 20 ? `<span class="bg-red-100 text-red-700 border border-red-200 px-1 py-0.5 rounded text-[8px] uppercase tracking-wider">Limite Baixo</span>` : '';
 
                         divCartoes.innerHTML += `
@@ -251,6 +286,13 @@
                                     </div>
                                 </div>
                                 <div class="w-1/6 text-right font-bold text-gray-600">${String(c.dia_vencimento).padStart(2, '0')}</div>
+                            </div>`;
+                    }
+                    if(c.tipo === 'Investimento') {
+                        divInvestimentos.innerHTML += `
+                            <div class="flex justify-between items-center py-2 px-2 hover:bg-gray-50 border-b border-gray-50 last:border-0">
+                                <span class="text-[12px] text-gray-700 font-medium">› ${c.nome}</span>
+                                <span class="text-[12px] font-bold text-blue-700">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                             </div>`;
                     }
                 });
@@ -300,7 +342,6 @@
             });
         }
 
-        // --- SISTEMA DE REGISTRO COM BLOQUEIO E PARCELAMENTO ---
         document.getElementById('form-transacao').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -309,18 +350,17 @@
             const tipoCat = document.getElementById('select-cat').value;
             const contaInfo = contasGlobais.find(c => c.id == contaId);
 
-            // 1. VALIDAÇÃO DE LIMITE / SALDO
             if(contaInfo) {
                 if(contaInfo.tipo === 'Crédito' && tipoCat === 'Despesa') {
                     let disponivel = contaInfo.limite_total - Math.abs(contaInfo.saldo_atual);
                     if(valorTotal > disponivel) {
                         alert(`🚫 BLOQUEADO: O cartão "${contaInfo.nome}" não tem limite suficiente.\nDisponível: R$ ${disponivel.toFixed(2)}\nTentativa: R$ ${valorTotal.toFixed(2)}`);
-                        return; // Trava a execução aqui!
+                        return; 
                     }
                 } else if (contaInfo.tipo === 'Corrente' && tipoCat === 'Despesa') {
                     if(valorTotal > contaInfo.saldo_atual) {
                         alert(`🚫 BLOQUEADO: A conta "${contaInfo.nome}" não tem saldo suficiente.\nSaldo Atual: R$ ${contaInfo.saldo_atual.toFixed(2)}`);
-                        return; // Trava a execução!
+                        return; 
                     }
                 }
             }
@@ -334,11 +374,9 @@
 
             try {
                 if(tipoCat !== 'Fatura') {
-                    // Categoria ID
                     const { data: cat } = await db.from('categorias').select('id').eq('tipo', tipoCat).limit(1);
                     const catId = cat?.[0]?.id || null;
                     
-                    // Lógica de Parcelamento vs À Vista
                     let valorParcela = valorTotal / parcelas;
                     if(tipoCat === 'Despesa') valorParcela = -Math.abs(valorParcela);
 
@@ -359,12 +397,10 @@
                         });
                     }
 
-                    // Insere todas as parcelas de uma vez no banco
                     const { error } = await db.from('transacoes').insert(inserts);
                     if(error) throw error;
                     
                 } else {
-                    // Lógica de Transferência
                     const destinoId = document.getElementById('select-destino').value;
                     if(contaId === destinoId) throw new Error("A conta de origem e destino devem ser diferentes!");
 
@@ -382,7 +418,7 @@
                 alert(parcelas > 1 ? `✅ Sucesso! Compra parcelada em ${parcelas}x.` : "✅ Operação registrada com sucesso!"); 
                 e.target.reset();
                 document.getElementById('input-data').valueAsDate = new Date();
-                atualizarFormulario(); // Reseta os dropdowns
+                atualizarFormulario(); 
                 carregarDados(); 
 
             } catch (error) {
