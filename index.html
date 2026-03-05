@@ -3,229 +3,266 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jarvis Finance Pro</title>
+    <title>SISTEMA FINANCEIRO LÉO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
-        body { background-color: #f3f4f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .card-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        body { background-color: #f1f5f9; font-family: 'Inter', sans-serif; color: #1e293b; }
+        .card-shadow { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; }
+        .form-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 14px; background-color: #f8fafc; }
+        .form-input:focus { outline: none; border-color: #94a3b8; }
+        .section-title { font-size: 16px; font-weight: 700; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
     </style>
 </head>
-<body class="p-6">
+<body class="p-4 md:p-8 max-w-[1400px] mx-auto">
 
-    <div class="max-w-7xl mx-auto">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6 uppercase tracking-wider">Sistema Financeiro Léo - Controle Total</h1>
+    <div id="aviso-erro" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm">
+        <p class="font-bold">Aviso de Conexão</p>
+        <p id="msg-erro">Não foi possível ler os dados do Supabase. Verifique as políticas de segurança (RLS). Exibindo layout visual de teste.</p>
+    </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div class="bg-[#1e3a8a] text-white p-5 rounded-xl card-shadow border-t-4 border-blue-400">
-                <p class="text-xs font-semibold uppercase opacity-80 mb-1">Patrimônio Líquido</p>
-                <h2 class="text-2xl font-bold" id="kpi-patrimonio">R$ 0,00</h2>
+    <h1 class="text-3xl font-extrabold text-gray-900 mb-6 uppercase">SISTEMA FINANCEIRO LÉO - CONTROLE TOTAL</h1>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-[#102a43] text-white p-5 rounded-xl shadow-md">
+            <p class="text-[11px] font-semibold uppercase tracking-wider opacity-80 mb-2">Patrimônio Líquido</p>
+            <h2 class="text-3xl font-bold" id="kpi-patrimonio">R$ 0,00</h2>
+        </div>
+        <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">Saldo Total em Bancos</p>
+            <h2 class="text-3xl font-bold" id="kpi-bancos">R$ 0,00</h2>
+        </div>
+        <div class="bg-[#ffedd5] text-[#9a3412] p-5 rounded-xl shadow-sm border border-[#fdba74]">
+            <p class="text-[11px] font-semibold uppercase tracking-wider mb-2">Dívida Total Cartões (Fatura Aberta)</p>
+            <h2 class="text-3xl font-bold" id="kpi-divida">R$ 0,00</h2>
+        </div>
+        <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">Investimentos Total</p>
+            <h2 class="text-3xl font-bold" id="kpi-invest">R$ 0,00</h2>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <div class="lg:col-span-7 space-y-6">
+            <h2 class="text-xl font-bold uppercase text-gray-800">Visão Geral de Contas e Cartões</h2>
+            
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <div class="section-title text-gray-700 bg-gray-50 p-2 rounded border">
+                    <span class="text-gray-400">˅</span> BANCOS (Liquidez)
+                </div>
+                <div id="lista-bancos" class="space-y-1 mt-2">
+                    <p class="text-sm text-gray-500 italic">Carregando...</p>
+                </div>
             </div>
-            <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow">
-                <p class="text-xs font-semibold uppercase text-gray-500 mb-1">Saldo Total em Bancos</p>
-                <h2 class="text-2xl font-bold" id="kpi-bancos">R$ 0,00</h2>
-            </div>
-            <div class="bg-[#ffedd5] text-[#9a3412] p-5 rounded-xl card-shadow border border-[#fdba74]">
-                <p class="text-xs font-semibold uppercase mb-1">Dívida Total Cartões (Fatura Aberta)</p>
-                <h2 class="text-2xl font-bold" id="kpi-divida">R$ 0,00</h2>
-            </div>
-            <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow">
-                <p class="text-xs font-semibold uppercase text-gray-500 mb-1">Investimentos Total</p>
-                <h2 class="text-2xl font-bold" id="kpi-invest">R$ 0,00</h2>
+
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <div class="section-title text-gray-700 bg-gray-50 p-2 rounded border">
+                    <span class="text-gray-400">˅</span> CARTÕES DE CRÉDITO
+                </div>
+                
+                <div class="flex text-[11px] text-gray-400 font-semibold border-b pb-2 mb-3">
+                    <div class="w-1/3">Name</div>
+                    <div class="w-1/2">Limite Usado vs. Disponível</div>
+                    <div class="w-1/6 text-right">Venc.</div>
+                </div>
+                
+                <div id="lista-cartoes" class="space-y-4">
+                    <p class="text-sm text-gray-500 italic">Carregando...</p>
+                </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div class="lg:col-span-5 space-y-6">
+            <h2 class="text-xl font-bold uppercase text-gray-800">Onde está o vazamento? (Gastos do mês)</h2>
             
-            <div class="lg:col-span-7 space-y-6">
-                
-                <div class="bg-white rounded-xl p-6 card-shadow">
-                    <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">🏦 BANCOS (Liquidez)</h3>
-                    <div id="lista-bancos" class="space-y-3">
-                        <p class="text-sm text-gray-500">Carregando bancos...</p>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-xl p-6 card-shadow">
-                    <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">💳 CARTÕES DE CRÉDITO</h3>
-                    <div class="flex text-xs font-semibold text-gray-400 mb-3 px-2">
-                        <div class="w-1/4">NOME</div>
-                        <div class="w-2/4 text-center">USADO VS. DISPONÍVEL</div>
-                        <div class="w-1/4 text-right">VENC.</div>
-                    </div>
-                    <div id="lista-cartoes" class="space-y-4">
-                        <p class="text-sm text-gray-500">Carregando cartões...</p>
-                    </div>
+            <div class="bg-white rounded-xl p-6 card-shadow flex items-center justify-center">
+                <div class="w-full h-56 relative">
+                    <canvas id="graficoVazamento"></canvas>
                 </div>
             </div>
 
-            <div class="lg:col-span-5 space-y-6">
+            <div class="bg-white rounded-xl p-6 card-shadow">
+                <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase">Novo Gasto/Recebimento</h3>
                 
-                <div class="bg-white rounded-xl p-6 card-shadow">
-                    <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">🧐 ONDE ESTÁ O VAZAMENTO?</h3>
-                    <div class="relative h-64">
-                        <canvas id="graficoVazamento"></canvas>
+                <form id="form-transacao" class="space-y-4">
+                    <div class="flex gap-4">
+                        <div class="w-1/3">
+                            <label class="block text-[11px] font-semibold text-gray-600 mb-1">Data</label>
+                            <input type="date" id="input-data" class="form-input" required>
+                        </div>
+                        <div class="w-2/3">
+                            <label class="block text-[11px] font-semibold text-gray-600 mb-1">Descrição</label>
+                            <input type="text" id="input-desc" class="form-input" placeholder="Ex: Gasolina" required>
+                        </div>
                     </div>
-                </div>
 
-                <div class="bg-white rounded-xl p-6 card-shadow">
-                    <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">⚡ NOVO GASTO / RECEBIMENTO</h3>
-                    
-                    <form id="form-transacao" class="space-y-4">
-                        <div class="flex gap-4 mb-2">
-                            <label class="inline-flex items-center">
-                                <input type="radio" name="tipo" value="Despesa" checked class="form-radio text-blue-600">
-                                <span class="ml-2 text-sm font-medium">Gasto</span>
-                            </label>
-                            <label class="inline-flex items-center">
-                                <input type="radio" name="tipo" value="Receita" class="form-radio text-green-600">
-                                <span class="ml-2 text-sm font-medium">Receita</span>
-                            </label>
-                            <label class="inline-flex items-center">
-                                <input type="radio" name="tipo" value="Transferencia" class="form-radio text-purple-600">
-                                <span class="ml-2 text-sm font-medium">Pagar Fatura</span>
-                            </label>
+                    <div class="flex gap-4">
+                        <div class="w-1/2">
+                            <label class="block text-[11px] font-semibold text-gray-600 mb-1">Valor (R$)</label>
+                            <input type="number" id="input-valor" step="0.01" class="form-input" placeholder="0,00" required>
                         </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-500 uppercase">Data</label>
-                            <input type="date" id="input-data" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                        <div class="w-1/2">
+                            <label class="block text-[11px] font-semibold text-gray-600 mb-1">Conta Origem</label>
+                            <select id="select-conta" class="form-input bg-white"></select>
                         </div>
+                    </div>
 
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-500 uppercase">Descrição</label>
-                            <input type="text" id="input-desc" placeholder="Ex: Gasolina, Aluguel" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    <div class="flex gap-4 items-end">
+                        <div class="w-1/2">
+                            <label class="block text-[11px] font-semibold text-gray-600 mb-1">Categoria</label>
+                            <select id="select-cat" class="form-input bg-white">
+                                <option value="Despesa">Despesa Geral</option>
+                                <option value="Receita">Receita / Entrada</option>
+                                <option value="Fatura">Pagamento de Fatura</option>
+                            </select>
                         </div>
-
-                        <div class="flex gap-4">
-                            <div class="w-1/2">
-                                <label class="block text-xs font-semibold text-gray-500 uppercase">Valor (R$)</label>
-                                <input type="number" id="input-valor" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
-                            </div>
-                            <div class="w-1/2">
-                                <label class="block text-xs font-semibold text-gray-500 uppercase">Conta Origem</label>
-                                <select id="select-conta" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"></select>
-                            </div>
+                        <div class="w-1/2 flex items-center mb-2">
+                            <input type="checkbox" id="check-fatura" class="mr-2 h-4 w-4 text-emerald-600 border-gray-300 rounded">
+                            <label class="text-[11px] font-semibold text-gray-600">Fatura Paga?</label>
                         </div>
+                    </div>
 
-                        <button type="submit" class="w-full bg-[#1e3a8a] text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-800 transition duration-200 mt-4 shadow-md">
-                            REGISTRAR AGORA
-                        </button>
-                    </form>
-                </div>
-
+                    <button type="submit" class="w-1/3 bg-[#0d9488] text-white text-sm font-bold py-2.5 rounded hover:bg-teal-700 transition shadow">
+                        REGISTRAR
+                    </button>
+                </form>
             </div>
         </div>
     </div>
 
     <script>
-        // Suas Credenciais do Supabase
         const SUPABASE_URL = 'https://dqhyjrvhasmjwblidnqj.supabase.co';
         const SUPABASE_KEY = 'sb_secret_Z7afUJuNCrVvyPn2nFzupw_h8So8gQG';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // Preenche a data de hoje por padrão
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let graficoInstance = null;
         document.getElementById('input-data').valueAsDate = new Date();
 
         async function carregarDados() {
-            // Busca as contas
-            const { data: contas, error } = await supabase.from('contas').select('*');
-            if (error) { console.error(error); return; }
+            try {
+                // Tenta buscar as contas
+                const { data: contas, error } = await db.from('contas').select('*');
+                
+                if (error) throw error; // Se der erro, cai no Catch
+                if (contas.length === 0) throw new Error("Banco conectado, mas não há contas cadastradas.");
 
+                renderizarTela(contas);
+                buscarERenderizarGrafico();
+
+            } catch (err) {
+                // SE FALHAR (por RLS ou erro de rede), mostra o erro e renderiza dados visuais fake para provar o design
+                console.error("Erro do Supabase:", err);
+                document.getElementById('aviso-erro').classList.remove('hidden');
+                document.getElementById('msg-erro').innerText = err.message;
+                
+                // Dados Fakes apenas para você ver que o layout funciona
+                renderizarTela([
+                    {nome: "Mercado Pago", tipo: "Corrente", saldo_atual: 2500},
+                    {nome: "Inter", tipo: "Corrente", saldo_atual: 2300},
+                    {nome: "BTG Black", tipo: "Crédito", saldo_atual: -1200, limite_total: 4000, dia_vencimento: 19},
+                    {nome: "Santander", tipo: "Crédito", saldo_atual: -500, limite_total: 2923, dia_vencimento: 25}
+                ]);
+                desenharGraficoFake();
+            }
+        }
+
+        function renderizarTela(contas) {
             let sBanco = 0, dCard = 0, invest = 0;
             const listaBancos = document.getElementById('lista-bancos');
             const listaCartoes = document.getElementById('lista-cartoes');
             const selectConta = document.getElementById('select-conta');
             
-            listaBancos.innerHTML = '';
-            listaCartoes.innerHTML = '';
-            selectConta.innerHTML = '';
+            listaBancos.innerHTML = ''; listaCartoes.innerHTML = '';
+            if(selectConta.options.length === 0) {
+                contas.forEach(c => selectConta.add(new Option(c.nome, c.id || c.nome)));
+            }
 
             contas.forEach(c => {
-                // Popula o Select do Formulário
-                const option = document.createElement('option');
-                option.value = c.id; option.text = c.nome;
-                selectConta.appendChild(option);
-
-                // Cálculos
                 if(c.tipo === 'Corrente') sBanco += parseFloat(c.saldo_atual);
                 if(c.tipo === 'Crédito') dCard += parseFloat(c.saldo_atual);
                 if(c.tipo === 'Investimento') invest += parseFloat(c.saldo_atual);
 
-                // Renderiza Bancos
+                // Desenha linha do Banco
                 if(c.tipo === 'Corrente') {
                     listaBancos.innerHTML += `
-                        <div class="flex justify-between items-center py-2 hover:bg-gray-50 rounded px-2">
-                            <span class="font-medium text-gray-700">${c.nome}</span>
-                            <span class="font-bold text-green-600">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                            <span class="text-[13px] text-gray-700 font-medium">› ${c.nome}</span>
+                            <span class="text-[13px] font-bold text-emerald-600">+ R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                         </div>`;
                 }
 
-                // Renderiza Cartões (Igual à imagem)
+                // Desenha linha do Cartão idêntica ao Mockup
                 if(c.tipo === 'Crédito') {
                     let usado = Math.abs(c.saldo_atual);
-                    let limite = c.limite_total;
-                    let percentual = limite > 0 ? (usado / limite) * 100 : 0;
-                    if(percentual > 100) percentual = 100;
-                    
-                    // Cor da barra baseada no uso
-                    let corBarra = percentual > 80 ? 'bg-red-500' : (percentual > 50 ? 'bg-yellow-400' : 'bg-[#1e3a8a]');
+                    let lim = c.limite_total || 1;
+                    let perc = Math.min((usado / lim) * 100, 100);
+                    let cor = perc > 80 ? 'bg-red-500' : (perc > 50 ? 'bg-[#d97706]' : 'bg-[#0d9488]');
 
                     listaCartoes.innerHTML += `
-                        <div class="flex items-center text-sm py-2 px-2 hover:bg-gray-50 rounded">
-                            <div class="w-1/4 font-bold text-gray-800">${c.nome}</div>
-                            <div class="w-2/4 px-4">
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="${corBarra} h-2 rounded-full" style="width: ${percentual}%"></div>
-                                </div>
-                                <div class="text-[10px] text-gray-500 mt-1 text-center">Usado: R$ ${usado.toLocaleString('pt-BR')} / Limite: R$ ${limite.toLocaleString('pt-BR')}</div>
+                        <div class="flex items-center text-[13px] py-3 border-b border-gray-100 last:border-0">
+                            <div class="w-1/3 font-bold flex items-center gap-2">
+                                <div class="w-4 h-3 bg-black rounded-sm"></div> ${c.nome}
                             </div>
-                            <div class="w-1/4 text-right font-bold text-gray-600">Dia ${String(c.dia_vencimento).padStart(2, '0')}</div>
+                            <div class="w-1/2 pr-6">
+                                <div class="flex justify-between text-[10px] text-gray-500 mb-1 font-semibold">
+                                    <span>Limite R$ ${lim.toLocaleString('pt-BR')}</span>
+                                    <span class="text-gray-800">Usado R$ ${usado.toLocaleString('pt-BR')}</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-1.5 relative">
+                                    <div class="${cor} h-1.5 rounded-full" style="width: ${perc}%"></div>
+                                    <span class="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] font-bold ${cor.replace('bg-', 'text-')}">${perc.toFixed(0)}%</span>
+                                </div>
+                            </div>
+                            <div class="w-1/6 text-right font-bold text-gray-700">${String(c.dia_vencimento).padStart(2, '0')}/${new Date().getMonth()+2 > 12 ? '01' : String(new Date().getMonth()+2).padStart(2, '0')}</div>
                         </div>`;
                 }
             });
 
-            // Atualiza KPIs
-            let patrimonio = sBanco + dCard + invest;
-            document.getElementById('kpi-patrimonio').innerText = `R$ ${patrimonio.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            // Atualiza Topo
+            document.getElementById('kpi-patrimonio').innerText = `R$ ${(sBanco + dCard + invest).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
             document.getElementById('kpi-bancos').innerText = `R$ ${sBanco.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
             document.getElementById('kpi-divida').innerText = `R$ ${Math.abs(dCard).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
             document.getElementById('kpi-invest').innerText = `R$ ${invest.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-            
-            renderizarGrafico();
         }
 
-        async function renderizarGrafico() {
-            // Busca transações para o gráfico de pizza
-            const { data: transacoes } = await supabase.from('transacoes').select('valor, categorias(nome)');
+        async function buscarERenderizarGrafico() {
+            const { data: transacoes } = await db.from('transacoes').select('valor, categorias(nome)');
             if(!transacoes) return;
-
-            let gastosPorCategoria = {};
+            
+            let gastos = {};
             transacoes.forEach(t => {
                 if(t.valor < 0) {
-                    let catName = t.categorias ? t.categorias.nome : 'Outros';
-                    gastosPorCategoria[catName] = (gastosPorCategoria[catName] || 0) + Math.abs(t.valor);
+                    let c = t.categorias ? t.categorias.nome : 'Outros';
+                    gastos[c] = (gastos[c] || 0) + Math.abs(t.valor);
                 }
             });
+            desenharDonut(Object.keys(gastos), Object.values(gastos));
+        }
 
+        function desenharGraficoFake() {
+            desenharDonut(["Mercado", "Restaurante", "Assinaturas"], [1500, 800, 250]);
+        }
+
+        function desenharDonut(labels, data) {
             const ctx = document.getElementById('graficoVazamento').getContext('2d');
-            new Chart(ctx, {
+            if(graficoInstance) graficoInstance.destroy();
+            graficoInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: Object.keys(gastosPorCategoria),
+                    labels: labels.length ? labels : ['Sem Dados'],
                     datasets: [{
-                        data: Object.values(gastosPorCategoria),
-                        backgroundColor: ['#1e3a8a', '#3b82f6', '#93c5fd', '#f97316', '#fdba74', '#10b981'],
+                        data: data.length ? data : [1],
+                        backgroundColor: ['#1e3a8a', '#d97706', '#0d9488', '#dc2626', '#e2e8f0'],
                         borderWidth: 0
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '65%',
-                    plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
+                options: { 
+                    responsive: true, maintainAspectRatio: false, cutout: '50%',
+                    plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, font: {size: 11} } } }
                 }
             });
         }
