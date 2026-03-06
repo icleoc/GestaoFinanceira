@@ -244,6 +244,7 @@
         const selectParcelas = document.getElementById('select-parcelas');
         for(let i = 1; i <= 24; i++) selectParcelas.add(new Option(i === 1 ? '1x (À vista)' : `${i}x`, i));
 
+        // CONTROLES DE INTERFACE
         function toggleSection(idLista, idSeta) {
             const lista = document.getElementById(idLista);
             const seta = document.getElementById(idSeta);
@@ -277,17 +278,16 @@
         }
 
         // ==========================================
-        // CORREÇÃO DO TRAVAMENTO DO FORMULÁRIO
+        // RECONSTRUÇÃO DAS OPÇÕES SEM TRAVAR O SELECT
         // ==========================================
-        
-        // Função 1: Apenas reconstrói as listas de contas (Quando muda categoria ou filtro)
-        function reescreverOpcoesContas() {
+        function recarregarListaContas() {
             const op = document.getElementById('select-cat').value;
             const tipoInvest = document.getElementById('select-tipo-invest').value;
             const filtro = document.getElementById('select-filtro-origem').value;
             const selOrigem = document.getElementById('select-conta');
             const selDestino = document.getElementById('select-destino');
 
+            // Salva as escolhas atuais para tentar manter
             const contaAntiga = selOrigem.value;
             const destinoAntigo = selDestino.value;
 
@@ -312,7 +312,6 @@
                     selDestino.add(new Option(c.nome, c.id));
                 });
             } else {
-                // Despesa ou Receita (Aplica o Filtro)
                 contasGlobais.forEach(c => {
                     if(filtro === 'Todos' || c.tipo === filtro) {
                         selOrigem.add(new Option(c.nome, c.id));
@@ -320,12 +319,12 @@
                 });
             }
 
-            // Tenta devolver a seleção antiga se ela ainda existir na lista nova
+            // Tenta restaurar a seleção antiga, se não existir, vai pra primeira
             if([...selOrigem.options].some(opt => opt.value === contaAntiga)) selOrigem.value = contaAntiga;
             if([...selDestino.options].some(opt => opt.value === destinoAntigo)) selDestino.value = destinoAntigo;
         }
 
-        // Função 2: Apenas mostra ou esconde botões/caixas (Quando muda qualquer coisa)
+        // Apenas esconde/mostra as caixas sem apagar os selects
         function atualizarVisibilidade() {
             const op = document.getElementById('select-cat').value;
             const contaId = document.getElementById('select-conta').value;
@@ -338,7 +337,6 @@
             const boxPrazo = document.getElementById('box-prazo');
             const lblOrigem = document.getElementById('label-origem');
 
-            // Esconde tudo por padrão
             boxDestino.classList.add('hidden');
             boxParcelas.classList.add('hidden');
             boxOperacaoInvest.classList.add('hidden');
@@ -351,8 +349,7 @@
                 lblOrigem.innerText = 'SAIR DE (ORIGEM)';
                 lblOrigem.classList.add('text-red-600');
                 
-                const tipoInvest = document.getElementById('select-tipo-invest').value;
-                if(tipoInvest === 'Aporte') {
+                if(document.getElementById('select-tipo-invest').value === 'Aporte') {
                     boxPrazo.classList.add('opacity-50', 'pointer-events-none');
                     document.getElementById('select-prazo').value = "0";
                 } else {
@@ -363,7 +360,7 @@
                 lblOrigem.innerText = 'SAIR DE (ORIGEM)';
                 lblOrigem.classList.add('text-red-600');
             } else {
-                // Mostra parcelas apenas se for Crédito e Despesa
+                // Libera parcelas apenas se for cartão e despesa
                 if(contaInfo && contaInfo.tipo === 'Crédito' && catInfo && catInfo.tipo === 'Despesa') {
                     boxParcelas.classList.remove('hidden');
                 } else {
@@ -372,12 +369,11 @@
             }
         }
 
-        // Ligando as engrenagens aos cliques do usuário
-        document.getElementById('select-cat').addEventListener('change', () => { reescreverOpcoesContas(); atualizarVisibilidade(); });
-        document.getElementById('select-filtro-origem').addEventListener('change', () => { reescreverOpcoesContas(); atualizarVisibilidade(); });
-        document.getElementById('select-tipo-invest').addEventListener('change', () => { reescreverOpcoesContas(); atualizarVisibilidade(); });
-        
-        // *AQUI ESTAVA O BUG*: Mudar a conta agora SÓ atualiza a visibilidade das parcelas, não apaga as contas!
+        // LIGANDO OS EVENTOS
+        document.getElementById('select-cat').addEventListener('change', () => { recarregarListaContas(); atualizarVisibilidade(); });
+        document.getElementById('select-filtro-origem').addEventListener('change', () => { recarregarListaContas(); atualizarVisibilidade(); });
+        document.getElementById('select-tipo-invest').addEventListener('change', () => { recarregarListaContas(); atualizarVisibilidade(); });
+        // Mudar a conta só atualiza o visual das parcelas, NÃO RECARREGA A LISTA (Fim do travamento)
         document.getElementById('select-conta').addEventListener('change', atualizarVisibilidade);
 
 
@@ -398,8 +394,8 @@
                 transacoesPendentes = resTransacoes.data || [];
                 
                 renderizarCategoriasDropdown();
-                reescreverOpcoesContas(); // Preenche a lista inicial
-                atualizarVisibilidade(); // Arruma o layout
+                recarregarListaContas(); 
+                atualizarVisibilidade(); 
                 renderizarContasNaTela();
                 buscarERenderizarGrafico();
             } catch (err) { console.error(err); }
@@ -603,28 +599,56 @@
         });
 
         // ==========================================
-        // CATEGORIAS - ADD CORRIGIDO COM [.SELECT()]
+        // CATEGORIAS - ADD, DELETE E RASTREADOR DE ERROS
         // ==========================================
         function renderizarModalCategorias() {
-            const div = document.getElementById('lista-categorias-modal'); div.innerHTML = '';
-            categoriasGlobais.forEach(c => div.innerHTML += `<div class="p-2 border-b flex justify-between"><span>${c.nome}</span><span class="text-[10px] uppercase font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded">${c.tipo}</span></div>`);
+            const div = document.getElementById('lista-categorias-modal'); 
+            div.innerHTML = '';
+            // Não exibimos "Aporte / Resgate" pois é fixo do sistema
+            categoriasGlobais.forEach(c => {
+                if(c.tipo !== 'Investimento' && c.nome !== 'Aporte / Resgate') {
+                    div.innerHTML += `
+                        <div class="p-2 border-b flex justify-between items-center hover:bg-gray-50">
+                            <div>
+                                <span class="font-bold text-sm text-gray-700">${c.nome}</span>
+                                <span class="text-[10px] ml-2 uppercase font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">${c.tipo}</span>
+                            </div>
+                            <button onclick="deletarCategoria('${c.id}')" class="text-red-500 hover:text-red-700 text-lg px-2">🗑️</button>
+                        </div>`;
+                }
+            });
+        }
+
+        async function deletarCategoria(id) {
+            if(confirm("Tem certeza que deseja apagar esta categoria?")) {
+                const { error } = await db.from('categorias').delete().eq('id', id);
+                if(error) alert("Erro ao excluir: " + error.message);
+                else { await carregarDados(); renderizarModalCategorias(); }
+            }
         }
 
         document.getElementById('form-nova-categoria').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = e.target.querySelector('button'); btn.innerText = "Add...";
+            const btn = e.target.querySelector('button'); btn.innerText = "...";
             const nome = document.getElementById('cat-nome').value;
             const tipo = document.getElementById('cat-tipo').value;
             
             try {
-                const { error } = await db.from('categorias').insert([{ nome: nome, tipo: tipo }]).select();
-                if(error) throw error;
+                // RASTREADOR DE ERROS ATIVADO (Usa colchetes e select)
+                const { data, error } = await db.from('categorias').insert([{ nome: nome, tipo: tipo }]).select();
                 
-                alert(`✅ Categoria "${nome}" criada!`);
+                if(error) {
+                    alert(`❌ RADAR DE ERRO DO SUPABASE:\n\nMensagem: ${error.message}\nDetalhes: ${error.details}\nDica: ${error.hint}`);
+                    throw error;
+                }
+                
+                alert(`✅ Categoria "${nome}" criada com sucesso!`);
                 document.getElementById('cat-nome').value = '';
                 await carregarDados(); 
                 renderizarModalCategorias(); 
-            } catch (err) { alert("❌ Erro: " + err.message); }
+            } catch (err) { 
+                console.error(err);
+            }
             btn.innerText = "ADD";
         });
 
@@ -633,7 +657,9 @@
             if(!transacoes) return;
             let gastos = {};
             transacoes.forEach(t => {
-                if(t.valor < 0 && t.categorias) { gastos[t.categorias.nome] = (gastos[t.categorias.nome] || 0) + Math.abs(t.valor); }
+                if(t.valor < 0 && t.categorias && t.categorias.nome !== 'Aporte / Resgate') { 
+                    gastos[t.categorias.nome] = (gastos[t.categorias.nome] || 0) + Math.abs(t.valor); 
+                }
             });
             const ctx = document.getElementById('graficoVazamento').getContext('2d');
             if(graficoInstance) graficoInstance.destroy();
