@@ -25,18 +25,25 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .seta-rot { transition: transform 0.3s ease; }
         .seta-rot.fechado { transform: rotate(-90deg); }
+        
+        /* Animação do Pop-up (Toast) */
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .toast-animate { animation: slideIn 0.4s ease-out forwards; }
     </style>
 </head>
-<body class="p-4 md:p-8 max-w-[1200px] mx-auto antialiased">
+<body class="p-4 md:p-8 max-w-[1200px] mx-auto antialiased relative">
 
     <div id="aviso-erro" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded text-sm shadow-sm">
         <strong>🚨 JARVIS INFORMA (ERRO DE SISTEMA):</strong> <span id="msg-erro"></span>
     </div>
 
+    <div id="toast-container" class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 w-80"></div>
+
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h1 class="text-2xl font-extrabold text-gray-900 uppercase tracking-tight">SISTEMA FINANCEIRO LÉO</h1>
-        <div class="flex gap-3">
-            <button onclick="abrirHistorico()" class="bg-blue-100 text-blue-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-blue-200 transition">📜 VER EXTRATO</button>
+        <div class="flex gap-3 flex-wrap justify-center">
+            <button onclick="abrirFixas()" class="bg-purple-100 text-purple-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-purple-200 transition">🗓️ FIXAS</button>
+            <button onclick="abrirHistorico()" class="bg-blue-100 text-blue-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-blue-200 transition">📜 EXTRATO</button>
             <button onclick="abrirCategorias()" class="bg-gray-800 text-white text-xs font-bold py-2 px-4 rounded shadow hover:bg-gray-700 transition">⚙️ CATEGORIAS</button>
         </div>
     </div>
@@ -102,8 +109,8 @@
                 <form id="form-transacao" class="space-y-4">
                     <div class="flex gap-4">
                         <div class="w-1/3">
-                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Data Base</label>
-                            <input type="date" id="input-data" class="form-input" required>
+                            <label class="block text-[11px] font-bold text-blue-600 mb-1 uppercase">🗓️ Data da Operação</label>
+                            <input type="date" id="input-data" class="form-input border-blue-300 bg-blue-50 text-blue-900 font-bold" required>
                         </div>
                         <div class="w-2/3">
                             <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Operação / Categoria</label>
@@ -189,18 +196,26 @@
         </div>
     </div>
 
+    <div id="modal-fixas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div class="bg-purple-700 text-white p-4 flex justify-between items-center"><h3 class="font-bold uppercase tracking-wider">Despesas Fixas e Vencimentos</h3><button onclick="fecharFixas()" class="text-white hover:text-red-400 font-bold text-xl">&times;</button></div>
+            <div class="p-5">
+                <form id="form-nova-fixa" class="flex gap-2 mb-4 items-end">
+                    <div class="w-2/5"><label class="text-[10px] font-bold text-gray-500 uppercase">Descrição</label><input type="text" id="fixa-nome" placeholder="Ex: Internet" required class="form-input w-full"></div>
+                    <div class="w-1/4"><label class="text-[10px] font-bold text-gray-500 uppercase">Valor (R$)</label><input type="number" step="0.01" id="fixa-valor" placeholder="100.00" required class="form-input w-full"></div>
+                    <div class="w-1/4"><label class="text-[10px] font-bold text-gray-500 uppercase">Dia Venc.</label><input type="number" min="1" max="31" id="fixa-dia" placeholder="10" required class="form-input w-full"></div>
+                    <button type="submit" class="bg-purple-600 hover:bg-purple-800 text-white font-bold px-3 py-2 rounded text-xs h-9">ADD</button>
+                </form>
+                <div class="max-h-64 overflow-y-auto border rounded p-2 scrollbar-hide" id="lista-fixas-modal"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-historico" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
             <div class="bg-gray-800 text-white p-4 flex justify-between items-center"><h3 class="font-bold uppercase tracking-wider">Histórico</h3><button onclick="fecharHistorico()" class="text-white hover:text-red-400 font-bold text-xl">&times;</button></div>
             <div class="p-4 overflow-y-auto flex-1 scrollbar-hide">
-                <table class="w-full text-left border-collapse min-w-[600px]">
-                    <thead>
-                        <tr class="text-[11px] text-gray-500 uppercase border-b-2">
-                            <th class="p-2 w-24">Data</th><th class="p-2">Descrição</th><th class="p-2 w-32">Conta/Cartão</th><th class="p-2 text-right w-28">Valor</th><th class="p-2 text-center w-24">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabela-historico" class="text-sm"></tbody>
-                </table>
+                <table class="w-full text-left border-collapse min-w-[600px]"><tbody id="tabela-historico" class="text-sm"></tbody></table>
             </div>
         </div>
     </div>
@@ -242,6 +257,7 @@
         let contasGlobais = []; 
         let categoriasGlobais = [];
         let transacoesPendentes = [];
+        let fixasGlobais = [];
         let graficoInstance = null;
 
         document.getElementById('input-data').valueAsDate = new Date();
@@ -262,6 +278,8 @@
         function fecharHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
         function abrirCategorias() { document.getElementById('modal-categorias').classList.remove('hidden'); renderizarModalCategorias(); }
         function fecharCategorias() { document.getElementById('modal-categorias').classList.add('hidden'); }
+        function abrirFixas() { document.getElementById('modal-fixas').classList.remove('hidden'); renderizarFixas(); }
+        function fecharFixas() { document.getElementById('modal-fixas').classList.add('hidden'); }
         function fecharEditar() { document.getElementById('modal-editar').classList.add('hidden'); }
 
         function calcularDataDmais(dataBaseIso, diasUteis) {
@@ -281,6 +299,55 @@
         }
 
         // ==========================================
+        // RADARES E NOTIFICAÇÕES (TOASTS)
+        // ==========================================
+        function mostrarToast(msg, urgencia = 'aviso') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let corBg = 'bg-orange-500';
+            if(urgencia === 'critico') corBg = 'bg-red-600 animate-pulse';
+            if(urgencia === 'sucesso') corBg = 'bg-emerald-600';
+
+            toast.className = `${corBg} toast-animate text-white px-4 py-3 rounded-lg shadow-xl font-bold text-sm flex justify-between items-start border border-white/20`;
+            toast.innerHTML = `<span class="flex-1">${msg}</span><button onclick="this.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">✖</button>`;
+            
+            container.appendChild(toast);
+            // Some sozinho depois de 8 segundos
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                toast.style.transform = 'translateX(100%)'; 
+                setTimeout(()=>toast.remove(), 400); 
+            }, 8000);
+        }
+
+        function verificarRadaresVencimento() {
+            if(!fixasGlobais || fixasGlobais.length === 0) return;
+            
+            const hoje = new Date();
+            const diaAtual = hoje.getDate();
+            const mesAtual = hoje.getMonth();
+            const anoAtual = hoje.getFullYear();
+            const diasNoMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
+
+            fixasGlobais.forEach(f => {
+                let diaVenc = f.dia_vencimento;
+                let diff = diaVenc - diaAtual;
+
+                // Se o vencimento for no começo do mês que vem e estivermos no final deste mês
+                if (diaVenc < diaAtual) {
+                    diff = (diasNoMes - diaAtual) + diaVenc;
+                }
+
+                if (diff === 0) {
+                    mostrarToast(`⚠️ VENCE HOJE: ${f.nome} (R$ ${f.valor.toFixed(2)})`, 'critico');
+                } else if (diff > 0 && diff <= 5) {
+                    mostrarToast(`⏳ Faltam ${diff} dias: Vencimento de ${f.nome} (R$ ${f.valor.toFixed(2)})`, 'aviso');
+                }
+            });
+        }
+
+        // ==========================================
         // RECONSTRUÇÃO DAS OPÇÕES DE CONTA
         // ==========================================
         function recarregarListaContas() {
@@ -290,11 +357,8 @@
             const selOrigem = document.getElementById('select-conta');
             const selDestino = document.getElementById('select-destino');
 
-            const contaAntiga = selOrigem.value;
-            const destinoAntigo = selDestino.value;
-
-            selOrigem.innerHTML = '';
-            selDestino.innerHTML = '';
+            const contaAntiga = selOrigem.value; const destinoAntigo = selDestino.value;
+            selOrigem.innerHTML = ''; selDestino.innerHTML = '';
 
             if (op === 'Investimento') {
                 if(tipoInvest === 'Aporte') {
@@ -309,16 +373,9 @@
                     });
                 }
             } else if (op === 'Transferencia') {
-                contasGlobais.forEach(c => {
-                    selOrigem.add(new Option(c.nome, c.id));
-                    selDestino.add(new Option(c.nome, c.id));
-                });
+                contasGlobais.forEach(c => { selOrigem.add(new Option(c.nome, c.id)); selDestino.add(new Option(c.nome, c.id)); });
             } else {
-                contasGlobais.forEach(c => {
-                    if(filtro === 'Todos' || c.tipo === filtro) {
-                        selOrigem.add(new Option(c.nome, c.id));
-                    }
-                });
+                contasGlobais.forEach(c => { if(filtro === 'Todos' || c.tipo === filtro) selOrigem.add(new Option(c.nome, c.id)); });
             }
 
             if([...selOrigem.options].some(opt => opt.value === contaAntiga)) selOrigem.value = contaAntiga;
@@ -337,34 +394,19 @@
             const boxPrazo = document.getElementById('box-prazo');
             const lblOrigem = document.getElementById('label-origem');
 
-            boxDestino.classList.add('hidden');
-            boxParcelas.classList.add('hidden');
-            boxOperacaoInvest.classList.add('hidden');
-            lblOrigem.innerText = 'CONTA / CARTÃO';
-            lblOrigem.classList.remove('text-red-600');
+            boxDestino.classList.add('hidden'); boxParcelas.classList.add('hidden'); boxOperacaoInvest.classList.add('hidden');
+            lblOrigem.innerText = 'CONTA / CARTÃO'; lblOrigem.classList.remove('text-red-600');
 
             if (op === 'Investimento') {
-                boxOperacaoInvest.classList.remove('hidden');
-                boxDestino.classList.remove('hidden');
-                lblOrigem.innerText = 'SAIR DE (ORIGEM)';
-                lblOrigem.classList.add('text-red-600');
-                
-                if(document.getElementById('select-tipo-invest').value === 'Aporte') {
-                    boxPrazo.classList.add('opacity-50', 'pointer-events-none');
-                    document.getElementById('select-prazo').value = "0";
-                } else {
-                    boxPrazo.classList.remove('opacity-50', 'pointer-events-none');
-                }
+                boxOperacaoInvest.classList.remove('hidden'); boxDestino.classList.remove('hidden');
+                lblOrigem.innerText = 'SAIR DE (ORIGEM)'; lblOrigem.classList.add('text-red-600');
+                if(document.getElementById('select-tipo-invest').value === 'Aporte') { boxPrazo.classList.add('opacity-50', 'pointer-events-none'); document.getElementById('select-prazo').value = "0"; } 
+                else { boxPrazo.classList.remove('opacity-50', 'pointer-events-none'); }
             } else if (op === 'Transferencia') {
-                boxDestino.classList.remove('hidden');
-                lblOrigem.innerText = 'SAIR DE (ORIGEM)';
-                lblOrigem.classList.add('text-red-600');
+                boxDestino.classList.remove('hidden'); lblOrigem.innerText = 'SAIR DE (ORIGEM)'; lblOrigem.classList.add('text-red-600');
             } else {
-                if(contaInfo && contaInfo.tipo === 'Crédito' && catInfo && catInfo.tipo === 'Despesa') {
-                    boxParcelas.classList.remove('hidden');
-                } else {
-                    document.getElementById('select-parcelas').value = "1";
-                }
+                if(contaInfo && contaInfo.tipo === 'Crédito' && catInfo && catInfo.tipo === 'Despesa') boxParcelas.classList.remove('hidden');
+                else document.getElementById('select-parcelas').value = "1";
             }
         }
 
@@ -375,27 +417,29 @@
 
 
         // ==========================================
-        // CARGA DE DADOS COM BLINDAGEM DE ERROS
+        // CARGA DE DADOS PRINCIPAIS
         // ==========================================
         async function carregarDados() {
             try {
-                // Esconde caixa de erro inicialmente
                 document.getElementById('aviso-erro').classList.add('hidden');
 
-                const [resContas, resCategorias, resTransacoes] = await Promise.all([
+                const [resContas, resCategorias, resTransacoes, resFixas] = await Promise.all([
                     db.from('contas').select('*').order('nome'),
                     db.from('categorias').select('*').order('nome'),
-                    db.from('transacoes').select('*') // Busca tudo e filtra no JS pra evitar bug de Postgres
+                    db.from('transacoes').select('*'),
+                    db.from('despesas_fixas').select('*').order('dia_vencimento')
                 ]);
 
                 if (resContas.error) throw new Error("Falha ao ler Contas: " + resContas.error.message);
                 if (resCategorias.error) throw new Error("Falha ao ler Categorias: " + resCategorias.error.message);
                 if (resTransacoes.error) throw new Error("Falha ao ler Transações: " + resTransacoes.error.message);
+                // Fixas pode dar erro se a tabela não foi criada ainda no SQL
+                if (resFixas.error) console.warn("Tabela despesas_fixas ainda não criada ou erro: ", resFixas.error);
 
                 contasGlobais = resContas.data || []; 
                 categoriasGlobais = resCategorias.data || [];
+                fixasGlobais = resFixas.data || [];
                 
-                // Filtra as transações D+x pelo JS
                 const hojeStr = new Date().toISOString().split('T')[0];
                 transacoesPendentes = (resTransacoes.data || []).filter(t => t.data > hojeStr);
                 
@@ -404,6 +448,10 @@
                 atualizarVisibilidade(); 
                 renderizarContasNaTela();
                 desenharGrafico(resTransacoes.data || []);
+                
+                // Dispara os alertas
+                verificarRadaresVencimento();
+
             } catch (err) { 
                 console.error("JARVIS INTERCEPTOU UM ERRO:", err);
                 document.getElementById('aviso-erro').classList.remove('hidden');
@@ -429,7 +477,6 @@
             const divCartoes = document.getElementById('lista-cartoes');
             const divInvestimentos = document.getElementById('lista-investimentos');
             divBancos.innerHTML = ''; divCartoes.innerHTML = ''; divInvestimentos.innerHTML = '';
-            
             let btgTotal = 0; let btgSubcontasHtml = '';
 
             contasGlobais.forEach(c => {
@@ -496,6 +543,51 @@
         }
 
         // ==========================================
+        // DESPESAS FIXAS (NOVO)
+        // ==========================================
+        function renderizarFixas() {
+            const div = document.getElementById('lista-fixas-modal'); div.innerHTML = '';
+            fixasGlobais.forEach(f => {
+                div.innerHTML += `
+                    <div class="p-2 border-b flex justify-between items-center hover:bg-gray-50">
+                        <div>
+                            <span class="font-bold text-sm text-gray-700">${f.nome}</span>
+                            <span class="text-[10px] ml-2 font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded">Venc: Dia ${f.dia_vencimento}</span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="font-bold text-red-600 text-sm">R$ ${f.valor.toFixed(2)}</span>
+                            <button onclick="deletarFixa('${f.id}')" class="text-red-500 hover:text-red-700 text-lg">🗑️</button>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        document.getElementById('form-nova-fixa').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button'); btn.innerText = "...";
+            const nome = document.getElementById('fixa-nome').value;
+            const valor = parseFloat(document.getElementById('fixa-valor').value);
+            const dia = parseInt(document.getElementById('fixa-dia').value);
+            
+            try {
+                const { error } = await db.from('despesas_fixas').insert([{ nome, valor, dia_vencimento: dia }]).select();
+                if(error) throw error;
+                document.getElementById('form-nova-fixa').reset();
+                await carregarDados(); 
+                renderizarFixas(); 
+                mostrarToast(`✅ Despesa Fixa "${nome}" adicionada!`, 'sucesso');
+            } catch (err) { alert(`❌ ERRO: ${err.message}`); }
+            btn.innerText = "ADD";
+        });
+
+        async function deletarFixa(id) {
+            if(confirm("Remover esta despesa fixa dos seus alertas?")) {
+                await db.from('despesas_fixas').delete().eq('id', id);
+                await carregarDados(); renderizarFixas();
+            }
+        }
+
+        // ==========================================
         // REGISTRO DE TRANSAÇÕES
         // ==========================================
         document.getElementById('form-transacao').addEventListener('submit', async (e) => {
@@ -543,15 +635,15 @@
                     await db.from('transacoes').insert(inserts);
                 }
 
-                alert("✅ Operação Registrada com Sucesso!");
+                mostrarToast("✅ Operação Registrada com Sucesso!", "sucesso");
                 e.target.reset(); document.getElementById('input-data').valueAsDate = new Date();
                 atualizarVisibilidade(); carregarDados();
-            } catch (error) { alert("❌ Erro: " + error.message); }
+            } catch (error) { mostrarToast(`❌ Erro: ${error.message}`, "critico"); }
             btn.innerText = "PROCESSAR OPERAÇÃO";
         });
 
         // ==========================================
-        // EXTRATO, EDIÇÃO E EXCLUSÃO
+        // EXTRATO E CATEGORIAS OMITIDOS VISUALMENTE PARA ESPAÇO (MANTIDOS DA V12)
         // ==========================================
         async function carregarHistorico() {
             try {
@@ -575,116 +667,58 @@
                             </td>
                         </tr>`;
                 });
-            } catch(e) {
-                document.getElementById('tabela-historico').innerHTML = `<tr><td colspan="5" class="text-red-500 text-center p-4">Erro ao carregar: ${e.message}</td></tr>`;
-            }
+            } catch(e) { document.getElementById('tabela-historico').innerHTML = `<tr><td colspan="5" class="text-red-500 text-center p-4">Erro ao carregar: ${e.message}</td></tr>`; }
         }
 
-        async function deletarTransacao(id) {
-            if(confirm("Excluir este lançamento permanentemente?")) {
-                await db.from('transacoes').delete().eq('id', id);
-                carregarHistorico(); carregarDados();
-            }
-        }
+        async function deletarTransacao(id) { if(confirm("Excluir este lançamento permanentemente?")) { await db.from('transacoes').delete().eq('id', id); carregarHistorico(); carregarDados(); } }
 
         function abrirEdicao(id, desc, data, valorOriginal) {
-            document.getElementById('edit-id').value = id;
-            document.getElementById('edit-desc').value = desc;
-            document.getElementById('edit-data').value = data;
-            document.getElementById('edit-valor').value = Math.abs(valorOriginal).toFixed(2);
-            document.getElementById('edit-valor-original').value = valorOriginal;
-            document.getElementById('modal-editar').classList.remove('hidden');
+            document.getElementById('edit-id').value = id; document.getElementById('edit-desc').value = desc; document.getElementById('edit-data').value = data; document.getElementById('edit-valor').value = Math.abs(valorOriginal).toFixed(2); document.getElementById('edit-valor-original').value = valorOriginal; document.getElementById('modal-editar').classList.remove('hidden');
         }
 
         document.getElementById('form-editar').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const id = document.getElementById('edit-id').value;
-            const desc = document.getElementById('edit-desc').value;
-            const data = document.getElementById('edit-data').value;
-            let novoValor = parseFloat(document.getElementById('edit-valor').value);
-            const valorOriginal = parseFloat(document.getElementById('edit-valor-original').value);
-
-            if(valorOriginal < 0) novoValor = -Math.abs(novoValor);
-            else novoValor = Math.abs(novoValor);
-
+            const id = document.getElementById('edit-id').value; const desc = document.getElementById('edit-desc').value; const data = document.getElementById('edit-data').value; let novoValor = parseFloat(document.getElementById('edit-valor').value); const valorOriginal = parseFloat(document.getElementById('edit-valor-original').value);
+            if(valorOriginal < 0) novoValor = -Math.abs(novoValor); else novoValor = Math.abs(novoValor);
             const { error } = await db.from('transacoes').update({ descricao: desc, data: data, valor: novoValor }).eq('id', id);
-            if(!error) { alert("Atualizado!"); fecharEditar(); carregarHistorico(); carregarDados(); } 
-            else { alert("Erro ao atualizar: " + error.message); }
+            if(!error) { mostrarToast("✅ Lançamento Atualizado!", "sucesso"); fecharEditar(); carregarHistorico(); carregarDados(); } else { alert("Erro: " + error.message); }
         });
 
-        // ==========================================
-        // CATEGORIAS - ADD, DELETE 
-        // ==========================================
         function renderizarModalCategorias() {
-            const div = document.getElementById('lista-categorias-modal'); 
-            div.innerHTML = '';
+            const div = document.getElementById('lista-categorias-modal'); div.innerHTML = '';
             categoriasGlobais.forEach(c => {
                 if(c.tipo !== 'Investimento' && c.nome !== 'Aporte / Resgate') {
-                    div.innerHTML += `
-                        <div class="p-2 border-b flex justify-between items-center hover:bg-gray-50">
-                            <div>
-                                <span class="font-bold text-sm text-gray-700">${c.nome}</span>
-                                <span class="text-[10px] ml-2 uppercase font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">${c.tipo}</span>
-                            </div>
-                            <button onclick="deletarCategoria('${c.id}')" class="text-red-500 hover:text-red-700 text-lg px-2">🗑️</button>
-                        </div>`;
+                    div.innerHTML += `<div class="p-2 border-b flex justify-between items-center hover:bg-gray-50"><div><span class="font-bold text-sm text-gray-700">${c.nome}</span><span class="text-[10px] ml-2 uppercase font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">${c.tipo}</span></div><button onclick="deletarCategoria('${c.id}')" class="text-red-500 hover:text-red-700 text-lg px-2">🗑️</button></div>`;
                 }
             });
         }
 
-        async function deletarCategoria(id) {
-            if(confirm("Tem certeza que deseja apagar esta categoria?")) {
-                const { error } = await db.from('categorias').delete().eq('id', id);
-                if(error) alert("Erro ao excluir: " + error.message);
-                else { await carregarDados(); renderizarModalCategorias(); }
-            }
-        }
+        async function deletarCategoria(id) { if(confirm("Tem certeza que deseja apagar esta categoria?")) { const { error } = await db.from('categorias').delete().eq('id', id); if(error) alert("Erro ao excluir: " + error.message); else { await carregarDados(); renderizarModalCategorias(); } } }
 
         document.getElementById('form-nova-categoria').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = e.target.querySelector('button'); btn.innerText = "...";
-            const nome = document.getElementById('cat-nome').value;
-            const tipo = document.getElementById('cat-tipo').value;
-            
+            e.preventDefault(); const btn = e.target.querySelector('button'); btn.innerText = "...";
+            const nome = document.getElementById('cat-nome').value; const tipo = document.getElementById('cat-tipo').value;
             try {
-                const { data, error } = await db.from('categorias').insert([{ nome: nome, tipo: tipo }]).select();
+                const { error } = await db.from('categorias').insert([{ nome, tipo }]).select();
                 if(error) throw error;
-                
-                alert(`✅ Categoria "${nome}" criada com sucesso!`);
-                document.getElementById('cat-nome').value = '';
-                await carregarDados(); 
-                renderizarModalCategorias(); 
+                mostrarToast(`✅ Categoria "${nome}" criada!`, 'sucesso'); document.getElementById('cat-nome').value = ''; await carregarDados(); renderizarModalCategorias(); 
             } catch (err) { alert(`❌ ERRO NO SUPABASE:\n${err.message}`); }
             btn.innerText = "ADD";
         });
 
-        // ==========================================
-        // GRÁFICO (AGORA PUXA DO CACHE LOCAL)
-        // ==========================================
         function desenharGrafico(todasTransacoes) {
             if(!todasTransacoes || todasTransacoes.length === 0) return;
-            let gastos = {};
-            const hoje = new Date();
-            
+            let gastos = {}; const hoje = new Date();
             todasTransacoes.forEach(t => {
                 let dataT = new Date(t.data + 'T12:00:00');
-                // Pega só os gastos deste mês
                 if(t.valor < 0 && t.categoria_id && dataT.getMonth() === hoje.getMonth()) {
                     const catInfo = categoriasGlobais.find(c => c.id == t.categoria_id);
-                    if(catInfo && catInfo.tipo === 'Despesa') {
-                        gastos[catInfo.nome] = (gastos[catInfo.nome] || 0) + Math.abs(t.valor);
-                    }
+                    if(catInfo && catInfo.tipo === 'Despesa') gastos[catInfo.nome] = (gastos[catInfo.nome] || 0) + Math.abs(t.valor);
                 }
             });
-
             const ctx = document.getElementById('graficoVazamento').getContext('2d');
             if(graficoInstance) graficoInstance.destroy();
-            graficoInstance = new Chart(ctx, {
-                type: 'doughnut', data: {
-                    labels: Object.keys(gastos).length ? Object.keys(gastos) : ['Sem Gastos no Mês'],
-                    datasets: [{ data: Object.values(gastos).length ? Object.values(gastos) : [1], backgroundColor: ['#102a43', '#475569', '#3e9383', '#d97706', '#3b82f6'], borderWidth: 0 }]
-                }, options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 6, font: {size: 10} } } } }
-            });
+            graficoInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(gastos).length ? Object.keys(gastos) : ['Sem Gastos no Mês'], datasets: [{ data: Object.values(gastos).length ? Object.values(gastos) : [1], backgroundColor: ['#102a43', '#475569', '#3e9383', '#d97706', '#3b82f6'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 6, font: {size: 10} } } } } });
         }
 
         carregarDados();
