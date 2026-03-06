@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA FINANCEIRO LÉO - V24</title>
+    <title>SISTEMA FINANCEIRO LÉO - V25</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -34,10 +34,10 @@
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h1 class="text-2xl font-extrabold text-gray-900 uppercase tracking-tight">SISTEMA FINANCEIRO LÉO</h1>
         <div class="flex gap-2 flex-wrap justify-center">
-            <button onclick="abrirParcelas()" class="bg-orange-100 text-orange-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-orange-200">💳 PARCELAS</button>
-            <button onclick="abrirFixas()" class="bg-purple-100 text-purple-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-purple-200">🗓️ FIXAS</button>
-            <button onclick="abrirHistorico()" class="bg-blue-100 text-blue-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-blue-200">📜 EXTRATO</button>
-            <button onclick="abrirCategorias()" class="bg-gray-800 text-white text-xs font-bold py-2 px-4 rounded shadow hover:bg-gray-700">⚙️ CATEGORIAS</button>
+            <button onclick="abrirParcelas()" class="bg-orange-100 text-orange-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-orange-200 transition">💳 PARCELAS</button>
+            <button onclick="abrirFixas()" class="bg-purple-100 text-purple-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-purple-200 transition">🗓️ FIXAS</button>
+            <button onclick="abrirHistorico()" class="bg-blue-100 text-blue-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-blue-200 transition">📜 EXTRATO</button>
+            <button onclick="abrirCategorias()" class="bg-gray-800 text-white text-xs font-bold py-2 px-4 rounded shadow hover:bg-gray-700 transition">⚙️ CATEGORIAS</button>
         </div>
     </div>
 
@@ -72,12 +72,27 @@
                         <div class="w-1/3"><label class="block text-[11px] font-bold text-blue-600 mb-1 uppercase">🗓️ Data</label><input type="date" id="input-data" class="form-input border-blue-300 bg-blue-50 font-bold" required></div>
                         <div class="w-2/3"><label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Categoria</label><select id="select-cat" class="form-input font-bold text-white bg-[#102a43]"><option value="Investimento">📈 Aporte / Resgate</option><option value="Transferencia">🔄 Transferência / Pagar Fatura</option><optgroup label="Despesas" id="opt-despesas"></optgroup><optgroup label="Receitas" id="opt-receitas"></optgroup></select></div>
                     </div>
+
                     <div id="box-fixa-resumo" class="hidden bg-purple-100 p-3 rounded-lg flex justify-between"><div><span class="block text-[10px] font-bold text-purple-600 uppercase">Baixa Fixa</span><span class="font-bold text-purple-900 text-sm" id="txt-fixa-nome"></span></div><div class="text-right"><span class="block text-[10px] font-bold text-purple-600 uppercase">Valor</span><span class="font-bold text-purple-900 text-lg" id="txt-fixa-valor"></span></div></div>
-                    <div id="box-desc-valor" class="flex gap-4"><div class="w-2/3"><label class="block text-[11px] font-bold text-gray-500 uppercase">Descrição</label><input type="text" id="input-desc" class="form-input" placeholder="O Jarvis preencherá..." required></div><div class="w-1/3"><label class="block text-[11px] font-bold text-gray-500 uppercase">Valor Líq.</label><input type="number" id="input-valor" step="0.01" class="form-input font-bold" required></div></div>
-                    <div id="box-juros-cartao" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg space-y-2"><div class="flex items-center gap-2"><input type="checkbox" id="check-juros" class="w-4 h-4 text-red-600"><label for="check-juros" class="text-xs font-bold text-red-800 uppercase">Juros InfinitePay?</label></div><div id="sub-box-juros" class="hidden"><label id="label-bruto-dinamico" class="block text-[10px] font-bold text-red-600 mb-1 uppercase text-xs">Total na Origem</label><input type="number" id="input-valor-bruto" step="0.01" class="form-input border-red-300 font-bold" placeholder="0.00"></div></div>
+
+                    <div id="box-desc-valor" class="flex gap-4">
+                        <div class="w-2/3"><label class="block text-[11px] font-bold text-gray-500 uppercase">Descrição</label><input type="text" id="input-desc" class="form-input" required></div>
+                        <div class="w-1/3"><label class="block text-[11px] font-bold text-gray-500 uppercase">Valor Líq.</label><input type="number" id="input-valor" step="0.01" class="form-input font-bold" required></div>
+                    </div>
+
+                    <div id="box-juros-cartao" class="p-3 bg-red-50 border border-red-200 rounded-lg space-y-2">
+                        <div class="flex items-center gap-2"><input type="checkbox" id="check-juros" class="w-4 h-4 text-red-600"><label for="check-juros" class="text-xs font-bold text-red-800 uppercase">JUROS INFINITEPAY / TAXAS?</label></div>
+                        <div id="sub-box-juros" class="hidden"><label id="label-bruto-dinamico" class="block text-[10px] font-bold text-red-600 mb-1 uppercase">VALOR TOTAL NA ORIGEM</label><input type="number" id="input-valor-bruto" step="0.01" class="form-input border-red-300 font-bold" placeholder="0.00"></div>
+                    </div>
+
                     <div id="box-operacao-invest" class="hidden flex gap-4 p-3 bg-blue-50 border border-blue-100 rounded-lg"><div class="w-1/2"><label class="text-[10px] font-bold uppercase">Movimento</label><select id="select-tipo-invest" class="form-input"><option value="Aporte">Aporte (+)</option><option value="Resgate">Resgate (-)</option></select></div><div class="w-1/2"><label class="text-[10px] font-bold uppercase">Prazo</label><select id="select-prazo" class="form-input"><option value="0">D+0</option><option value="1">D+1</option><option value="2">D+2</option></select></div></div>
-                    <div class="flex gap-4"><div class="w-1/2"><label id="label-origem" class="block text-[11px] font-bold uppercase">Origem</label><select id="select-conta" class="form-input" required></select></div><div class="w-1/2" id="box-destino"><label class="block text-[11px] font-bold text-emerald-600 uppercase">Destino</label><select id="select-destino" class="form-input border-emerald-300 bg-emerald-50"></select></div></div>
-                    <div class="hidden" id="box-parcelas"><label class="block text-[11px] font-bold text-orange-600 uppercase">Parcelas</label><select id="select-parcelas" class="form-input border-[#d97706] bg-[#fffbeb]"></select></div>
+
+                    <div class="flex gap-4">
+                        <div class="w-1/2"><label id="label-origem" class="block text-[11px] font-bold uppercase">Origem</label><select id="select-conta" class="form-input" required></select></div>
+                        <div class="w-1/2" id="box-destino"><label class="block text-[11px] font-bold text-emerald-600 uppercase">Destino</label><select id="select-destino" class="form-input border-emerald-300 bg-emerald-50"></select></div>
+                    </div>
+
+                    <div class="hidden" id="box-parcelas"><label class="block text-[11px] font-bold text-orange-600 uppercase">Parcelamento</label><select id="select-parcelas" class="form-input border-[#d97706] bg-[#fffbeb]"></select></div>
                     <button type="submit" id="btn-submit" class="w-full bg-[#102a43] text-white text-sm font-bold py-3 rounded-lg shadow-lg disabled:opacity-50">PROCESSAR OPERAÇÃO</button>
                 </form>
             </div>
@@ -116,23 +131,18 @@
             if(antO) sO.value = antO; atualizarVisibilidade();
         }
 
-        // ==========================================
-        // LÓGICA DE DESCRIÇÃO INTELIGENTE (V24)
-        // ==========================================
         function atualizarVisibilidade() {
-            const op = document.getElementById('select-cat').value; const cId = document.getElementById('select-conta').value;
-            const cInfo = contasGlobais.find(c => c.id == cId); const catInfo = categoriasGlobais.find(c => c.id == op);
+            const op = document.getElementById('select-cat').value, cId = document.getElementById('select-conta').value, cInfo = contasGlobais.find(c => c.id == cId), catInfo = categoriasGlobais.find(c => c.id == op);
             const bD = document.getElementById('box-destino'), bP = document.getElementById('box-parcelas'), bI = document.getElementById('box-operacao-invest'), bDV = document.getElementById('box-desc-valor'), bFR = document.getElementById('box-fixa-resumo'), bJ = document.getElementById('box-juros-cartao'), btn = document.getElementById('btn-submit');
             
-            bD.classList.add('hidden'); bP.classList.add('hidden'); bI.classList.add('hidden'); bJ.classList.add('hidden');
+            bD.classList.add('hidden'); bP.classList.add('hidden'); bI.classList.add('hidden');
 
-            // Preenchimento Inteligente de Descrição
-            if (catInfo) {
-                document.getElementById('input-desc').value = catInfo.nome;
-            }
-
-            if(op === 'Transferencia') { bD.classList.remove('hidden'); bJ.classList.remove('hidden'); document.getElementById('label-bruto-dinamico').innerText = `TOTAL NO ${cInfo?.nome || 'ORIGEM'}`; document.getElementById('input-desc').value = 'Transferência / Pagamento'; }
+            if (catInfo) document.getElementById('input-desc').value = catInfo.nome;
+            if(op === 'Transferencia') { bD.classList.remove('hidden'); document.getElementById('input-desc').value = 'Transf / Pagar Fatura'; }
             if(op === 'Investimento') { bI.classList.remove('hidden'); bD.classList.remove('hidden'); document.getElementById('input-desc').value = 'Investimento'; }
+            
+            // Rótulo Dinâmico do InfinitePay
+            document.getElementById('label-bruto-dinamico').innerText = `TOTAL NO ${cInfo?.nome.toUpperCase() || 'ORIGEM'}`;
             if(cInfo?.tipo === 'Crédito') bP.classList.remove('hidden');
 
             let fR = catInfo ? fixasGlobais.find(f => f.nome === catInfo.nome) : null;
@@ -177,16 +187,6 @@
             document.getElementById('kpi-patrimonio').innerText=`R$ ${(sB+dC+iT).toLocaleString('pt-BR', {minimumFractionDigits:2})}`; document.getElementById('kpi-bancos').innerText=`R$ ${sB.toLocaleString('pt-BR', {minimumFractionDigits:2})}`; document.getElementById('kpi-invest').innerText=`R$ ${iT.toLocaleString('pt-BR', {minimumFractionDigits:2})}`; document.getElementById('kpi-divida').innerText=`R$ ${Math.abs(dC).toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
         }
 
-        document.getElementById('form-nova-categoria').addEventListener('submit', async (e) => {
-            e.preventDefault(); const btn = document.getElementById('btn-add-cat'); btn.disabled = true;
-            const nome = document.getElementById('cat-nome').value, tipo = document.getElementById('cat-tipo').value;
-            try {
-                const { error } = await db.from('categorias').insert([{ nome, tipo }]).select();
-                if(error) throw error;
-                document.getElementById('cat-nome').value = ''; await carregarDados(); renderizarModalCats();
-            } catch (err) { alert(err.message); } btn.disabled = false;
-        });
-
         document.getElementById('form-transacao').addEventListener('submit', async (e) => {
             e.preventDefault(); const btn = document.getElementById('btn-submit'); btn.disabled = true;
             const op=document.getElementById('select-cat').value, ori=document.getElementById('select-conta').value, des=document.getElementById('select-destino').value, liq=parseFloat(document.getElementById('input-valor').value), dataB=document.getElementById('input-data').value, desc=document.getElementById('input-desc').value, comJ=document.getElementById('check-juros').checked, bruto=parseFloat(document.getElementById('input-valor-bruto').value)||liq, parc=parseInt(document.getElementById('select-parcelas').value)||1;
@@ -198,14 +198,16 @@
                     if(comJ && bruto>liq) await db.from('transacoes').insert({data:dataB,descricao:`Taxa: ${desc}`,valor:-(bruto-liq),conta_origem_id:ori});
                 } else if(op === 'Investimento') { await db.from('transacoes').insert([{data:dataB,valor:-liq,conta_origem_id:ori},{data:dataB,valor:liq,conta_origem_id:des}]); }
                 else {
-                    let vP=liq/parc, [a,m,d]=dataB.split('-');
+                    let vP=bruto/parc, [a,m,d]=dataB.split('-');
                     for(let i=0;i<parc;i++){ let dp=new Date(a,parseInt(m)-1+i,d).toISOString().split('T')[0]; await db.from('transacoes').insert({data:dp,descricao:parc>1?`${desc} (${i+1}/${parc})`:desc,valor:-Math.abs(vP),conta_origem_id:ori,categoria_id:op}); }
+                    if(comJ && bruto > liq) await db.from('transacoes').insert({data:dataB,descricao:`Taxa Maquininha: ${desc}`,valor:-(bruto-liq),conta_origem_id:ori});
                 }
                 location.reload();
             } catch(err) { alert(err.message); btn.disabled=false; }
         });
 
-        async function carregarHistorico() { const { data } = await db.from('transacoes').select('id, data, descricao, valor, contas(nome)').order('data', { ascending: false }).limit(50); const tb = document.getElementById('tabela-historico'); tb.innerHTML = ''; data.forEach(t => tb.innerHTML += `<tr class="border-b"><td class="p-2"><input type="checkbox" class="chk-item" value="${t.id}" onclick="syncBarraLote()"></td><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td></tr>`); }
+        // AUXILIARES MANTIDOS
+        async function carregarHistorico() { const { data } = await db.from('transacoes').select('id, data, descricao, valor, contas(nome)').order('data', { ascending: false }).limit(50); const tb = document.getElementById('tabela-historico'); tb.innerHTML = ''; data.forEach(t => tb.innerHTML += `<tr class="border-b"><td class="p-2"><input type="checkbox" class="chk-item" value="${t.id}" onclick="syncBarraLote()"></td><td class="p-2">${t.data}</td><td class="p-2 font-bold">${t.descricao}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td></tr>`); }
         function toggleTodosChecks(m) { document.querySelectorAll('.chk-item').forEach(c => c.checked = m.checked); syncBarraLote(); }
         function syncBarraLote() { const s = document.querySelectorAll('.chk-item:checked'); const b = document.getElementById('barra-lote'); document.getElementById('count-sel').innerText = s.length; if(s.length > 0) b.classList.remove('hidden'); else b.classList.add('hidden'); }
         async function deletarEmLote() { const ids = Array.from(document.querySelectorAll('.chk-item:checked')).map(x => x.value); if(confirm(`Excluir ${ids.length}?`)) { await db.from('transacoes').delete().in('id', ids); location.reload(); } }
@@ -213,14 +215,12 @@
         async function delC(id) { if(confirm("Del?")){ await db.from('categorias').delete().eq('id',id); location.reload(); } }
         function renderizarFixas() { const di=document.getElementById('lista-fixas-modal'); di.innerHTML=''; fixasGlobais.forEach(f => di.innerHTML+=`<div class="flex justify-between p-2"><span>${f.nome}</span><b>R$ ${f.valor}</b><button onclick="delF('${f.id}')">🗑️</button></div>`); }
         async function delF(id) { if(confirm("Del?")){ await db.from('despesas_fixas').delete().eq('id',id); location.reload(); } }
-        async function carregarParcelas() { const {data}=await db.from('transacoes').select('data,descricao,valor,contas!inner(nome)').eq('contas.tipo','Crédito').gt('data',getHojeLocal()).order('data'); const tb=document.getElementById('tabela-parcelas'); tb.innerHTML=''; data.forEach(t=>tb.innerHTML+=`<tr class="border-b"><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td></tr>`); }
-
+        async function carregarParcelas() { const {data}=await db.from('transacoes').select('data,descricao,valor,contas!inner(nome)').eq('contas.tipo','Crédito').gt('data',getHojeLocal()).order('data'); const tb=document.getElementById('tabela-parcelas'); tb.innerHTML=''; data.forEach(t=>tb.innerHTML+=`<tr class="border-b text-xs"><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td></tr>`); }
         function desenharGrafico() {
             let g={}; transacoesGlobais.forEach(x=>{ if(x.valor<0 && x.categoria_id){ let c=categoriasGlobais.find(y=>y.id==x.categoria_id); if(c) g[c.nome]=(g[c.nome]||0)+Math.abs(x.valor); } });
             const ctx=document.getElementById('graficoVazamento').getContext('2d'); if(graficoInstance) graficoInstance.destroy();
             graficoInstance = new Chart(ctx, { type:'doughnut', data:{ labels:Object.keys(g), datasets:[{data:Object.values(g), backgroundColor:['#102a43','#475569','#3e9383','#d97706','#3b82f6','#9333ea'], borderWidth:0}] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} } });
         }
-
         carregarDados();
     </script>
 </body>
