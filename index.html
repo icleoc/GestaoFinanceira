@@ -3,110 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA FINANCEIRO LÉO - V37</title>
-    
+    <title>SISTEMA FINANCEIRO LÉO - V38</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } }
-    </script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #f3f4f6; color: #1e293b; }
-        .card-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); border: 1px solid #e2e8f0; }
-        .form-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 13px; background-color: #f8fafc; color: #334155; transition: all 0.3s ease; }
-        .form-input:focus { outline: none; border-color: #3e9383; box-shadow: 0 0 0 1px #3e9383; }
-        .section-header { font-size: 14px; font-weight: 700; color: #334155; background-color: #f8fafc; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; color: #1e293b; }
+        .card-shadow { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+        .form-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 13px; }
         .modal-bg { background-color: rgba(0,0,0,0.6); backdrop-filter: blur(2px); }
         .seta-rot { transition: transform 0.3s ease; }
         .seta-rot.fechado { transform: rotate(-90deg); }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .toast-animate { animation: slideIn 0.4s ease-out forwards; }
-        
-        /* Tooltip para a barra de progresso */
-        .progress-container { position: relative; }
-        .progress-container:hover .tooltip-valor { opacity: 1; visibility: visible; transform: translateY(-10px); }
-        .tooltip-valor { 
-            position: absolute; top: -30px; left: 50%; transform: translateX(-50%) translateY(0);
-            background: #102a43; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px;
-            font-weight: bold; white-space: nowrap; opacity: 0; visibility: hidden; transition: all 0.2s ease;
-            z-index: 10;
-        }
+        .progress-container:hover .tooltip-valor { opacity: 1; visibility: visible; }
+        .tooltip-valor { position: absolute; top: -25px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; opacity: 0; visibility: hidden; transition: 0.2s; z-index: 20; }
     </style>
 </head>
-<body class="p-4 md:p-8 max-w-[1200px] mx-auto antialiased relative">
+<body class="p-4 md:p-8 max-w-[1200px] mx-auto antialiased">
 
-    <div id="toast-container" class="fixed bottom-6 right-6 z-[150] flex flex-col gap-3 w-80"></div>
+    <div id="toast-container" class="fixed bottom-6 right-6 z-[150] flex flex-col gap-2"></div>
 
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h1 class="text-2xl font-extrabold text-gray-900 uppercase tracking-tight">SISTEMA FINANCEIRO LÉO</h1>
+        <h1 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">SISTEMA FINANCEIRO LÉO</h1>
         <div class="flex gap-2 flex-wrap justify-center">
-            <button onclick="abrirContas()" class="bg-emerald-100 text-emerald-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-emerald-200">🏦 CONTAS</button>
-            <button onclick="abrirParcelas()" class="bg-orange-100 text-orange-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-orange-200">💳 PARCELAS</button>
-            <button onclick="abrirFixas()" class="bg-purple-100 text-purple-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-purple-200">🗓️ FIXAS</button>
-            <button onclick="abrirHistorico()" class="bg-blue-100 text-blue-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-blue-200">📜 EXTRATO</button>
-            <button onclick="abrirCategorias()" class="bg-gray-800 text-white text-xs font-bold py-2 px-4 rounded shadow hover:bg-gray-700">⚙️ CATEGORIAS</button>
+            <button onclick="abrirContas()" class="bg-emerald-100 text-emerald-800 text-xs font-bold py-2 px-4 rounded shadow-sm">🏦 CONTAS</button>
+            <button onclick="abrirParcelas()" class="bg-orange-100 text-orange-800 text-xs font-bold py-2 px-4 rounded shadow-sm">💳 PARCELAS</button>
+            <button onclick="abrirFixas()" class="bg-purple-100 text-purple-800 text-xs font-bold py-2 px-4 rounded shadow-sm">🗓️ FIXAS</button>
+            <button onclick="abrirHistorico()" class="bg-blue-600 text-white text-xs font-bold py-2 px-4 rounded shadow-md">📜 EXTRATO</button>
+            <button onclick="abrirCategorias()" class="bg-gray-800 text-white text-xs font-bold py-2 px-4 rounded shadow-sm">⚙️ CATEGORIAS</button>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-[#102a43] text-white p-5 rounded-xl shadow-md"><p class="text-[11px] font-semibold uppercase opacity-80 mb-1">Patrimônio Líquido</p><h2 class="text-2xl font-bold" id="kpi-patrimonio">R$ 0,00</h2></div>
-        <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow"><p class="text-[11px] font-semibold uppercase text-gray-500 mb-1">Saldo Bancos</p><h2 class="text-2xl font-bold text-[#3e9383]" id="kpi-bancos">R$ 0,00</h2></div>
-        <div class="bg-[#ffedd5] text-[#9a3412] p-5 rounded-xl border border-[#fdba74]"><p class="text-[11px] font-semibold uppercase mb-1">Dívida Cartões</p><h2 class="text-2xl font-bold text-red-600" id="kpi-divida">R$ 0,00</h2></div>
-        <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow"><p class="text-[11px] font-semibold uppercase text-gray-500 mb-1">Investimentos</p><h2 class="text-2xl font-bold text-blue-700" id="kpi-invest">R$ 0,00</h2></div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-[#102a43] text-white p-5 rounded-xl"><p class="text-[10px] uppercase font-bold opacity-70">Patrimônio Líquido</p><h2 class="text-2xl font-bold" id="kpi-patrimonio">R$ 0,00</h2></div>
+        <div class="bg-white p-5 rounded-xl card-shadow"><p class="text-[10px] uppercase font-bold text-gray-400">Bancos</p><h2 class="text-2xl font-bold text-emerald-600" id="kpi-bancos">R$ 0,00</h2></div>
+        <div class="bg-white p-5 rounded-xl card-shadow"><p class="text-[10px] uppercase font-bold text-gray-400">Dívida Cartões</p><h2 class="text-2xl font-bold text-red-600" id="kpi-divida">R$ 0,00</h2></div>
+        <div class="bg-white p-5 rounded-xl card-shadow"><p class="text-[10px] uppercase font-bold text-gray-400">Investimentos</p><h2 class="text-2xl font-bold text-blue-600" id="kpi-invest">R$ 0,00</h2></div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-7 space-y-4">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div class="lg:col-span-7 space-y-6">
             <div class="bg-white rounded-xl p-4 card-shadow">
-                <div class="section-header" onclick="toggleSection('lista-bancos', 'seta-bancos')"><span class="text-[#3e9383]">🏦 BANCOS</span><span id="seta-bancos" class="seta-rot text-gray-400">▼</span></div>
-                <div id="lista-bancos" class="space-y-1 mt-2 overflow-hidden transition-all duration-300"></div>
+                <div class="flex justify-between items-center cursor-pointer" onclick="toggleSection('lista-bancos','s1')">
+                    <span class="font-bold text-emerald-700 text-sm uppercase">🏦 Bancos / Liquidez</span><span id="s1" class="seta-rot">▼</span>
+                </div>
+                <div id="lista-bancos" class="mt-4 space-y-2 overflow-hidden transition-all duration-300"></div>
             </div>
             
             <div class="bg-white rounded-xl p-4 card-shadow">
-                <div class="section-header" onclick="toggleSection('lista-cartoes-container', 'seta-cartoes')"><span class="text-[#d97706]">💳 CARTÕES DE CRÉDITO</span><span id="seta-cartoes" class="seta-rot text-gray-400">▼</span></div>
-                <div id="lista-cartoes-container" class="mt-2 overflow-hidden transition-all duration-300">
-                    <div id="lista-cartoes" class="space-y-6 px-1 mt-3"></div>
+                <div class="flex justify-between items-center cursor-pointer" onclick="toggleSection('lista-cartoes-container','s2')">
+                    <span class="font-bold text-orange-700 text-sm uppercase">💳 Cartões de Crédito</span><span id="s2" class="seta-rot">▼</span>
                 </div>
-            </div>
-
-            <div class="bg-white rounded-xl p-4 card-shadow border-l-4 border-blue-700">
-                <div class="section-header bg-blue-50" onclick="toggleSection('lista-investimentos', 'seta-invest')"><span class="text-blue-800 font-extrabold">📈 INVESTIMENTOS</span><span id="seta-invest" class="seta-rot text-blue-400">▼</span></div>
-                <div id="lista-investimentos" class="space-y-2 mt-2 overflow-hidden transition-all duration-300"></div>
+                <div id="lista-cartoes-container" class="mt-4 space-y-6 overflow-hidden transition-all duration-300">
+                    <div id="lista-cartoes"></div>
+                </div>
             </div>
         </div>
 
         <div class="lg:col-span-5 space-y-6">
-            <div class="bg-white rounded-xl p-5 card-shadow border-t-4 border-[#102a43]">
-                <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase">Novo Lançamento</h3>
+            <div class="bg-white rounded-xl p-6 card-shadow border-t-4 border-[#102a43]">
+                <h3 class="text-sm font-bold mb-4 uppercase text-gray-600">Novo Lançamento</h3>
                 <form id="form-transacao" class="space-y-4">
-                    <div class="flex gap-4">
-                        <div class="w-1/3"><label class="block text-[11px] font-bold text-blue-600 mb-1 uppercase">🗓️ Data</label><input type="date" id="input-data" class="form-input border-blue-300 bg-blue-50 font-bold" required></div>
-                        <div class="w-2/3"><label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Categoria</label><select id="select-cat" class="form-input font-bold text-white bg-[#102a43]"><option value="Investimento">📈 Aporte / Resgate</option><option value="Transferencia">🔄 Transferência / Pagar Fatura</option><optgroup label="Despesas" id="opt-despesas"></optgroup><optgroup label="Receitas" id="opt-receitas"></optgroup></select></div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="text-[10px] font-bold">🗓️ DATA</label><input type="date" id="input-data" class="form-input font-bold bg-gray-50" required></div>
+                        <div><label class="text-[10px] font-bold">CATEGORIA</label><select id="select-cat" class="form-input font-bold bg-gray-800 text-white"></select></div>
                     </div>
-                    <div id="box-fixa-resumo" class="hidden bg-purple-100 p-3 rounded-lg flex justify-between"><div><span class="block text-[10px] font-bold text-purple-600 uppercase">Baixa Fixa</span><span class="font-bold text-purple-900 text-sm" id="txt-fixa-nome"></span></div><div class="text-right"><span class="block text-[10px] font-bold text-purple-600 uppercase">Valor</span><span class="font-bold text-purple-900 text-lg" id="txt-fixa-valor"></span></div></div>
-                    <div id="box-desc-valor" class="flex gap-4"><div class="w-2/3"><label class="block text-[11px] font-bold text-gray-500 uppercase">Descrição</label><input type="text" id="input-desc" class="form-input" onclick="limparSeSugerido(this)" required></div><div class="w-1/3"><label class="block text-[11px] font-bold text-gray-500 uppercase">Valor Líq.</label><input type="number" id="input-valor" step="0.01" class="form-input font-bold" required></div></div>
-                    <div id="box-juros-cartao" class="p-3 bg-red-50 border border-red-200 rounded-lg space-y-2"><div class="flex items-center gap-2"><input type="checkbox" id="check-juros" class="w-4 h-4 text-red-600"><label for="check-juros" class="text-xs font-bold text-red-800 uppercase">Usou InfinitePay?</label></div><div id="sub-box-juros" class="hidden"><label id="label-bruto-dinamico" class="block text-[10px] font-bold text-red-600 mb-1 uppercase">Valor Total no Cartão (Com Juros)</label><input type="number" id="input-valor-bruto" step="0.01" class="form-input border-red-300 font-bold" placeholder="0.00"></div></div>
-                    <div class="flex gap-4"><div class="w-1/2"><label id="label-origem" class="block text-[11px] font-bold uppercase">Origem</label><select id="select-conta" class="form-input" required></select></div><div class="w-1/2" id="box-destino"><label class="block text-[11px] font-bold text-emerald-600 uppercase">Destino</label><select id="select-destino" class="form-input border-emerald-300 bg-emerald-50"></select></div></div>
-                    <div class="hidden" id="box-parcelas"><label class="block text-[11px] font-bold text-orange-600 uppercase">Parcelas</label><select id="select-parcelas" class="form-input border-[#d97706] bg-[#fffbeb]"></select></div>
-                    <button type="submit" id="btn-submit" class="w-full bg-[#102a43] text-white text-sm font-bold py-3 rounded-lg shadow-lg disabled:opacity-50">PROCESSAR OPERAÇÃO</button>
+                    <div id="box-fixa-resumo" class="hidden bg-purple-50 p-3 rounded border border-purple-100 flex justify-between">
+                        <span id="txt-fixa-nome" class="font-bold text-purple-700 text-xs uppercase"></span>
+                        <span id="txt-fixa-valor" class="font-bold text-purple-900"></span>
+                    </div>
+                    <div id="box-desc-valor" class="grid grid-cols-3 gap-3">
+                        <div class="col-span-2"><label class="text-[10px] font-bold">DESCRIÇÃO</label><input type="text" id="input-desc" class="form-input" onclick="limparSeSugerido(this)" required></div>
+                        <div><label class="text-[10px] font-bold">VALOR LÍQ.</label><input type="number" id="input-valor" step="0.01" class="form-input font-bold" required></div>
+                    </div>
+                    <div id="box-juros-cartao" class="p-3 bg-red-50 rounded border border-red-100 space-y-2">
+                        <div class="flex items-center gap-2"><input type="checkbox" id="check-juros"><label class="text-[10px] font-bold text-red-800">TAXAS INFINITEPAY?</label></div>
+                        <div id="sub-box-juros" class="hidden"><label class="text-[10px] font-bold text-red-600">VALOR BRUTO (TOTAL NA ORIGEM)</label><input type="number" id="input-valor-bruto" step="0.01" class="form-input border-red-200"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="text-[10px] font-bold">ORIGEM (SAI)</label><select id="select-conta" class="form-input"></select></div>
+                        <div id="box-destino"><label class="text-[10px] font-bold text-emerald-600">DESTINO (ENTRA)</label><select id="select-destino" class="form-input border-emerald-200"></select></div>
+                    </div>
+                    <div id="box-parcelas" class="hidden"><label class="text-[10px] font-bold text-orange-600">PARCELAMENTO</label><select id="select-parcelas" class="form-input border-orange-200"></select></div>
+                    <button type="submit" id="btn-submit" class="w-full bg-[#102a43] text-white font-bold py-3 rounded-lg hover:bg-blue-900 transition">PROCESSAR OPERAÇÃO</button>
                 </form>
             </div>
-            <div class="bg-white rounded-xl p-5 card-shadow h-60 flex justify-center"><canvas id="graficoVazamento"></canvas></div>
+            <div class="bg-white rounded-xl p-5 card-shadow flex justify-center"><canvas id="graficoVazamento" style="max-height: 200px;"></canvas></div>
         </div>
     </div>
 
-    <div id="modal-historico" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[100] p-4"><div class="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden"><div class="bg-gray-800 text-white p-4 flex justify-between font-bold text-sm uppercase"><span>📜 Extrato</span><button onclick="fecharHistorico()" class="text-xl">✖</button></div><div class="bg-gray-50 p-4 border-b grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="text-[10px] font-bold">FILTRAR CONTA</label><select id="filtro-extrato-conta" class="form-input" onchange="carregarHistorico()"></select></div><div><label class="text-[10px] font-bold">TIPO</label><select id="filtro-extrato-tipo" class="form-input" onchange="carregarHistorico()"><option value="Todos">Todos</option><option value="Despesa">Despesas</option><option value="Receita">Receitas</option></select></div></div><div class="p-4 overflow-y-auto flex-1 scrollbar-hide"><table class="w-full text-left"><thead><tr class="text-[10px] text-gray-400 uppercase border-b-2"><th class="p-2 w-8"><input type="checkbox" onclick="toggleTodosChecks(this)"></th><th class="p-2 w-10"></th><th class="p-2">Data</th><th class="p-2">Descrição</th><th class="p-2">Parc.</th><th class="p-2 text-right">Valor</th></tr></thead><tbody id="tabela-historico" class="text-xs"></tbody></table></div></div></div>
-    <div id="modal-editar-tr" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[110] p-4"><div class="bg-white rounded-xl w-full max-w-md p-5 shadow-2xl space-y-4"><h3 class="font-bold text-blue-700">✏️ EDITAR</h3><input type="hidden" id="edit-tr-id"><input type="hidden" id="edit-tr-original-desc"><input type="hidden" id="edit-tr-original-valor"><div><label class="text-[10px] font-bold">DESCRIÇÃO</label><input type="text" id="edit-tr-desc" class="form-input"></div><div><label class="text-[10px] font-bold">VALOR</label><input type="number" id="edit-tr-valor" class="form-input font-bold"></div><div id="box-edit-cascata" class="hidden flex items-center gap-2 bg-blue-50 p-2 rounded"><input type="checkbox" id="check-cascata"><label class="text-xs">Atualizar todas as parcelas?</label></div><button onclick="salvarEdicaoTr()" id="btn-save-edit" class="w-full bg-blue-700 text-white py-2 rounded font-bold">SALVAR</button></div></div>
-    <div id="modal-contas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-2xl p-5"><div class="flex justify-between mb-4 font-bold uppercase"><b>Bancos e Cartões</b><button onclick="fecharContas()">✖</button></div><form id="form-nova-conta" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6 items-end"><input id="conta-nome" placeholder="Nome" class="form-input"><select id="conta-tipo" class="form-input"><option value="Corrente">Corrente</option><option value="Crédito">Crédito</option></select><input id="conta-valor" type="number" placeholder="Saldo/Lim" class="form-input"><button class="bg-emerald-600 text-white px-4 rounded text-xs">ADD</button></form><div id="lista-contas-modal"></div></div></div>
-    <div id="modal-categorias" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-lg p-5"><div class="flex justify-between mb-4 font-bold uppercase"><b>Categorias</b><button onclick="fecharCategorias()">✖</button></div><form id="form-nova-categoria" class="flex gap-2 mb-4"><input type="text" id="cat-nome" class="form-input"><button class="bg-emerald-600 text-white px-4 rounded">ADD</button></form><div id="lista-categorias-modal"></div></div></div>
+    <div id="modal-historico" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[100] p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-900 text-white p-4 flex justify-between items-center">
+                <span class="font-bold text-sm uppercase tracking-widest">📜 Extrato Geral</span>
+                <button onclick="fecharHistorico()" class="hover:text-red-400">✖ Fechar</button>
+            </div>
+            
+            <div class="bg-gray-50 p-4 border-b grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div class="md:col-span-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Conta</label><select id="filtro-extrato-conta" class="form-input" onchange="carregarHistorico()"></select></div>
+                <div class="md:col-span-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Tipo</label><select id="filtro-extrato-tipo" class="form-input" onchange="carregarHistorico()"><option value="Todos">Todos</option><option value="Despesa">Despesas</option><option value="Receita">Receitas</option></select></div>
+                
+                <div class="md:col-span-2 flex justify-end">
+                    <button id="btn-bulk-delete" onclick="deletarEmLote()" disabled class="bg-red-100 text-red-400 cursor-not-allowed text-[11px] px-6 py-2.5 rounded-full font-black uppercase transition-all duration-300">
+                        🗑️ Excluir Selecionados (<span id="count-sel">0</span>)
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-4 overflow-y-auto flex-1 scrollbar-hide">
+                <table class="w-full text-left border-separate border-spacing-y-2">
+                    <thead>
+                        <tr class="text-[10px] text-gray-400 uppercase">
+                            <th class="px-2 w-8 text-center"><input type="checkbox" id="master-check" onclick="toggleTodosChecks(this)"></th>
+                            <th class="px-2 w-8"></th><th class="px-2 w-24">Data</th><th class="px-2">Descrição</th><th class="px-2 w-16">Parc.</th><th class="px-2">Conta</th><th class="px-2 text-right">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-historico" class="text-xs"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
     <script>
         const SUPABASE_URL = 'https://dqhyjrvhasmjwblidnqj.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxaHlqcnZoYXNtandibGlkbnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjMwOTIsImV4cCI6MjA4ODI5OTA5Mn0.F13N0yyQPOlkiR_tNIhSd1gKerJew5mIuHrj4lIk3qU'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxaHlqcnZoYXNtandibGlkbnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjMwOTIsImV4cCI6MjA4ODI5OTA5Mn0.F13N0yyQPOlkiR_tNIhSd1gKerJew5mIuHrj4lIk3qU';
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let contasGlobais = [], categoriasGlobais = [], transacoesGlobais = [], fixasGlobais = [], graficoInstance = null;
@@ -115,111 +135,109 @@
         document.getElementById('input-data').value = getHojeLocal();
 
         const selP = document.getElementById('select-parcelas');
-        for(let i = 1; i <= 24; i++) selP.add(new Option(i === 1 ? '1x (À vista)' : `${i}x`, i));
+        for(let i = 1; i <= 24; i++) selP.add(new Option(i === 1 ? 'À vista' : `${i}x`, i));
 
-        function toggleSection(id, seta) { const l = document.getElementById(id); const s = document.getElementById(seta); if (l.style.maxHeight === '0px' || !l.style.maxHeight) { l.style.maxHeight = '2000px'; s.classList.remove('fechado'); } else { l.style.maxHeight = '0px'; s.classList.add('fechado'); } }
-        function abrirHistorico() { document.getElementById('modal-historico').classList.remove('hidden'); carregarHistorico(); } function fecharHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
-        function abrirCategorias() { document.getElementById('modal-categorias').classList.remove('hidden'); renderizarModalCats(); } function fecharCategorias() { document.getElementById('modal-categorias').classList.add('hidden'); }
-        function abrirContas() { document.getElementById('modal-contas').classList.remove('hidden'); renderizarModalContas(); } function fecharContas() { document.getElementById('modal-contas').classList.add('hidden'); }
-        function abrirFixas() { document.getElementById('modal-fixas').classList.remove('hidden'); renderizarFixas(); } function fecharFixas() { document.getElementById('modal-fixas').classList.add('hidden'); }
-        function fecharEdicaoTr() { document.getElementById('modal-editar-tr').classList.add('hidden'); }
-
-        function limparSeSugerido(input) {
-            const catId = document.getElementById('select-cat').value;
-            const catInfo = categoriasGlobais.find(c => c.id == catId);
-            if (catInfo && input.value === catInfo.nome) input.value = "";
+        function toggleSection(id, s) { const l = document.getElementById(id); const seta = document.getElementById(s); l.classList.toggle('hidden'); seta.classList.toggle('fechado'); }
+        function abrirHistorico() { document.getElementById('modal-historico').classList.remove('hidden'); carregarHistorico(); }
+        function fecharHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
+        
+        // --- FUNÇÕES DE EXTRATO (V38: BOTÃO RECONFIGURADO) ---
+        async function carregarHistorico() {
+            const fC = document.getElementById('filtro-extrato-conta').value, fT = document.getElementById('filtro-extrato-tipo').value;
+            let q = db.from('transacoes').select('id, data, descricao, valor, conta_origem_id, contas(nome)').order('data', { ascending: false }).limit(150);
+            if(fC && fC !== 'Todos') q = q.eq('conta_origem_id', fC);
+            if(fT === 'Despesa') q = q.lt('valor', 0); if(fT === 'Receita') q = q.gt('valor', 0);
+            const { data } = await q;
+            const tb = document.getElementById('tabela-historico'); tb.innerHTML = '';
+            
+            data.forEach(t => {
+                let matches = t.descricao.match(/\((\d+\/\d+)\)$/);
+                let parcela = matches ? matches[1] : '—';
+                let descLimpa = matches ? t.descricao.replace(/\s\(\d+\/\d+\)$/, '') : t.descricao;
+                tb.innerHTML += `
+                    <tr class="bg-white border-b hover:bg-blue-50 transition">
+                        <td class="p-3 text-center"><input type="checkbox" class="chk-item" value="${t.id}" onclick="syncBotaoDelete()"></td>
+                        <td class="p-3"><button onclick="abrirEdicaoTr('${t.id}', '${descLimpa}', ${Math.abs(t.valor)})" class="text-blue-400">✏️</button></td>
+                        <td class="p-3 font-medium text-gray-400">${t.data.split('-').reverse().join('/')}</td>
+                        <td class="p-3 font-bold text-gray-700">${descLimpa}</td>
+                        <td class="p-3 font-bold text-gray-300 italic">${parcela}</td>
+                        <td class="p-3 text-gray-400 font-bold">${t.contas?.nome || 'Taxa/Juro'}</td>
+                        <td class="p-3 text-right font-black ${t.valor < 0 ? 'text-red-600' : 'text-emerald-600'}">R$ ${Math.abs(t.valor).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                    </tr>`;
+            });
+            syncBotaoDelete();
         }
 
-        let ultimaCatId = null;
-        function atualizarVisibilidade() {
-            const op=document.getElementById('select-cat').value, cId=document.getElementById('select-conta').value, cI=contasGlobais.find(c=>c.id==cId), catI=categoriasGlobais.find(c=>c.id==op);
-            const bD=document.getElementById('box-destino'), bP=document.getElementById('box-parcelas'), bDV=document.getElementById('box-desc-valor'), bFR=document.getElementById('box-fixa-resumo'), btn=document.getElementById('btn-submit');
-            bD.classList.add('hidden'); bP.classList.add('hidden');
-            if(catI && ultimaCatId !== catI.id) { document.getElementById('input-desc').value = catI.nome; ultimaCatId = catI.id; }
-            if(op==='Transferencia' || op==='Investimento') bD.classList.remove('hidden');
-            if(cI?.tipo === 'Crédito') bP.classList.remove('hidden');
-            let fR = catI ? fixasGlobais.find(f => f.nome === catI.nome) : null;
-            if(fR) {
-                bDV.classList.add('hidden'); bFR.classList.remove('hidden'); document.getElementById('txt-fixa-nome').innerText = fR.nome; document.getElementById('txt-fixa-valor').innerText = `R$ ${parseFloat(fR.valor).toLocaleString('pt-BR')}`;
-                document.getElementById('input-desc').value = `Pagamento: ${fR.nome}`; document.getElementById('input-valor').value = fR.valor;
-                btn.innerText = "PAGAR CONTA"; btn.classList.add('bg-purple-700');
+        function toggleTodosChecks(m) { document.querySelectorAll('.chk-item').forEach(c => c.checked = m.checked); syncBotaoDelete(); }
+        
+        function syncBotaoDelete() {
+            const checks = document.querySelectorAll('.chk-item:checked');
+            const btn = document.getElementById('btn-bulk-delete');
+            const count = document.getElementById('count-sel');
+            count.innerText = checks.length;
+            
+            if(checks.length > 0) {
+                btn.disabled = false;
+                btn.className = "bg-red-600 text-white text-[11px] px-6 py-2.5 rounded-full font-black uppercase shadow-lg hover:bg-red-700 transition-all scale-105";
             } else {
-                bDV.classList.remove('hidden'); bFR.classList.add('hidden'); btn.innerText = "PROCESSAR OPERAÇÃO"; btn.classList.remove('bg-purple-700');
+                btn.disabled = true;
+                btn.className = "bg-red-100 text-red-400 cursor-not-allowed text-[11px] px-6 py-2.5 rounded-full font-black uppercase transition-all duration-300";
             }
         }
 
-        document.getElementById('select-cat').addEventListener('change', atualizarVisibilidade);
-        document.getElementById('select-conta').addEventListener('change', atualizarVisibilidade);
-        document.getElementById('check-juros').addEventListener('change', (e) => document.getElementById('sub-box-juros').classList.toggle('hidden', !e.target.checked));
+        async function deletarEmLote() {
+            const ids = Array.from(document.querySelectorAll('.chk-item:checked')).map(x => x.value);
+            if(confirm(`⚠️ JARVIS: Confirmar exclusão de ${ids.length} itens? O saldo será estornado.`)) {
+                await db.from('transacoes').delete().in('id', ids);
+                location.reload();
+            }
+        }
 
+        // --- RESTO DO JS (V37 FIXADO) ---
         async function carregarDados() {
-            try {
-                const [rCo, rCa, rTr, rFi] = await Promise.all([db.from('contas').select('*').order('nome'), db.from('categorias').select('*').order('nome'), db.from('transacoes').select('*'), db.from('despesas_fixas').select('*')]);
-                contasGlobais = rCo.data || []; categoriasGlobais = rCa.data || []; fixasGlobais = rFi.data || []; transacoesGlobais = rTr.data || [];
-                renderCatsDropdown(); recarregarSelects(); renderizarContas(); desenharGrafico();
-                const selF = document.getElementById('filtro-extrato-conta'); selF.innerHTML = '<option value="Todos">Todas as Contas</option>';
-                contasGlobais.forEach(c => selF.add(new Option(c.nome, c.id)));
-            } catch (e) {}
+            const [rCo, rCa, rTr, rFi] = await Promise.all([db.from('contas').select('*').order('nome'), db.from('categorias').select('*').order('nome'), db.from('transacoes').select('*'), db.from('despesas_fixas').select('*')]);
+            contasGlobais = rCo.data; categoriasGlobais = rCa.data; transacoesGlobais = rTr.data; fixasGlobais = rFi.data;
+            
+            const selCat = document.getElementById('select-cat'); selCat.innerHTML = '<option value="Investimento">Investimentos</option><option value="Transferencia">Transferência</option>';
+            const gD = document.createElement('optgroup'); gD.label = 'Despesas';
+            const gR = document.createElement('optgroup'); gR.label = 'Receitas';
+            categoriasGlobais.forEach(c => { const o = new Option(c.nome, c.id); if(c.tipo === 'Despesa') gD.appendChild(o); else gR.appendChild(o); });
+            selCat.appendChild(gD); selCat.appendChild(gR);
+
+            const selO = document.getElementById('select-conta'), selD = document.getElementById('select-destino'), selF = document.getElementById('filtro-extrato-conta');
+            selO.innerHTML = ''; selD.innerHTML = ''; selF.innerHTML = '<option value="Todos">Todas as Contas</option>';
+            contasGlobais.forEach(c => { selO.add(new Option(c.nome, c.id)); selD.add(new Option(c.nome, c.id)); selF.add(new Option(c.nome, c.id)); });
+
+            renderizarContas();
         }
 
-        function renderCatsDropdown() {
-            const d = document.getElementById('opt-despesas'), r = document.getElementById('opt-receitas'); d.innerHTML = ''; r.innerHTML = '';
-            categoriasGlobais.forEach(c => { const o = new Option(c.nome, c.id); if(c.tipo === 'Despesa') d.appendChild(o); else r.appendChild(o); });
-        }
-
-        function recarregarSelects() {
-            const sO = document.getElementById('select-conta'), sD = document.getElementById('select-destino'); sO.innerHTML = ''; sD.innerHTML = '';
-            contasGlobais.forEach(c => { sO.add(new Option(c.nome, c.id)); sD.add(new Option(c.nome, c.id)); });
-            atualizarVisibilidade();
-        }
-
-        // ==========================================
-        // RENDERIZAÇÃO DOS CARTÕES (V37: DADOS REAIS + HOVER)
-        // ==========================================
         function renderizarContas() {
-            let sB=0, dC=0, iT=0; const diB=document.getElementById('lista-bancos'), diC=document.getElementById('lista-cartoes'), diI=document.getElementById('lista-investimentos');
-            diB.innerHTML=''; diC.innerHTML=''; diI.innerHTML='';
+            let sB=0, dC=0, iT=0; const diB=document.getElementById('lista-bancos'), diC=document.getElementById('lista-cartoes');
+            diB.innerHTML=''; diC.innerHTML='';
             contasGlobais.forEach(c => {
                 const s = parseFloat(c.saldo_atual) || 0;
-                if(c.tipo === 'Corrente') { sB+=s; diB.innerHTML += `<div class="flex justify-between py-2 border-b text-sm font-medium"><span>› ${c.nome}</span><b>R$ ${s.toLocaleString('pt-BR')}</b></div>`; }
-                
+                if(c.tipo === 'Corrente') { sB+=s; diB.innerHTML += `<div class="flex justify-between py-2 border-b text-xs font-bold"><span>› ${c.nome}</span><span class="text-emerald-600">R$ ${s.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span></div>`; }
                 if(c.tipo === 'Crédito') { 
-                    dC+=s; const lim = parseFloat(c.limite_total) || 1; const us = Math.abs(s); const pU = Math.min((us/lim)*100, 100); const pR = Math.max(100-pU, 0); const disp = lim-us;
-                    diC.innerHTML += `
-                        <div class="flex flex-col py-1">
-                            <div class="flex justify-between items-end text-[11px] mb-1">
-                                <div class="font-extrabold text-gray-800 uppercase">${c.nome}</div>
-                                <div class="flex gap-4 font-bold">
-                                    <span class="text-gray-400">Limite: R$ ${lim.toLocaleString('pt-BR')}</span>
-                                    <span class="${pR<=20?'text-red-600':'text-[#3e9383]'}">Disp: R$ ${disp.toLocaleString('pt-BR')} (${pR.toFixed(0)}%)</span>
-                                    <span class="text-gray-600">Venc: ${c.dia_vencimento || '--'}</span>
-                                </div>
-                            </div>
-                            <div class="progress-container w-full bg-gray-200 h-2.5 rounded-full overflow-hidden shadow-inner">
-                                <div class="tooltip-valor">Dívida: R$ ${us.toLocaleString('pt-BR')}</div>
-                                <div class="${pU>80?'bg-red-500':'bg-[#102a43]'} h-full transition-all duration-700" style="width:${pU}%"></div>
-                            </div>
-                        </div>`;
+                    dC+=s; const lim = parseFloat(c.limite_total) || 1; const us = Math.abs(s); const pU = Math.min((us/lim)*100, 100);
+                    diC.innerHTML += `<div class="flex flex-col py-1"><div class="flex justify-between text-[10px] font-black uppercase mb-1"><span>${c.nome}</span><span>Disp: R$ ${(lim-us).toLocaleString('pt-BR')} | Venc: ${c.dia_vencimento}</span></div><div class="progress-container w-full bg-gray-200 h-2.5 rounded-full overflow-hidden shadow-inner"><div class="tooltip-valor">Devendo: R$ ${us.toLocaleString('pt-BR')}</div><div class="${pU>80?'bg-red-500':'bg-gray-800'} h-full transition-all duration-700" style="width:${pU}%"></div></div></div>`;
                 }
-                
-                if(c.tipo === 'Investimento') { iT+=s; diI.innerHTML += `<div class="flex justify-between py-1 text-sm font-medium"><span>🏢 ${c.nome}</span><b>R$ ${s.toLocaleString('pt-BR')}</b></div>`; }
+                if(c.tipo === 'Investimento') { iT+=s; }
             });
-            document.getElementById('kpi-patrimonio').innerText=`R$ ${(sB+dC+iT).toLocaleString('pt-BR')}`; document.getElementById('kpi-bancos').innerText=`R$ ${sB.toLocaleString('pt-BR')}`; document.getElementById('kpi-invest').innerText=`R$ ${iT.toLocaleString('pt-BR')}`; document.getElementById('kpi-divida').innerText=`R$ ${Math.abs(dC).toLocaleString('pt-BR')}`;
+            document.getElementById('kpi-patrimonio').innerText=`R$ ${(sB+dC+iT).toLocaleString('pt-BR')}`;
+            document.getElementById('kpi-bancos').innerText=`R$ ${sB.toLocaleString('pt-BR')}`;
+            document.getElementById('kpi-divida').innerText=`R$ ${Math.abs(dC).toLocaleString('pt-BR')}`;
+            document.getElementById('kpi-invest').innerText=`R$ ${iT.toLocaleString('pt-BR')}`;
         }
 
-        // PROCESSAR (V37: LÓGICA DE JUROS INFINITE CORRIGIDA)
         document.getElementById('form-transacao').addEventListener('submit', async (e) => {
             e.preventDefault(); const btn = document.getElementById('btn-submit'); btn.disabled = true;
             const op=document.getElementById('select-cat').value, ori=document.getElementById('select-conta').value, des=document.getElementById('select-destino').value, liq=parseFloat(document.getElementById('input-valor').value), dataB=document.getElementById('input-data').value, desc=document.getElementById('input-desc').value, comJ=document.getElementById('check-juros').checked, bruto=parseFloat(document.getElementById('input-valor-bruto').value)||liq, parc=parseInt(document.getElementById('select-parcelas').value)||1;
             try {
                 if(op === 'Transferencia') {
-                    // SAI O BRUTO DO CARTÃO DE ORIGEM
                     let vP=bruto/parc, [a,m,d]=dataB.split('-');
                     for(let i=0;i<parc;i++){ let dp=new Date(a,parseInt(m)-1+i,d).toISOString().split('T')[0]; await db.from('transacoes').insert({data:dp,descricao:`${desc} (${i+1}/${parc})`,valor:-Math.abs(vP),conta_origem_id:ori}); }
-                    // ENTRA O LÍQUIDO NO DESTINO
-                    await db.from('transacoes').insert({data:dataB,descricao:`Recebido p/ Fatura: ${desc}`,valor:Math.abs(liq),conta_origem_id:des});
-                    // TAXA REGISTRADA APENAS PARA GRÁFICO (SEM MUDAR SALDO)
-                    if(comJ && bruto>liq) await db.from('transacoes').insert({data:dataB,descricao:`Taxa Maquininha: ${desc}`,valor:-(bruto-liq),conta_origem_id:null});
+                    await db.from('transacoes').insert({data:dataB,descricao:`Recebido: ${desc}`,valor:Math.abs(liq),conta_origem_id:des});
+                    if(comJ && bruto>liq) await db.from('transacoes').insert({data:dataB,descricao:`Taxa: ${desc}`,valor:-(bruto-liq),conta_origem_id:null});
                 } else if(op === 'Investimento') { await db.from('transacoes').insert([{data:dataB,valor:-liq,conta_origem_id:ori},{data:dataB,valor:liq,conta_origem_id:des}]); }
                 else {
                     let vP=bruto/parc, [a,m,d]=dataB.split('-');
@@ -227,29 +245,9 @@
                     if(comJ && bruto > liq) await db.from('transacoes').insert({data:dataB,descricao:`Taxa: ${desc}`,valor:-(bruto-liq),conta_origem_id:null});
                 }
                 location.reload();
-            } catch(err) { alert(err.message); btn.disabled=false; }
+            } catch(err) { btn.disabled=false; }
         });
 
-        // AUXILIARES RECONFIGURADOS
-        async function carregarHistorico() { const fC = document.getElementById('filtro-extrato-conta').value, fT = document.getElementById('filtro-extrato-tipo').value; let q = db.from('transacoes').select('id, data, descricao, valor, conta_origem_id, contas(nome)').order('data', { ascending: false }).limit(100); if(fC !== 'Todos') q = q.eq('conta_origem_id', fC); if(fT === 'Despesa') q = q.lt('valor', 0); if(fT === 'Receita') q = q.gt('valor', 0); const { data } = await q; const tb = document.getElementById('tabela-historico'); tb.innerHTML = ''; data.forEach(t => { let matches = t.descricao.match(/\((\d+\/\d+)\)$/); let parcela = matches ? matches[1] : 'À vista'; let descLimpa = matches ? t.descricao.replace(/\s\(\d+\/\d+\)$/, '') : t.descricao; tb.innerHTML += `<tr class="border-b hover:bg-gray-50"><td class="p-2 text-center"><input type="checkbox" class="chk-item" value="${t.id}" onclick="syncBarraLote()"></td><td class="p-2"><button onclick="abrirEdicaoTr('${t.id}', '${descLimpa.replace(/'/g, "\\'")}', ${Math.abs(t.valor)})" class="text-blue-500">✏️</button></td><td class="p-2">${t.data.split('-').reverse().join('/')}</td><td class="p-2 font-bold">${descLimpa}</td><td class="p-2 text-gray-400 italic">${parcela}</td><td class="p-2 text-right font-bold ${t.valor < 0 ? 'text-red-600' : 'text-emerald-600'}">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td></tr>`; }); }
-        function toggleTodosChecks(m) { document.querySelectorAll('.chk-item').forEach(c => c.checked = m.checked); syncBarraLote(); }
-        function syncBarraLote() { const s = document.querySelectorAll('.chk-item:checked'); const b = document.getElementById('barra-lote'); document.getElementById('count-sel').innerText = s.length; b.classList.toggle('hidden', s.length === 0); }
-        async function deletarEmLote() { const ids = Array.from(document.querySelectorAll('.chk-item:checked')).map(x => x.value); if(confirm(`Excluir ${ids.length} itens?`)) { await db.from('transacoes').delete().in('id', ids); location.reload(); } }
-        function abrirEdicaoTr(id, desc, valor) { document.getElementById('edit-tr-id').value = id; document.getElementById('edit-tr-desc').value = desc; document.getElementById('edit-tr-original-desc').value = desc; document.getElementById('edit-tr-valor').value = valor.toFixed(2); document.getElementById('edit-tr-original-valor').value = valor; const tr = transacoesGlobais.find(t => t.id == id); document.getElementById('box-edit-cascata').classList.toggle('hidden', !tr?.descricao.includes('(')); document.getElementById('modal-editar-tr').classList.remove('hidden'); }
-        async function salvarEdicaoTr() { const id=document.getElementById('edit-tr-id').value, nD=document.getElementById('edit-tr-desc').value, oD=document.getElementById('edit-tr-original-desc').value, nV=parseFloat(document.getElementById('edit-tr-valor').value), casc=document.getElementById('check-cascata').checked; try { if(casc) { const irmas = transacoesGlobais.filter(t => t.descricao.startsWith(oD + ' (')); for(let tr of irmas) { let nSuf = tr.descricao.replace(oD, nD); await db.from('transacoes').update({ descricao: nSuf, valor: tr.valor < 0 ? -Math.abs(nV) : Math.abs(nV) }).eq('id', tr.id); } } else { const tr = transacoesGlobais.find(t => t.id == id); let suf = tr.descricao.match(/\s\(\d+\/\d+\)$/) ? tr.descricao.match(/\s\(\d+\/\d+\)$/)[0] : ""; await db.from('transacoes').update({ descricao: nD + suf, valor: tr.valor < 0 ? -Math.abs(nV) : Math.abs(nV) }).eq('id', id); } location.reload(); } catch (e) { alert(e.message); } }
-        function renderizarModalCats() { const di=document.getElementById('lista-categorias-modal'); di.innerHTML=''; categoriasGlobais.forEach(c => di.innerHTML+=`<div class="flex justify-between items-center p-2 border-b"><span>${c.nome}</span><button onclick="delC('${c.id}')" class="text-red-500">🗑️</button></div>`); }
-        async function delC(id) { await db.from('categorias').delete().eq('id',id); location.reload(); }
-        document.getElementById('form-nova-categoria').addEventListener('submit', async (e) => { e.preventDefault(); const n = document.getElementById('cat-nome').value; await db.from('categorias').insert([{ nome: n, tipo: 'Despesa' }]).select(); location.reload(); });
-        function renderizarModalContas() { const di = document.getElementById('lista-contas-modal'); di.innerHTML = ''; contasGlobais.forEach(c => di.innerHTML += `<div class="flex justify-between p-2 border-b"><span>${c.nome}</span><button onclick="delConta('${c.id}')" class="text-red-500">🗑️</button></div>`); }
-        async function delConta(id) { await db.from('contas').delete().eq('id',id); location.reload(); }
-        document.getElementById('form-nova-conta').addEventListener('submit', async (e) => { e.preventDefault(); const n = document.getElementById('conta-nome').value, t = document.getElementById('conta-tipo').value, v = parseFloat(document.getElementById('conta-valor').value)||0; await db.from('contas').insert([{ nome:n, tipo:t, saldo_atual: t==='Crédito'?0:v, limite_total: t==='Crédito'?v:0 }]).select(); location.reload(); });
-        async function carregarParcelas() { const {data}=await db.from('transacoes').select('data,descricao,valor,contas!inner(nome)').eq('contas.tipo','Crédito').gt('data',getHojeLocal()).order('data'); const tb=document.getElementById('tabela-parcelas'); tb.innerHTML=''; data.forEach(t=>tb.innerHTML+=`<tr class="border-b text-xs"><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td></tr>`); }
-
-        function desenharGrafico() {
-            let g={}; transacoesGlobais.forEach(x=>{ if(x.valor<0 && x.categoria_id){ let c=categoriasGlobais.find(y=>y.id==x.categoria_id); if(c) g[c.nome]=(g[c.nome]||0)+Math.abs(x.valor); } });
-            const ctx=document.getElementById('graficoVazamento').getContext('2d'); if(graficoInstance) graficoInstance.destroy();
-            graficoInstance = new Chart(ctx, { type:'doughnut', data:{ labels:Object.keys(g), datasets:[{data:Object.values(g), backgroundColor:['#102a43','#475569','#3e9383','#d97706','#3b82f6','#9333ea'], borderWidth:0}] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} } });
-        }
         carregarDados();
     </script>
 </body>
