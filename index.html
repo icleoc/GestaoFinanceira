@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA FINANCEIRO LÉO - V20</title>
+    <title>SISTEMA FINANCEIRO LÉO - V21</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -34,10 +34,10 @@
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h1 class="text-2xl font-extrabold text-gray-900 uppercase tracking-tight">SISTEMA FINANCEIRO LÉO</h1>
         <div class="flex gap-2 flex-wrap justify-center">
-            <button onclick="abrirParcelas()" class="bg-orange-100 text-orange-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-orange-200">💳 PARCELAS</button>
-            <button onclick="abrirFixas()" class="bg-purple-100 text-purple-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-purple-200">🗓️ FIXAS</button>
-            <button onclick="abrirHistorico()" class="bg-blue-100 text-blue-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-blue-200">📜 EXTRATO</button>
-            <button onclick="abrirCategorias()" class="bg-gray-800 text-white text-xs font-bold py-2 px-4 rounded shadow hover:bg-gray-700">⚙️ CATEGORIAS</button>
+            <button onclick="abrirParcelas()" class="bg-orange-100 text-orange-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-orange-200 transition">💳 PARCELAS</button>
+            <button onclick="abrirFixas()" class="bg-purple-100 text-purple-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-purple-200 transition">🗓️ FIXAS</button>
+            <button onclick="abrirHistorico()" class="bg-blue-100 text-blue-800 text-xs font-bold py-2 px-4 rounded shadow hover:bg-blue-200 transition">📜 EXTRATO</button>
+            <button onclick="abrirCategorias()" class="bg-gray-800 text-white text-xs font-bold py-2 px-4 rounded shadow hover:bg-gray-700 transition">⚙️ CATEGORIAS</button>
         </div>
     </div>
 
@@ -46,15 +46,15 @@
             <p class="text-[11px] font-semibold uppercase opacity-80 mb-1">Patrimônio Líquido</p>
             <h2 class="text-2xl font-bold" id="kpi-patrimonio">R$ 0,00</h2>
         </div>
-        <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow">
+        <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow text-center md:text-left">
             <p class="text-[11px] font-semibold uppercase text-gray-500 mb-1">Saldo Bancos</p>
             <h2 class="text-2xl font-bold text-[#3e9383]" id="kpi-bancos">R$ 0,00</h2>
         </div>
-        <div class="bg-[#ffedd5] text-[#9a3412] p-5 rounded-xl border border-[#fdba74]">
+        <div class="bg-[#ffedd5] text-[#9a3412] p-5 rounded-xl border border-[#fdba74] text-center md:text-left">
             <p class="text-[11px] font-semibold uppercase mb-1">Dívida Cartões</p>
             <h2 class="text-2xl font-bold text-red-600" id="kpi-divida">R$ 0,00</h2>
         </div>
-        <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow">
+        <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow text-center md:text-left">
             <p class="text-[11px] font-semibold uppercase text-gray-500 mb-1">Investimentos</p>
             <h2 class="text-2xl font-bold text-blue-700" id="kpi-invest">R$ 0,00</h2>
         </div>
@@ -67,7 +67,7 @@
                     <span class="text-[#3e9383]">🏦 BANCOS (Liquidez)</span>
                     <span id="seta-bancos" class="seta-rot text-gray-400">▼</span>
                 </div>
-                <div id="lista-bancos" class="space-y-1 mt-2"></div>
+                <div id="lista-bancos" class="space-y-1 mt-2 overflow-hidden transition-all duration-300"></div>
             </div>
             
             <div class="bg-white rounded-xl p-4 card-shadow">
@@ -75,7 +75,7 @@
                     <span class="text-[#d97706]">💳 CARTÕES DE CRÉDITO</span>
                     <span id="seta-cartoes" class="seta-rot text-gray-400">▼</span>
                 </div>
-                <div id="lista-cartoes-container" class="mt-2">
+                <div id="lista-cartoes-container" class="mt-2 overflow-hidden transition-all duration-300">
                     <div id="lista-cartoes" class="space-y-4"></div>
                 </div>
             </div>
@@ -85,7 +85,7 @@
                     <span class="text-blue-800 font-extrabold">📈 CARTEIRA DE INVESTIMENTOS</span>
                     <span id="seta-invest" class="seta-rot text-blue-400">▼</span>
                 </div>
-                <div id="lista-investimentos" class="space-y-2 mt-2"></div>
+                <div id="lista-investimentos" class="space-y-2 mt-2 overflow-hidden transition-all duration-300"></div>
             </div>
         </div>
 
@@ -95,11 +95,11 @@
                 <form id="form-transacao" class="space-y-4">
                     <div class="flex gap-4">
                         <div class="w-1/3">
-                            <label class="block text-[11px] font-bold text-blue-600 mb-1">🗓️ DATA</label>
+                            <label class="block text-[11px] font-bold text-blue-600 mb-1 uppercase">🗓️ DATA</label>
                             <input type="date" id="input-data" class="form-input border-blue-300 bg-blue-50 font-bold" required>
                         </div>
                         <div class="w-2/3">
-                            <label class="block text-[11px] font-bold text-gray-500 mb-1">CATEGORIA</label>
+                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">CATEGORIA</label>
                             <select id="select-cat" class="form-input font-bold text-white bg-[#102a43]">
                                 <option value="Investimento">📈 Aporte / Resgate</option>
                                 <option value="Transferencia">🔄 Transferência / Pagar Fatura</option>
@@ -110,23 +110,23 @@
                     </div>
 
                     <div id="box-fixa-resumo" class="hidden bg-purple-100 p-3 rounded-lg flex justify-between">
-                        <div><span class="block text-[10px] font-bold text-purple-600">BAIXA FIXA</span><span class="font-bold text-purple-900" id="txt-fixa-nome"></span></div>
-                        <div class="text-right"><span class="block text-[10px] font-bold text-purple-600">VALOR</span><span class="font-bold text-purple-900" id="txt-fixa-valor"></span></div>
+                        <div><span class="block text-[10px] font-bold text-purple-600 uppercase">BAIXA FIXA</span><span class="font-bold text-purple-900" id="txt-fixa-nome"></span></div>
+                        <div class="text-right"><span class="block text-[10px] font-bold text-purple-600 uppercase">VALOR</span><span class="font-bold text-purple-900" id="txt-fixa-valor"></span></div>
                     </div>
 
                     <div id="box-desc-valor" class="flex gap-4">
-                        <div class="w-2/3"><label class="block text-[11px] font-bold text-gray-500">DESCRIÇÃO</label><input type="text" id="input-desc" class="form-input" required></div>
-                        <div class="w-1/3"><label class="block text-[11px] font-bold text-gray-500">VALOR LÍQ.</label><input type="number" id="input-valor" step="0.01" class="form-input font-bold" required></div>
+                        <div class="w-2/3"><label class="block text-[11px] font-bold text-gray-500 uppercase">DESCRIÇÃO</label><input type="text" id="input-desc" class="form-input" required></div>
+                        <div class="w-1/3"><label class="block text-[11px] font-bold text-gray-500 uppercase">VALOR LÍQ.</label><input type="number" id="input-valor" step="0.01" class="form-input font-bold" required></div>
                     </div>
 
                     <div id="box-juros-cartao" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg space-y-2">
                         <div class="flex items-center gap-2">
-                            <input type="checkbox" id="check-juros" class="w-4 h-4">
-                            <label class="text-xs font-bold text-red-800">TAXAS/JUROS (INFINITEPAY)?</label>
+                            <input type="checkbox" id="check-juros" class="w-4 h-4 text-red-600">
+                            <label class="text-xs font-bold text-red-800 uppercase">USOU INFINITEPAY / TAXAS?</label>
                         </div>
                         <div id="sub-box-juros" class="hidden">
-                            <label class="block text-[10px] font-bold text-red-600">VALOR TOTAL NO BTG (COM JUROS)</label>
-                            <input type="number" id="input-valor-bruto" step="0.01" class="form-input border-red-300 font-bold">
+                            <label id="label-bruto-dinamico" class="block text-[10px] font-bold text-red-600 mb-1 uppercase">VALOR TOTAL NA ORIGEM (COM JUROS)</label>
+                            <input type="number" id="input-valor-bruto" step="0.01" class="form-input border-red-300 font-bold" placeholder="0.00">
                         </div>
                     </div>
 
@@ -137,31 +137,34 @@
 
                     <div class="flex gap-4">
                         <div class="w-1/2">
-                            <label class="block text-[11px] font-bold">ORIGEM (SAI)</label>
+                            <label class="block text-[11px] font-bold uppercase">ORIGEM (SAI)</label>
                             <select id="select-conta" class="form-input"></select>
                         </div>
                         <div class="w-1/2" id="box-destino">
-                            <label class="block text-[11px] font-bold text-emerald-600">DESTINO (ENTRA)</label>
+                            <label class="block text-[11px] font-bold text-emerald-600 uppercase">DESTINO (ENTRA)</label>
                             <select id="select-destino" class="form-input"></select>
                         </div>
                     </div>
 
                     <div class="hidden" id="box-parcelas">
-                        <label class="block text-[11px] font-bold text-orange-600">PARCELAMENTO</label>
+                        <label class="block text-[11px] font-bold text-orange-600 uppercase">PARCELAMENTO</label>
                         <select id="select-parcelas" class="form-input"></select>
                     </div>
 
-                    <button type="submit" id="btn-submit" class="w-full bg-[#102a43] text-white text-sm font-bold py-3 rounded-lg disabled:opacity-50">PROCESSAR OPERAÇÃO</button>
+                    <button type="submit" id="btn-submit" class="w-full bg-[#102a43] text-white text-sm font-bold py-3 rounded-lg shadow-lg disabled:opacity-50">PROCESSAR OPERAÇÃO</button>
                 </form>
             </div>
-            <div class="bg-white rounded-xl p-5 card-shadow h-64"><canvas id="graficoVazamento"></canvas></div>
+            <div class="bg-white rounded-xl p-5 card-shadow flex flex-col items-center">
+                <h3 class="text-xs font-bold text-gray-600 mb-4 uppercase">Gastos do Mês</h3>
+                <div class="w-full h-48 flex justify-center"><canvas id="graficoVazamento"></canvas></div>
+            </div>
         </div>
     </div>
 
-    <div id="modal-parcelas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[70] p-4"><div class="bg-white rounded-xl w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden"><div class="bg-orange-600 text-white p-4 flex justify-between"><b>Faturas e Parcelas</b><button onclick="fecharParcelas()">✖</button></div><div class="p-4 overflow-y-auto flex-1"><table class="w-full text-left"><tbody id="tabela-parcelas"></tbody></table></div></div></div>
-    <div id="modal-historico" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-5xl max-h-[80vh] flex flex-col overflow-hidden"><div class="bg-gray-800 text-white p-4 flex justify-between"><b>Extrato</b><button onclick="fecharHistorico()">✖</button></div><div class="p-4 overflow-y-auto flex-1"><table class="w-full text-left"><tbody id="tabela-historico"></tbody></table></div></div></div>
-    <div id="modal-fixas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-lg p-5"><div class="flex justify-between mb-4"><b>Contas Fixas</b><button onclick="fecharFixas()">✖</button></div><form id="form-nova-fixa" class="flex gap-2 mb-4"> <input type="text" id="fixa-nome" placeholder="Nome" class="form-input"> <input type="number" id="fixa-valor" placeholder="R$" class="form-input"> <input type="number" id="fixa-dia" placeholder="Dia" class="form-input"> <button type="submit" class="bg-purple-600 text-white px-3 rounded">ADD</button></form><div id="lista-fixas-modal"></div></div></div>
-    <div id="modal-categorias" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-lg p-5"><div class="flex justify-between mb-4"><b>Categorias</b><button onclick="fecharCategorias()">✖</button></div><form id="form-nova-categoria" class="flex gap-2 mb-4"><input type="text" id="cat-nome" class="form-input w-1/2"><select id="cat-tipo" class="form-input"><option value="Despesa">Despesa</option><option value="Receita">Receita</option></select><button type="submit" class="bg-emerald-600 text-white px-4 rounded">ADD</button></form><div id="lista-categorias-modal"></div></div></div>
+    <div id="modal-parcelas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[70] p-4"><div class="bg-white rounded-xl w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden"><div class="bg-orange-600 text-white p-4 flex justify-between"><b>Faturas e Parcelas</b><button onclick="fecharParcelas()">✖</button></div><div class="p-4 overflow-y-auto flex-1"><table class="w-full text-left border-collapse min-w-[500px]"><tbody id="tabela-parcelas" class="text-sm"></tbody></table></div></div></div>
+    <div id="modal-historico" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-5xl max-h-[80vh] flex flex-col overflow-hidden"><div class="bg-gray-800 text-white p-4 flex justify-between"><b>Extrato</b><button onclick="fecharHistorico()">✖</button></div><div class="p-4 overflow-y-auto flex-1"><table class="w-full text-left border-collapse min-w-[600px]"><tbody id="tabela-historico" class="text-sm"></tbody></table></div></div></div>
+    <div id="modal-fixas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-lg p-5"><div class="flex justify-between mb-4"><b>Contas Fixas</b><button onclick="fecharFixas()">✖</button></div><form id="form-nova-fixa" class="flex gap-2 mb-4"> <input type="text" id="fixa-nome" placeholder="Nome" class="form-input"> <input type="number" id="fixa-valor" placeholder="R$" class="form-input"> <input type="number" id="fixa-dia" placeholder="Dia" class="form-input"> <button type="submit" class="bg-purple-600 text-white px-3 rounded">ADD</button></form><div id="lista-fixas-modal" class="max-h-64 overflow-y-auto"></div></div></div>
+    <div id="modal-categorias" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-lg p-5"><div class="flex justify-between mb-4"><b>Categorias</b><button onclick="fecharCategorias()">✖</button></div><form id="form-nova-categoria" class="flex gap-2 mb-4"><input type="text" id="cat-nome" class="form-input w-1/2"><select id="cat-tipo" class="form-input"><option value="Despesa">Despesa</option><option value="Receita">Receita</option></select><button type="submit" class="bg-emerald-600 text-white px-4 rounded">ADD</button></form><div id="lista-categorias-modal" class="max-h-64 overflow-y-auto"></div></div></div>
 
     <script>
         const SUPABASE_URL = 'https://dqhyjrvhasmjwblidnqj.supabase.co';
@@ -187,17 +190,11 @@
         function abrirFixas() { document.getElementById('modal-fixas').classList.remove('hidden'); renderizarFixas(); } function fecharFixas() { document.getElementById('modal-fixas').classList.add('hidden'); }
         function abrirParcelas() { document.getElementById('modal-parcelas').classList.remove('hidden'); carregarParcelas(); } function fecharParcelas() { document.getElementById('modal-parcelas').classList.add('hidden'); }
 
-        function mostrarToast(msg, urg = 'aviso') {
-            const c = document.getElementById('toast-container'); const t = document.createElement('div');
-            t.className = `bg-orange-500 toast-animate text-white px-4 py-3 rounded-lg shadow-xl font-bold text-sm mb-2`;
-            t.innerHTML = msg; c.appendChild(t); setTimeout(() => t.remove(), 6000);
-        }
-
         function recarregarSelects() {
-            const op = document.getElementById('select-cat').value; const sO = document.getElementById('select-conta'); const sD = document.getElementById('select-destino');
-            const antO = sO.value; sO.innerHTML = ''; sD.innerHTML = '';
+            const sO = document.getElementById('select-conta'); const sD = document.getElementById('select-destino');
+            const antO = sO.value; const antD = sD.value; sO.innerHTML = ''; sD.innerHTML = '';
             contasGlobais.forEach(c => { sO.add(new Option(c.nome, c.id)); sD.add(new Option(c.nome, c.id)); });
-            if(antO) sO.value = antO;
+            if(antO) sO.value = antO; if(antD) sD.value = antD;
             atualizarVisibilidade();
         }
 
@@ -210,7 +207,12 @@
 
             bD.classList.add('hidden'); bP.classList.add('hidden'); bI.classList.add('hidden'); bJ.classList.add('hidden');
 
-            if(op === 'Transferencia') { bD.classList.remove('hidden'); bJ.classList.remove('hidden'); }
+            // ATUALIZAÇÃO V21: Rótulo Dinâmico do InfinitePay
+            if(op === 'Transferencia') { 
+                bD.classList.remove('hidden'); bJ.classList.remove('hidden'); 
+                const nomeOrigem = cInfo ? cInfo.nome : 'ORIGEM';
+                document.getElementById('label-bruto-dinamico').innerText = `VALOR TOTAL NO ${nomeOrigem.toUpperCase()} (COM JUROS)`;
+            }
             if(op === 'Investimento') { bI.classList.remove('hidden'); bD.classList.remove('hidden'); }
             if(cInfo?.tipo === 'Crédito') bP.classList.remove('hidden');
 
@@ -218,7 +220,7 @@
             if(fR) {
                 bDV.classList.add('hidden'); bFR.classList.remove('hidden');
                 document.getElementById('txt-fixa-nome').innerText = fR.nome; 
-                document.getElementById('txt-fixa-valor').innerText = `R$ ${parseFloat(fR.valor).toLocaleString('pt-BR')}`;
+                document.getElementById('txt-fixa-valor').innerText = `R$ ${parseFloat(fR.valor).toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
                 document.getElementById('input-desc').value = `Pago: ${fR.nome}`; document.getElementById('input-valor').value = fR.valor;
                 btn.innerText = "PAGAR CONTA"; btn.classList.add('bg-purple-700');
             } else {
@@ -251,17 +253,20 @@
             diB.innerHTML=''; diC.innerHTML=''; diI.innerHTML='';
             contasGlobais.forEach(c => {
                 const s = parseFloat(c.saldo_atual) || 0;
-                if(c.tipo === 'Corrente') { sB+=s; diB.innerHTML += `<div class="flex justify-between py-1 border-b"><span>› ${c.nome}</span><b>R$ ${s.toLocaleString('pt-BR')}</b></div>`; }
+                if(c.tipo === 'Corrente') { sB+=s; diB.innerHTML += `<div class="flex justify-between py-2 border-b border-gray-50 text-sm"><span>› ${c.nome}</span><b>R$ ${s.toLocaleString('pt-BR', {minimumFractionDigits:2})}</b></div>`; }
                 if(c.tipo === 'Crédito') { 
-                    dC+=s; const lim = parseFloat(c.limite_total) || 1; const us = Math.abs(s); const pU = Math.min((us/lim)*100, 100);
-                    diC.innerHTML += `<div class="py-1"><b>${c.nome}</b> (Disp: R$ ${(lim-us).toLocaleString('pt-BR')})<div class="w-full bg-gray-200 h-1.5 rounded-full mt-1 overflow-hidden"><div class="bg-[#102a43] h-full" style="width:${pU}%"></div></div></div>`;
+                    dC+=s; const lim = parseFloat(c.limite_total) || 1; const us = Math.abs(s); const pU = Math.min((us/lim)*100, 100); const disp = lim-us;
+                    diC.innerHTML += `<div class="py-2 border-b border-gray-100">
+                        <div class="flex justify-between text-xs font-bold mb-1"><span>${c.nome}</span><span class="${pU>80?'text-red-600':'text-emerald-600'}">Disp: R$ ${disp.toLocaleString('pt-BR')} (${(100-pU).toFixed(0)}%)</span></div>
+                        <div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden shadow-inner"><div class="${pU>80?'bg-red-500':'bg-[#102a43]'} h-full transition-all duration-500" style="width:${pU}%"></div></div>
+                    </div>`;
                 }
-                if(c.tipo === 'Investimento') { iT+=s; diI.innerHTML += `<div class="flex justify-between py-1"><span>🏢 ${c.nome}</span><b>R$ ${s.toLocaleString('pt-BR')}</b></div>`; }
+                if(c.tipo === 'Investimento') { iT+=s; diI.innerHTML += `<div class="flex justify-between py-1 text-sm"><span>🏢 ${c.nome}</span><b>R$ ${s.toLocaleString('pt-BR', {minimumFractionDigits:2})}</b></div>`; }
             });
-            document.getElementById('kpi-patrimonio').innerText = `R$ ${(sB+dC+iT).toLocaleString('pt-BR')}`;
-            document.getElementById('kpi-bancos').innerText = `R$ ${sB.toLocaleString('pt-BR')}`;
-            document.getElementById('kpi-invest').innerText = `R$ ${iT.toLocaleString('pt-BR')}`;
-            document.getElementById('kpi-divida').innerText = `R$ ${Math.abs(dC).toLocaleString('pt-BR')}`;
+            document.getElementById('kpi-patrimonio').innerText = `R$ ${(sB+dC+iT).toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+            document.getElementById('kpi-bancos').innerText = `R$ ${sB.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+            document.getElementById('kpi-invest').innerText = `R$ ${iT.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+            document.getElementById('kpi-divida').innerText = `R$ ${Math.abs(dC).toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
         }
 
         document.getElementById('form-transacao').addEventListener('submit', async (e) => {
@@ -278,7 +283,7 @@
                         let dp = new Date(a, parseInt(m)-1+i, d).toISOString().split('T')[0];
                         await db.from('transacoes').insert({ data: dp, descricao: `${desc} (${i+1}/${parc})`, valor: -Math.abs(vP), conta_origem_id: orig });
                     }
-                    await db.from('transacoes').insert({ data: dataB, descricao: `Rec: ${desc}`, valor: Math.abs(liq), conta_origem_id: dest });
+                    await db.from('transacoes').insert({ data: dataB, descricao: `Recebido: ${desc}`, valor: Math.abs(liq), conta_origem_id: dest });
                     if(comJ && bruto > liq) await db.from('transacoes').insert({ data: dataB, descricao: `Taxa: ${desc}`, valor: -(bruto-liq), conta_origem_id: orig });
                 } else if (op === 'Investimento') {
                     await db.from('transacoes').insert([{ data: dataB, valor: -liq, conta_origem_id: orig }, { data: dataB, valor: liq, conta_origem_id: dest }]);
@@ -289,17 +294,17 @@
                         await db.from('transacoes').insert({ data: dp, descricao: parc>1?`${desc} (${i+1}/${parc})`:desc, valor: -Math.abs(vP), conta_origem_id: orig, categoria_id: op });
                     }
                 }
-                mostrarToast("✅ Sucesso!"); setTimeout(() => location.reload(), 800);
+                setTimeout(() => location.reload(), 600);
             } catch (err) { alert(err.message); btn.disabled = false; }
         });
 
-        async function carregarHistorico() { const { data } = await db.from('transacoes').select('id, data, descricao, valor, contas(nome)').order('data', { ascending: false }).limit(30); const tb = document.getElementById('tabela-historico'); tb.innerHTML = ''; data.forEach(t => tb.innerHTML += `<tr class="border-b"><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td><td><button onclick="delTr('${t.id}')">🗑️</button></td></tr>`); }
-        async function delTr(id) { if(confirm("Del?")) { await db.from('transacoes').delete().eq('id', id); location.reload(); } }
-        function renderizarFixas() { const di = document.getElementById('lista-fixas-modal'); di.innerHTML = ''; fixasGlobais.forEach(f => di.innerHTML += `<div class="flex justify-between p-2 border-b"><span>${f.nome}</span><b>R$ ${f.valor}</b><button onclick="delFix('${f.id}')">🗑️</button></div>`); }
+        async function carregarHistorico() { const { data } = await db.from('transacoes').select('id, data, descricao, valor, contas(nome)').order('data', { ascending: false }).limit(30); const tb = document.getElementById('tabela-historico'); tb.innerHTML = ''; data.forEach(t => tb.innerHTML += `<tr class="border-b text-xs"><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td><td><button onclick="delTr('${t.id}')">🗑️</button></td></tr>`); }
+        async function delTr(id) { if(confirm("Apagar?")) { await db.from('transacoes').delete().eq('id', id); location.reload(); } }
+        function renderizarFixas() { const di = document.getElementById('lista-fixas-modal'); di.innerHTML = ''; fixasGlobais.forEach(f => di.innerHTML += `<div class="flex justify-between p-2 border-b text-sm"><span>${f.nome}</span><b>R$ ${f.valor}</b><button onclick="delFix('${f.id}')">🗑️</button></div>`); }
         async function delFix(id) { await db.from('despesas_fixas').delete().eq('id', id); location.reload(); }
-        function renderizarModalCats() { const di = document.getElementById('lista-categorias-modal'); di.innerHTML = ''; categoriasGlobais.forEach(c => di.innerHTML += `<div class="flex justify-between p-2 border-b"><span>${c.nome}</span><button onclick="delCat('${c.id}')">🗑️</button></div>`); }
+        function renderizarModalCats() { const di = document.getElementById('lista-categorias-modal'); di.innerHTML = ''; categoriasGlobais.forEach(c => di.innerHTML += `<div class="flex justify-between p-2 border-b text-sm"><span>${c.nome}</span><button onclick="delCat('${c.id}')">🗑️</button></div>`); }
         async function delCat(id) { await db.from('categorias').delete().eq('id', id); location.reload(); }
-        async function carregarParcelas() { const { data } = await db.from('transacoes').select('data, descricao, valor, contas!inner(nome, tipo)').eq('contas.tipo', 'Crédito').gt('data', getHojeLocal()).order('data'); const tb = document.getElementById('tabela-parcelas'); tb.innerHTML = ''; data.forEach(t => tb.innerHTML += `<tr class="border-b"><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td></tr>`); }
+        async function carregarParcelas() { const { data } = await db.from('transacoes').select('data, descricao, valor, contas!inner(nome, tipo)').eq('contas.tipo', 'Crédito').gt('data', getHojeLocal()).order('data'); const tb = document.getElementById('tabela-parcelas'); tb.innerHTML = ''; data.forEach(t => tb.innerHTML += `<tr class="border-b text-xs"><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor)}</td></tr>`); }
 
         function desenharGrafico() {
             let g = {}; transacoesGlobais.forEach(x => { if(x.valor < 0 && x.categoria_id) { let c = categoriasGlobais.find(y => y.id == x.categoria_id); if(c) g[c.nome] = (g[c.nome]||0) + Math.abs(x.valor); } });
