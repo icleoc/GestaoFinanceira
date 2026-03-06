@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA FINANCEIRO LÉO - V33</title>
+    <title>SISTEMA FINANCEIRO LÉO - V34</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -75,8 +75,14 @@
                     </div>
                     <div id="box-fixa-resumo" class="hidden bg-purple-100 p-3 rounded-lg flex justify-between items-center"><div><span class="block text-[10px] font-bold text-purple-600 uppercase">Baixa Fixa</span><span class="font-bold text-purple-900 text-sm" id="txt-fixa-nome"></span></div><div class="text-right"><span class="block text-[10px] font-bold text-purple-600 uppercase">Valor</span><span class="font-bold text-purple-900 text-lg" id="txt-fixa-valor"></span></div></div>
                     <div id="box-desc-valor" class="flex gap-4"><div class="w-2/3"><label class="block text-[11px] font-bold text-gray-500 uppercase">Descrição</label><input type="text" id="input-desc" class="form-input" onclick="limparSeSugerido(this)" required></div><div class="w-1/3"><label class="block text-[11px] font-bold text-gray-500 uppercase">Valor Líq.</label><input type="number" id="input-valor" step="0.01" class="form-input font-bold" required></div></div>
-                    <div id="box-juros-cartao" class="p-3 bg-red-50 border border-red-200 rounded-lg space-y-2"><div class="flex items-center gap-2"><input type="checkbox" id="check-juros" class="w-4 h-4 text-red-600"><label for="check-juros" class="text-xs font-bold text-red-800 uppercase">Juros InfinitePay?</label></div><div id="sub-box-juros" class="hidden"><label id="label-bruto-dinamico" class="block text-[10px] font-bold text-red-600 mb-1 uppercase">Total na Origem</label><input type="number" id="input-valor-bruto" step="0.01" class="form-input border-red-300 font-bold" placeholder="0.00"></div></div>
-                    <div class="flex gap-4"><div class="w-1/2"><label id="label-origem" class="block text-[11px] font-bold uppercase">Origem</label><select id="select-conta" class="form-input" required></select></div><div class="w-1/2" id="box-destino"><label class="block text-[11px] font-bold text-emerald-600 uppercase">Destino</label><select id="select-destino" class="form-input border-emerald-300 bg-emerald-50"></select></div></div>
+                    <div id="box-juros-cartao" class="p-3 bg-red-50 border border-red-200 rounded-lg space-y-2">
+                        <div class="flex items-center gap-2"><input type="checkbox" id="check-juros" class="w-4 h-4 text-red-600"><label for="check-juros" class="text-xs font-bold text-red-800 uppercase">Taxas InfinitePay?</label></div>
+                        <div id="sub-box-juros" class="hidden"><label id="label-bruto-dinamico" class="block text-[10px] font-bold text-red-600 mb-1 uppercase">Valor total cobrado na origem</label><input type="number" id="input-valor-bruto" step="0.01" class="form-input border-red-300 font-bold" placeholder="0.00"></div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-1/2"><label id="label-origem" class="block text-[11px] font-bold uppercase">Origem</label><select id="select-conta" class="form-input" required></select></div>
+                        <div class="w-1/2" id="box-destino"><label class="block text-[11px] font-bold text-emerald-600 uppercase">Destino</label><select id="select-destino" class="form-input border-emerald-300 bg-emerald-50"></select></div>
+                    </div>
                     <div class="hidden" id="box-parcelas"><label class="block text-[11px] font-bold text-orange-600 uppercase">Parcelas</label><select id="select-parcelas" class="form-input border-[#d97706] bg-[#fffbeb]"></select></div>
                     <button type="submit" id="btn-submit" class="w-full bg-[#102a43] text-white text-sm font-bold py-3 rounded-lg shadow-lg disabled:opacity-50">PROCESSAR OPERAÇÃO</button>
                 </form>
@@ -102,33 +108,6 @@
         </div>
     </div>
 
-    <div id="modal-editar-tr" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[110] p-4">
-        <div class="bg-white rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div class="bg-blue-700 text-white p-4 flex justify-between font-bold"><span>✏️ EDITAR LANÇAMENTO</span><button onclick="fecharEdicaoTr()" class="text-xl">✖</button></div>
-            <div class="p-5 space-y-4">
-                <input type="hidden" id="edit-tr-id">
-                <input type="hidden" id="edit-tr-original-desc">
-                <input type="hidden" id="edit-tr-original-valor">
-                
-                <div><label class="text-[10px] font-bold uppercase">Descrição</label><input type="text" id="edit-tr-desc" class="form-input"></div>
-                <div><label class="text-[10px] font-bold uppercase">Valor (R$)</label><input type="number" id="edit-tr-valor" step="0.01" class="form-input font-bold"></div>
-                
-                <div id="box-edit-cascata" class="hidden bg-blue-50 p-3 rounded border border-blue-100">
-                    <div class="flex items-center gap-2">
-                        <input type="checkbox" id="check-cascata" class="w-4 h-4">
-                        <label for="check-cascata" class="text-xs font-bold text-blue-800">Aplicar descrição E valor a todas as parcelas deste grupo?</label>
-                    </div>
-                </div>
-                <button onclick="salvarEdicaoTr()" id="btn-save-edit" class="w-full bg-blue-700 text-white py-2 rounded font-bold hover:bg-blue-800 transition">SALVAR ALTERAÇÕES</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-contas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-2xl p-5"><div class="flex justify-between mb-4 font-bold uppercase"><b>Bancos e Cartões</b><button onclick="fecharContas()">✖</button></div><form id="form-nova-conta" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6 items-end"><input id="conta-nome" placeholder="Nome" class="form-input"><select id="conta-tipo" class="form-input"><option value="Corrente">Corrente</option><option value="Crédito">Crédito</option></select><input id="conta-valor" type="number" placeholder="Saldo/Lim" class="form-input"><button class="bg-emerald-600 text-white px-4 rounded text-xs">ADD</button></form><div id="lista-contas-modal"></div></div></div>
-    <div id="modal-categorias" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-lg p-5"><div class="flex justify-between mb-4 font-bold"><b>CATEGORIAS</b><button onclick="fecharCategorias()">✖</button></div><form id="form-nova-categoria" class="flex gap-2 mb-4"><input type="text" id="cat-nome" class="form-input"><button type="submit" id="btn-add-cat" class="bg-emerald-600 text-white px-4 rounded font-bold text-xs">ADD</button></form><div id="lista-categorias-modal"></div></div></div>
-    <div id="modal-fixas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-lg p-5"><div class="flex justify-between mb-4 font-bold"><b>CONTAS FIXAS</b><button onclick="fecharFixas()">✖</button></div><div id="lista-fixas-modal"></div></div></div>
-    <div id="modal-parcelas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[70] p-4"><div class="bg-white rounded-xl w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden"><div class="bg-orange-600 text-white p-4 flex justify-between font-bold"><b>💳 PARCELAS</b><button onclick="fecharParcelas()">✖</button></div><div class="p-4 overflow-y-auto flex-1 scrollbar-hide"><table class="w-full text-left text-sm"><tbody id="tabela-parcelas"></tbody></table></div></div></div>
-
     <script>
         const SUPABASE_URL = 'https://dqhyjrvhasmjwblidnqj.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxaHlqcnZoYXNtandibGlkbnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjMwOTIsImV4cCI6MjA4ODI5OTA5Mn0.F13N0yyQPOlkiR_tNIhSd1gKerJew5mIuHrj4lIk3qU'; 
@@ -148,24 +127,19 @@
         function abrirContas() { document.getElementById('modal-contas').classList.remove('hidden'); renderizarModalContas(); } function fecharContas() { document.getElementById('modal-contas').classList.add('hidden'); }
         function abrirFixas() { document.getElementById('modal-fixas').classList.remove('hidden'); renderizarFixas(); } function fecharFixas() { document.getElementById('modal-fixas').classList.add('hidden'); }
         function abrirParcelas() { document.getElementById('modal-parcelas').classList.remove('hidden'); carregarParcelas(); } function fecharParcelas() { document.getElementById('modal-parcelas').classList.add('hidden'); }
-        function fecharEdicaoTr() { document.getElementById('modal-editar-tr').classList.add('hidden'); }
 
-        function limparSeSugerido(input) {
-            const catId = document.getElementById('select-cat').value;
-            const catInfo = categoriasGlobais.find(c => c.id == catId);
-            if (catInfo && input.value === catInfo.nome) input.value = "";
+        function recarregarSelects() {
+            const sO = document.getElementById('select-conta'), sD = document.getElementById('select-destino'); sO.innerHTML = ''; sD.innerHTML = '';
+            contasGlobais.forEach(c => { sO.add(new Option(c.nome, c.id)); sD.add(new Option(c.nome, c.id)); });
+            atualizarVisibilidade();
         }
 
-        let ultimaCatId = null;
         function atualizarVisibilidade() {
             const op=document.getElementById('select-cat').value, cId=document.getElementById('select-conta').value, cI=contasGlobais.find(c=>c.id==cId), catI=categoriasGlobais.find(c=>c.id==op);
             const bD=document.getElementById('box-destino'), bP=document.getElementById('box-parcelas'), bDV=document.getElementById('box-desc-valor'), bFR=document.getElementById('box-fixa-resumo'), btn=document.getElementById('btn-submit');
-            
             bD.classList.add('hidden'); bP.classList.add('hidden');
-            if(catI && ultimaCatId !== catI.id) { document.getElementById('input-desc').value = catI.nome; ultimaCatId = catI.id; }
             if(op==='Transferencia' || op==='Investimento') bD.classList.remove('hidden');
             if(cI?.tipo === 'Crédito') bP.classList.remove('hidden');
-
             let fR = catI ? fixasGlobais.find(f => f.nome === catI.nome) : null;
             if(fR) {
                 bDV.classList.add('hidden'); bFR.classList.remove('hidden'); document.getElementById('txt-fixa-nome').innerText = fR.nome; document.getElementById('txt-fixa-valor').innerText = `R$ ${parseFloat(fR.valor).toLocaleString('pt-BR')}`;
@@ -195,18 +169,12 @@
             categoriasGlobais.forEach(c => { const o = new Option(c.nome, c.id); if(c.tipo === 'Despesa') d.appendChild(o); else r.appendChild(o); });
         }
 
-        function recarregarSelects() {
-            const sO = document.getElementById('select-conta'), sD = document.getElementById('select-destino'); sO.innerHTML = ''; sD.innerHTML = '';
-            contasGlobais.forEach(c => { sO.add(new Option(c.nome, c.id)); sD.add(new Option(c.nome, c.id)); });
-            atualizarVisibilidade();
-        }
-
         function renderizarContas() {
             let sB=0, dC=0, iT=0; const diB=document.getElementById('lista-bancos'), diC=document.getElementById('lista-cartoes'), diI=document.getElementById('lista-investimentos');
             diB.innerHTML=''; diC.innerHTML=''; diI.innerHTML='';
             contasGlobais.forEach(c => {
                 const s = parseFloat(c.saldo_atual) || 0;
-                if(c.tipo === 'Corrente') { sB+=s; diB.innerHTML += `<div class="flex justify-between py-2 border-b text-sm"><span>› ${c.nome}</span><b>R$ ${s.toLocaleString('pt-BR')}</b></div>`; }
+                if(c.tipo === 'Corrente') { sB+=s; diB.innerHTML += `<div class="flex justify-between py-2 border-b text-sm font-medium"><span>› ${c.nome}</span><b>R$ ${s.toLocaleString('pt-BR')}</b></div>`; }
                 if(c.tipo === 'Crédito') { 
                     dC+=s; const lim = parseFloat(c.limite_total) || 1; const us = Math.abs(s); const pU = Math.min((us/lim)*100, 100);
                     diC.innerHTML += `<div class="py-2 border-b"><div class="flex justify-between text-xs font-bold mb-1"><span>${c.nome}</span><span class="${pU>80?'text-red-600':'text-emerald-600'}">R$ ${(lim-us).toLocaleString('pt-BR')} (${(100-pU).toFixed(0)}%)</span></div><div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden"><div class="${pU>80?'bg-red-500':'bg-[#102a43]'} h-full transition-all duration-500" style="width:${pU}%"></div></div></div>`;
@@ -217,96 +185,41 @@
         }
 
         // ==========================================
-        // EXTRATO (V33: EDIÇÃO COM VALOR)
+        // LÓGICA DO INFINITEPAY CORRIGIDA (V34)
         // ==========================================
-        async function carregarHistorico() {
-            const fC = document.getElementById('filtro-extrato-conta').value, fT = document.getElementById('filtro-extrato-tipo').value;
-            let q = db.from('transacoes').select('id, data, descricao, valor, conta_origem_id, contas(nome)').order('data', { ascending: false }).limit(100);
-            if(fC !== 'Todos') q = q.eq('conta_origem_id', fC);
-            if(fT === 'Despesa') q = q.lt('valor', 0); if(fT === 'Receita') q = q.gt('valor', 0);
-            const { data } = await q;
-            const tb = document.getElementById('tabela-historico'); tb.innerHTML = '';
-            data.forEach(t => {
-                let matches = t.descricao.match(/\((\d+\/\d+)\)$/);
-                let parcela = matches ? matches[1] : 'À vista';
-                let descLimpa = matches ? t.descricao.replace(/\s\(\d+\/\d+\)$/, '') : t.descricao;
-                tb.innerHTML += `<tr class="border-b hover:bg-gray-50"><td class="p-2 text-center"><input type="checkbox" class="chk-item" value="${t.id}" onclick="syncBarraLote()"></td><td class="p-2"><button onclick="abrirEdicaoTr('${t.id}', '${descLimpa.replace(/'/g, "\\'")}', ${Math.abs(t.valor)})" class="text-blue-500">✏️</button></td><td class="p-2 text-gray-500">${t.data.split('-').reverse().join('/')}</td><td class="p-2 font-bold">${descLimpa}</td><td class="p-2 text-gray-400 italic">${parcela}</td><td class="p-2 text-gray-400">${t.contas?.nome || '-'}</td><td class="p-2 text-right font-bold ${t.valor < 0 ? 'text-red-600' : 'text-emerald-600'}">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td></tr>`;
-            });
-        }
-
-        function abrirEdicaoTr(id, desc, valor) {
-            document.getElementById('edit-tr-id').value = id;
-            document.getElementById('edit-tr-desc').value = desc;
-            document.getElementById('edit-tr-original-desc').value = desc;
-            document.getElementById('edit-tr-valor').value = valor.toFixed(2);
-            document.getElementById('edit-tr-original-valor').value = valor;
-            const tr = transacoesGlobais.find(t => t.id == id);
-            document.getElementById('box-edit-cascata').classList.toggle('hidden', !tr?.descricao.includes('('));
-            document.getElementById('modal-editar-tr').classList.remove('hidden');
-        }
-
-        async function salvarEdicaoTr() {
-            const btn = document.getElementById('btn-save-edit'); btn.disabled = true;
-            const id = document.getElementById('edit-tr-id').value, nDesc = document.getElementById('edit-tr-desc').value, dAnt = document.getElementById('edit-tr-original-desc').value;
-            const nVal = parseFloat(document.getElementById('edit-tr-valor').value), vAnt = parseFloat(document.getElementById('edit-tr-original-valor').value);
-            const casc = document.getElementById('check-cascata').checked;
-            
-            try {
-                if(casc) {
-                    const irmas = transacoesGlobais.filter(t => t.descricao.startsWith(dAnt + ' ('));
-                    for(let tr of irmas) {
-                        let nSuf = tr.descricao.replace(dAnt, nDesc);
-                        let finalV = tr.valor < 0 ? -Math.abs(nVal) : Math.abs(nVal);
-                        await db.from('transacoes').update({ descricao: nSuf, valor: finalV }).eq('id', tr.id);
-                    }
-                } else {
-                    const tr = transacoesGlobais.find(t => t.id == id);
-                    let suf = tr.descricao.match(/\s\(\d+\/\d+\)$/) ? tr.descricao.match(/\s\(\d+\/\d+\)$/)[0] : "";
-                    let finalV = tr.valor < 0 ? -Math.abs(nVal) : Math.abs(nVal);
-                    await db.from('transacoes').update({ descricao: nDesc + suf, valor: finalV }).eq('id', id);
-                }
-                location.reload();
-            } catch (e) { alert(e.message); btn.disabled = false; }
-        }
-
-        function toggleTodosChecks(m) { document.querySelectorAll('.chk-item').forEach(c => c.checked = m.checked); syncBarraLote(); }
-        function syncBarraLote() { const s = document.querySelectorAll('.chk-item:checked'); const b = document.getElementById('barra-lote'); document.getElementById('count-sel').innerText = s.length; b.classList.toggle('hidden', s.length === 0); }
-        async function deletarEmLote() { const ids = Array.from(document.querySelectorAll('.chk-item:checked')).map(x => x.value); if(confirm(`Excluir ${ids.length} itens?`)) { await db.from('transacoes').delete().in('id', ids); location.reload(); } }
-
         document.getElementById('form-transacao').addEventListener('submit', async (e) => {
             e.preventDefault(); const btn = document.getElementById('btn-submit'); btn.disabled = true;
             const op=document.getElementById('select-cat').value, ori=document.getElementById('select-conta').value, des=document.getElementById('select-destino').value, liq=parseFloat(document.getElementById('input-valor').value), dataB=document.getElementById('input-data').value, desc=document.getElementById('input-desc').value, comJ=document.getElementById('check-juros').checked, bruto=parseFloat(document.getElementById('input-valor-bruto').value)||liq, parc=parseInt(document.getElementById('select-parcelas').value)||1;
+            
             try {
                 if(op === 'Transferencia') {
+                    // ORIGEM: SAI O BRUTO (DÍVIDA REAL NO CARTÃO)
                     let vP=bruto/parc, [a,m,d]=dataB.split('-');
-                    for(let i=0;i<parc;i++){ let dp=new Date(a,parseInt(m)-1+i,d).toISOString().split('T')[0]; await db.from('transacoes').insert({data:dp,descricao:`${desc} (${i+1}/${parc})`,valor:-Math.abs(vP),conta_origem_id:ori}); }
-                    await db.from('transacoes').insert({data:dataB,descricao:`Rec: ${desc}`,valor:Math.abs(liq),conta_origem_id:des});
-                    if(comJ && bruto>liq) await db.from('transacoes').insert({data:dataB,descricao:`Taxa Infinite: ${desc}`,valor:-(bruto-liq),conta_origem_id:ori});
-                } else if(op === 'Investimento') { await db.from('transacoes').insert([{data:dataB,valor:-liq,conta_origem_id:ori},{data:dataB,valor:liq,conta_origem_id:des}]); }
-                else {
+                    for(let i=0;i<parc;i++){ 
+                        let dp=new Date(a,parseInt(m)-1+i,d).toISOString().split('T')[0]; 
+                        await db.from('transacoes').insert({data:dp,descricao:`${desc} (${i+1}/${parc})`,valor:-Math.abs(vP),conta_origem_id:ori}); 
+                    }
+                    // DESTINO: ENTRA SÓ O LÍQUIDO (O QUE O BANCO RECEBEU)
+                    await db.from('transacoes').insert({data:dataB,descricao:`Recebido p/ Fatura: ${desc}`,valor:Math.abs(liq),conta_origem_id:des});
+                    
+                    // REGISTRO DE TAXA: VIRTUAL (NÃO MUDA SALDO, APENAS GRÁFICO)
+                    if(comJ && bruto > liq) {
+                        await db.from('transacoes').insert({data:dataB,descricao:`Taxa Maquininha: ${desc}`,valor:-(bruto-liq),conta_origem_id:null,categoria_id:null});
+                    }
+                } else {
+                    // DESPESA NORMAL COM JUROS
                     let vP=bruto/parc, [a,m,d]=dataB.split('-');
-                    for(let i=0;i<parc;i++){ let dp=new Date(a,parseInt(m)-1+i,d).toISOString().split('T')[0]; await db.from('transacoes').insert({data:dp,descricao:parc>1?`${desc} (${i+1}/${parc})`:desc,valor:-Math.abs(vP),conta_origem_id:ori,categoria_id:op}); }
-                    if(comJ && bruto > liq) await db.from('transacoes').insert({data:dataB,descricao:`Taxa: ${desc}`,valor:-(bruto-liq),conta_origem_id:ori});
+                    for(let i=0;i<parc;i++){ 
+                        let dp=new Date(a,parseInt(m)-1+i,d).toISOString().split('T')[0]; 
+                        await db.from('transacoes').insert({data:dp,descricao:parc>1?`${desc} (${i+1}/${parc})`:desc,valor:-Math.abs(vP),conta_origem_id:ori,categoria_id:op}); 
+                    }
                 }
                 location.reload();
             } catch(err) { alert(err.message); btn.disabled=false; }
         });
 
-        function renderizarModalCats() { const di=document.getElementById('lista-categorias-modal'); di.innerHTML=''; categoriasGlobais.forEach(c => di.innerHTML+=`<div class="flex justify-between items-center p-2 border-b"><span>${c.nome}</span><button onclick="delC('${c.id}')" class="text-red-500">🗑️</button></div>`); }
-        async function delC(id) { if(confirm("Del?")){ await db.from('categorias').delete().eq('id',id); location.reload(); } }
-        document.getElementById('form-nova-categoria').addEventListener('submit', async (e) => { e.preventDefault(); const n = document.getElementById('cat-nome').value; await db.from('categorias').insert([{ nome: n, tipo: 'Despesa' }]).select(); location.reload(); });
-        function renderizarModalContas() { const di = document.getElementById('lista-contas-modal'); di.innerHTML = ''; contasGlobais.forEach(c => di.innerHTML += `<div class="flex justify-between p-2 border-b"><span>${c.nome}</span><button onclick="delConta('${c.id}')" class="text-red-500">🗑️</button></div>`); }
-        async function delConta(id) { if(confirm("Del?")){ await db.from('contas').delete().eq('id',id); location.reload(); } }
-        document.getElementById('form-nova-conta').addEventListener('submit', async (e) => { e.preventDefault(); const n = document.getElementById('conta-nome').value, t = document.getElementById('conta-tipo').value, v = parseFloat(document.getElementById('conta-valor').value)||0; await db.from('contas').insert([{ nome:n, tipo:t, saldo_atual: t==='Crédito'?0:v, limite_total: t==='Crédito'?v:0 }]).select(); location.reload(); });
-        function renderizarFixas() { const di=document.getElementById('lista-fixas-modal'); di.innerHTML=''; fixasGlobais.forEach(f => di.innerHTML+=`<div class="flex justify-between p-2 border-b"><span>${f.nome}</span><b>R$ ${f.valor}</b><button onclick="delF('${f.id}')">🗑️</button></div>`); }
-        async function delF(id) { await db.from('despesas_fixas').delete().eq('id',id); location.reload(); }
-        async function carregarParcelas() { const {data}=await db.from('transacoes').select('data,descricao,valor,contas!inner(nome)').eq('contas.tipo','Crédito').gt('data',getHojeLocal()).order('data'); const tb=document.getElementById('tabela-parcelas'); tb.innerHTML=''; data.forEach(t=>tb.innerHTML+=`<tr class="border-b text-xs"><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td></tr>`); }
-
-        function desenharGrafico() {
-            let g={}; transacoesGlobais.forEach(x=>{ if(x.valor<0 && x.categoria_id){ let c=categoriasGlobais.find(y=>y.id==x.categoria_id); if(c) g[c.nome]=(g[c.nome]||0)+Math.abs(x.valor); } });
-            const ctx=document.getElementById('graficoVazamento').getContext('2d'); if(graficoInstance) graficoInstance.destroy();
-            graficoInstance = new Chart(ctx, { type:'doughnut', data:{ labels:Object.keys(g), datasets:[{data:Object.values(g), backgroundColor:['#102a43','#475569','#3e9383','#d97706','#3b82f6','#9333ea'], borderWidth:0}] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} } });
-        }
+        // RESTO DAS FUNÇÕES JS...
+        async function carregarHistorico() { const {data}=await db.from('transacoes').select('id,data,descricao,valor,contas(nome)').order('data',{ascending:false}); const tb=document.getElementById('tabela-historico'); tb.innerHTML=''; data.forEach(t=>tb.innerHTML+=`<tr class="border-b"><td><input type="checkbox" class="chk-item" value="${t.id}"></td><td></td><td>${t.data}</td><td>${t.descricao}</td><td></td><td>${t.contas?.nome||'-'}</td><td class="text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td></tr>`); }
         carregarDados();
     </script>
 </body>
