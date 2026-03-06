@@ -25,8 +25,6 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .seta-rot { transition: transform 0.3s ease; }
         .seta-rot.fechado { transform: rotate(-90deg); }
-        
-        /* Animação do Pop-up (Toast) */
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .toast-animate { animation: slideIn 0.4s ease-out forwards; }
     </style>
@@ -109,7 +107,7 @@
                 <form id="form-transacao" class="space-y-4">
                     <div class="flex gap-4">
                         <div class="w-1/3">
-                            <label class="block text-[11px] font-bold text-blue-600 mb-1 uppercase">🗓️ Data da Operação</label>
+                            <label class="block text-[11px] font-bold text-blue-600 mb-1 uppercase">🗓️ Data</label>
                             <input type="date" id="input-data" class="form-input border-blue-300 bg-blue-50 text-blue-900 font-bold" required>
                         </div>
                         <div class="w-2/3">
@@ -254,24 +252,16 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxaHlqcnZoYXNtandibGlkbnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjMwOTIsImV4cCI6MjA4ODI5OTA5Mn0.F13N0yyQPOlkiR_tNIhSd1gKerJew5mIuHrj4lIk3qU'; 
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let contasGlobais = []; 
-        let categoriasGlobais = [];
-        let transacoesPendentes = [];
-        let fixasGlobais = [];
-        let graficoInstance = null;
+        let contasGlobais = []; let categoriasGlobais = []; let transacoesPendentes = []; let fixasGlobais = []; let graficoInstance = null;
 
         document.getElementById('input-data').valueAsDate = new Date();
         const selectParcelas = document.getElementById('select-parcelas');
         for(let i = 1; i <= 24; i++) selectParcelas.add(new Option(i === 1 ? '1x (À vista)' : `${i}x`, i));
 
         function toggleSection(idLista, idSeta) {
-            const lista = document.getElementById(idLista);
-            const seta = document.getElementById(idSeta);
-            if (lista.style.maxHeight === '0px' || lista.classList.contains('hidden')) {
-                lista.classList.remove('hidden'); lista.style.maxHeight = '2000px'; seta.classList.remove('fechado');
-            } else {
-                lista.style.maxHeight = '0px'; setTimeout(() => lista.classList.add('hidden'), 300); seta.classList.add('fechado');
-            }
+            const lista = document.getElementById(idLista); const seta = document.getElementById(idSeta);
+            if (lista.style.maxHeight === '0px' || lista.classList.contains('hidden')) { lista.classList.remove('hidden'); lista.style.maxHeight = '2000px'; seta.classList.remove('fechado'); } 
+            else { lista.style.maxHeight = '0px'; setTimeout(() => lista.classList.add('hidden'), 300); seta.classList.add('fechado'); }
         }
 
         function abrirHistorico() { document.getElementById('modal-historico').classList.remove('hidden'); carregarHistorico(); }
@@ -284,66 +274,35 @@
 
         function calcularDataDmais(dataBaseIso, diasUteis) {
             if(!dataBaseIso) return new Date().toISOString().split('T')[0];
-            let d = new Date(dataBaseIso + 'T12:00:00'); 
-            let adicionados = 0;
-            while (adicionados < diasUteis) {
-                d.setDate(d.getDate() + 1);
-                if (d.getDay() !== 0 && d.getDay() !== 6) adicionados++; 
-            }
+            let d = new Date(dataBaseIso + 'T12:00:00'); let adicionados = 0;
+            while (adicionados < diasUteis) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0 && d.getDay() !== 6) adicionados++; }
             return d.toISOString().split('T')[0];
         }
         function diferencaEmDias(dataIso) {
-            const hoje = new Date(); hoje.setHours(0,0,0,0);
-            const alvo = new Date(dataIso + 'T12:00:00'); alvo.setHours(0,0,0,0);
+            const hoje = new Date(); hoje.setHours(0,0,0,0); const alvo = new Date(dataIso + 'T12:00:00'); alvo.setHours(0,0,0,0);
             return Math.ceil((alvo - hoje) / (1000 * 60 * 60 * 24));
         }
 
         // ==========================================
-        // RADARES E NOTIFICAÇÕES (TOASTS)
+        // RADARES E NOTIFICAÇÕES
         // ==========================================
         function mostrarToast(msg, urgencia = 'aviso') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            
-            let corBg = 'bg-orange-500';
-            if(urgencia === 'critico') corBg = 'bg-red-600 animate-pulse';
-            if(urgencia === 'sucesso') corBg = 'bg-emerald-600';
-
+            const container = document.getElementById('toast-container'); const toast = document.createElement('div');
+            let corBg = 'bg-orange-500'; if(urgencia === 'critico') corBg = 'bg-red-600 animate-pulse'; if(urgencia === 'sucesso') corBg = 'bg-emerald-600';
             toast.className = `${corBg} toast-animate text-white px-4 py-3 rounded-lg shadow-xl font-bold text-sm flex justify-between items-start border border-white/20`;
             toast.innerHTML = `<span class="flex-1">${msg}</span><button onclick="this.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">✖</button>`;
-            
             container.appendChild(toast);
-            // Some sozinho depois de 8 segundos
-            setTimeout(() => { 
-                toast.style.opacity = '0'; 
-                toast.style.transform = 'translateX(100%)'; 
-                setTimeout(()=>toast.remove(), 400); 
-            }, 8000);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(()=>toast.remove(), 400); }, 8000);
         }
 
         function verificarRadaresVencimento() {
             if(!fixasGlobais || fixasGlobais.length === 0) return;
-            
-            const hoje = new Date();
-            const diaAtual = hoje.getDate();
-            const mesAtual = hoje.getMonth();
-            const anoAtual = hoje.getFullYear();
-            const diasNoMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
-
+            const hoje = new Date(); const diaAtual = hoje.getDate(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear(); const diasNoMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
             fixasGlobais.forEach(f => {
-                let diaVenc = f.dia_vencimento;
-                let diff = diaVenc - diaAtual;
-
-                // Se o vencimento for no começo do mês que vem e estivermos no final deste mês
-                if (diaVenc < diaAtual) {
-                    diff = (diasNoMes - diaAtual) + diaVenc;
-                }
-
-                if (diff === 0) {
-                    mostrarToast(`⚠️ VENCE HOJE: ${f.nome} (R$ ${f.valor.toFixed(2)})`, 'critico');
-                } else if (diff > 0 && diff <= 5) {
-                    mostrarToast(`⏳ Faltam ${diff} dias: Vencimento de ${f.nome} (R$ ${f.valor.toFixed(2)})`, 'aviso');
-                }
+                let diaVenc = f.dia_vencimento; let diff = diaVenc - diaAtual;
+                if (diaVenc < diaAtual) diff = (diasNoMes - diaAtual) + diaVenc;
+                if (diff === 0) mostrarToast(`⚠️ VENCE HOJE: ${f.nome} (R$ ${f.valor.toFixed(2)})`, 'critico');
+                else if (diff > 0 && diff <= 5) mostrarToast(`⏳ Faltam ${diff} dias: ${f.nome} (R$ ${f.valor.toFixed(2)})`, 'aviso');
             });
         }
 
@@ -351,62 +310,33 @@
         // RECONSTRUÇÃO DAS OPÇÕES DE CONTA
         // ==========================================
         function recarregarListaContas() {
-            const op = document.getElementById('select-cat').value;
-            const tipoInvest = document.getElementById('select-tipo-invest').value;
-            const filtro = document.getElementById('select-filtro-origem').value;
-            const selOrigem = document.getElementById('select-conta');
-            const selDestino = document.getElementById('select-destino');
-
-            const contaAntiga = selOrigem.value; const destinoAntigo = selDestino.value;
-            selOrigem.innerHTML = ''; selDestino.innerHTML = '';
+            const op = document.getElementById('select-cat').value; const tipoInvest = document.getElementById('select-tipo-invest').value; const filtro = document.getElementById('select-filtro-origem').value; const selOrigem = document.getElementById('select-conta'); const selDestino = document.getElementById('select-destino');
+            const contaAntiga = selOrigem.value; const destinoAntigo = selDestino.value; selOrigem.innerHTML = ''; selDestino.innerHTML = '';
 
             if (op === 'Investimento') {
-                if(tipoInvest === 'Aporte') {
-                    contasGlobais.forEach(c => {
-                        if(c.tipo === 'Corrente') selOrigem.add(new Option(c.nome, c.id));
-                        if(c.tipo === 'Investimento') selDestino.add(new Option(c.nome, c.id));
-                    });
-                } else {
-                    contasGlobais.forEach(c => {
-                        if(c.tipo === 'Investimento') selOrigem.add(new Option(c.nome, c.id));
-                        if(c.tipo === 'Corrente') selDestino.add(new Option(c.nome, c.id));
-                    });
-                }
+                if(tipoInvest === 'Aporte') { contasGlobais.forEach(c => { if(c.tipo === 'Corrente') selOrigem.add(new Option(c.nome, c.id)); if(c.tipo === 'Investimento') selDestino.add(new Option(c.nome, c.id)); }); } 
+                else { contasGlobais.forEach(c => { if(c.tipo === 'Investimento') selOrigem.add(new Option(c.nome, c.id)); if(c.tipo === 'Corrente') selDestino.add(new Option(c.nome, c.id)); }); }
             } else if (op === 'Transferencia') {
                 contasGlobais.forEach(c => { selOrigem.add(new Option(c.nome, c.id)); selDestino.add(new Option(c.nome, c.id)); });
-            } else {
-                contasGlobais.forEach(c => { if(filtro === 'Todos' || c.tipo === filtro) selOrigem.add(new Option(c.nome, c.id)); });
-            }
+            } else { contasGlobais.forEach(c => { if(filtro === 'Todos' || c.tipo === filtro) selOrigem.add(new Option(c.nome, c.id)); }); }
 
             if([...selOrigem.options].some(opt => opt.value === contaAntiga)) selOrigem.value = contaAntiga;
             if([...selDestino.options].some(opt => opt.value === destinoAntigo)) selDestino.value = destinoAntigo;
         }
 
         function atualizarVisibilidade() {
-            const op = document.getElementById('select-cat').value;
-            const contaId = document.getElementById('select-conta').value;
-            const contaInfo = contasGlobais.find(c => c.id == contaId);
-            const catInfo = categoriasGlobais.find(c => c.id == op);
+            const op = document.getElementById('select-cat').value; const contaId = document.getElementById('select-conta').value; const contaInfo = contasGlobais.find(c => c.id == contaId); const catInfo = categoriasGlobais.find(c => c.id == op);
+            const boxDestino = document.getElementById('box-destino'); const boxParcelas = document.getElementById('box-parcelas'); const boxOperacaoInvest = document.getElementById('box-operacao-invest'); const boxPrazo = document.getElementById('box-prazo'); const lblOrigem = document.getElementById('label-origem');
 
-            const boxDestino = document.getElementById('box-destino');
-            const boxParcelas = document.getElementById('box-parcelas');
-            const boxOperacaoInvest = document.getElementById('box-operacao-invest');
-            const boxPrazo = document.getElementById('box-prazo');
-            const lblOrigem = document.getElementById('label-origem');
-
-            boxDestino.classList.add('hidden'); boxParcelas.classList.add('hidden'); boxOperacaoInvest.classList.add('hidden');
-            lblOrigem.innerText = 'CONTA / CARTÃO'; lblOrigem.classList.remove('text-red-600');
+            boxDestino.classList.add('hidden'); boxParcelas.classList.add('hidden'); boxOperacaoInvest.classList.add('hidden'); lblOrigem.innerText = 'CONTA / CARTÃO'; lblOrigem.classList.remove('text-red-600');
 
             if (op === 'Investimento') {
-                boxOperacaoInvest.classList.remove('hidden'); boxDestino.classList.remove('hidden');
-                lblOrigem.innerText = 'SAIR DE (ORIGEM)'; lblOrigem.classList.add('text-red-600');
+                boxOperacaoInvest.classList.remove('hidden'); boxDestino.classList.remove('hidden'); lblOrigem.innerText = 'SAIR DE (ORIGEM)'; lblOrigem.classList.add('text-red-600');
                 if(document.getElementById('select-tipo-invest').value === 'Aporte') { boxPrazo.classList.add('opacity-50', 'pointer-events-none'); document.getElementById('select-prazo').value = "0"; } 
                 else { boxPrazo.classList.remove('opacity-50', 'pointer-events-none'); }
-            } else if (op === 'Transferencia') {
-                boxDestino.classList.remove('hidden'); lblOrigem.innerText = 'SAIR DE (ORIGEM)'; lblOrigem.classList.add('text-red-600');
+            } else if (op === 'Transferencia') { boxDestino.classList.remove('hidden'); lblOrigem.innerText = 'SAIR DE (ORIGEM)'; lblOrigem.classList.add('text-red-600');
             } else {
-                if(contaInfo && contaInfo.tipo === 'Crédito' && catInfo && catInfo.tipo === 'Despesa') boxParcelas.classList.remove('hidden');
-                else document.getElementById('select-parcelas').value = "1";
+                if(contaInfo && contaInfo.tipo === 'Crédito' && catInfo && catInfo.tipo === 'Despesa') boxParcelas.classList.remove('hidden'); else document.getElementById('select-parcelas').value = "1";
             }
         }
 
@@ -415,309 +345,159 @@
         document.getElementById('select-tipo-invest').addEventListener('change', () => { recarregarListaContas(); atualizarVisibilidade(); });
         document.getElementById('select-conta').addEventListener('change', atualizarVisibilidade);
 
-
         // ==========================================
-        // CARGA DE DADOS PRINCIPAIS
+        // CARGA DE DADOS
         // ==========================================
         async function carregarDados() {
             try {
                 document.getElementById('aviso-erro').classList.add('hidden');
-
                 const [resContas, resCategorias, resTransacoes, resFixas] = await Promise.all([
-                    db.from('contas').select('*').order('nome'),
-                    db.from('categorias').select('*').order('nome'),
-                    db.from('transacoes').select('*'),
-                    db.from('despesas_fixas').select('*').order('dia_vencimento')
+                    db.from('contas').select('*').order('nome'), db.from('categorias').select('*').order('nome'), db.from('transacoes').select('*'), db.from('despesas_fixas').select('*').order('dia_vencimento')
                 ]);
-
                 if (resContas.error) throw new Error("Falha ao ler Contas: " + resContas.error.message);
                 if (resCategorias.error) throw new Error("Falha ao ler Categorias: " + resCategorias.error.message);
                 if (resTransacoes.error) throw new Error("Falha ao ler Transações: " + resTransacoes.error.message);
-                // Fixas pode dar erro se a tabela não foi criada ainda no SQL
-                if (resFixas.error) console.warn("Tabela despesas_fixas ainda não criada ou erro: ", resFixas.error);
 
-                contasGlobais = resContas.data || []; 
-                categoriasGlobais = resCategorias.data || [];
-                fixasGlobais = resFixas.data || [];
+                contasGlobais = resContas.data || []; categoriasGlobais = resCategorias.data || []; fixasGlobais = resFixas.data || [];
+                const hojeStr = new Date().toISOString().split('T')[0]; transacoesPendentes = (resTransacoes.data || []).filter(t => t.data > hojeStr);
                 
-                const hojeStr = new Date().toISOString().split('T')[0];
-                transacoesPendentes = (resTransacoes.data || []).filter(t => t.data > hojeStr);
-                
-                renderizarCategoriasDropdown();
-                recarregarListaContas(); 
-                atualizarVisibilidade(); 
-                renderizarContasNaTela();
-                desenharGrafico(resTransacoes.data || []);
-                
-                // Dispara os alertas
+                renderizarCategoriasDropdown(); recarregarListaContas(); atualizarVisibilidade(); renderizarContasNaTela(); desenharGrafico(resTransacoes.data || []);
                 verificarRadaresVencimento();
-
-            } catch (err) { 
-                console.error("JARVIS INTERCEPTOU UM ERRO:", err);
-                document.getElementById('aviso-erro').classList.remove('hidden');
-                document.getElementById('msg-erro').innerText = err.message;
-            }
+            } catch (err) { console.error("JARVIS INTERCEPTOU UM ERRO:", err); document.getElementById('aviso-erro').classList.remove('hidden'); document.getElementById('msg-erro').innerText = err.message; }
         }
 
         function renderizarCategoriasDropdown() {
-            const optDespesas = document.getElementById('opt-despesas');
-            const optReceitas = document.getElementById('opt-receitas');
-            optDespesas.innerHTML = ''; optReceitas.innerHTML = '';
-            
-            categoriasGlobais.forEach(cat => {
-                const opt = new Option(cat.nome, cat.id);
-                if(cat.tipo === 'Despesa') optDespesas.appendChild(opt);
-                else if(cat.tipo === 'Receita') optReceitas.appendChild(opt);
-            });
+            const optDespesas = document.getElementById('opt-despesas'); const optReceitas = document.getElementById('opt-receitas'); optDespesas.innerHTML = ''; optReceitas.innerHTML = '';
+            categoriasGlobais.forEach(cat => { const opt = new Option(cat.nome, cat.id); if(cat.tipo === 'Despesa') optDespesas.appendChild(opt); else if(cat.tipo === 'Receita') optReceitas.appendChild(opt); });
         }
 
         function renderizarContasNaTela() {
-            let sBanco = 0, dCard = 0, invest = 0;
-            const divBancos = document.getElementById('lista-bancos');
-            const divCartoes = document.getElementById('lista-cartoes');
-            const divInvestimentos = document.getElementById('lista-investimentos');
-            divBancos.innerHTML = ''; divCartoes.innerHTML = ''; divInvestimentos.innerHTML = '';
-            let btgTotal = 0; let btgSubcontasHtml = '';
+            let sBanco = 0, dCard = 0, invest = 0; const divBancos = document.getElementById('lista-bancos'); const divCartoes = document.getElementById('lista-cartoes'); const divInvestimentos = document.getElementById('lista-investimentos');
+            divBancos.innerHTML = ''; divCartoes.innerHTML = ''; divInvestimentos.innerHTML = ''; let btgTotal = 0; let btgSubcontasHtml = '';
 
             contasGlobais.forEach(c => {
-                let pendenteConta = transacoesPendentes.filter(t => t.conta_origem_id === c.id && t.valor > 0);
-                let htmlPendente = '';
-                if(pendenteConta.length > 0) {
-                    let totalPendente = pendenteConta.reduce((acc, curr) => acc + curr.valor, 0);
-                    let dias = diferencaEmDias(pendenteConta[0].data);
-                    htmlPendente = `<span class="ml-2 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[9px] font-bold">⏳ em ${dias}d: +R$ ${totalPendente.toLocaleString('pt-BR')}</span>`;
-                }
+                let pendenteConta = transacoesPendentes.filter(t => t.conta_origem_id === c.id && t.valor > 0); let htmlPendente = '';
+                if(pendenteConta.length > 0) { let totalPendente = pendenteConta.reduce((acc, curr) => acc + curr.valor, 0); let dias = diferencaEmDias(pendenteConta[0].data); htmlPendente = `<span class="ml-2 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[9px] font-bold">⏳ em ${dias}d: +R$ ${totalPendente.toLocaleString('pt-BR')}</span>`; }
 
-                if(c.tipo === 'Corrente') {
-                    sBanco += parseFloat(c.saldo_atual);
-                    divBancos.innerHTML += `
-                        <div class="flex justify-between items-center py-2 px-2 hover:bg-gray-50 border-b border-gray-50 last:border-0">
-                            <span class="text-[12px] text-gray-700 font-medium">› ${c.nome} ${htmlPendente}</span>
-                            <span class="text-[12px] font-bold text-[#3e9383]">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                        </div>`;
-                }
-                if(c.tipo === 'Crédito') {
-                    dCard += parseFloat(c.saldo_atual);
-                    let percUsado = Math.min((Math.abs(c.saldo_atual) / (c.limite_total || 1)) * 100, 100);
-                    divCartoes.innerHTML += `
-                        <div class="flex items-center text-[12px] py-3 px-2 border-b border-gray-50 last:border-0">
-                            <div class="w-1/3 font-bold text-gray-800 flex items-center gap-2"><div class="w-3 h-3 bg-gray-800 rounded-sm shadow-sm"></div> ${c.nome}</div>
-                            <div class="w-1/2 pr-6"><div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden"><div class="bg-[#102a43] h-1.5" style="width: ${percUsado}%"></div></div></div>
-                            <div class="w-1/6 text-right font-bold text-gray-600">${String(c.dia_vencimento).padStart(2, '0')}</div>
-                        </div>`;
-                }
-                if(c.tipo === 'Investimento') {
-                    invest += parseFloat(c.saldo_atual);
-                    if(c.nome.toUpperCase().includes('BTG')) {
-                        btgTotal += parseFloat(c.saldo_atual);
-                        btgSubcontasHtml += `
-                            <div class="flex justify-between items-center py-1 px-4 text-[11px] text-gray-600 border-l-2 border-blue-200 ml-2">
-                                <span>↳ ${c.nome.replace(/BTG Investimentos - |BTG - /i, '')}</span>
-                                <span class="font-bold">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                            </div>`;
-                    } else {
-                        divInvestimentos.innerHTML += `
-                            <div class="flex justify-between items-center py-2 px-2 hover:bg-gray-50 border-b border-gray-50 last:border-0">
-                                <span class="text-[12px] text-gray-700 font-bold">🏢 ${c.nome} ${htmlPendente}</span>
-                                <span class="text-[12px] font-bold text-blue-700">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                            </div>`;
-                    }
-                }
+                if(c.tipo === 'Corrente') { sBanco += parseFloat(c.saldo_atual); divBancos.innerHTML += `<div class="flex justify-between items-center py-2 px-2 hover:bg-gray-50 border-b border-gray-50 last:border-0"><span class="text-[12px] text-gray-700 font-medium">› ${c.nome} ${htmlPendente}</span><span class="text-[12px] font-bold text-[#3e9383]">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span></div>`; }
+                if(c.tipo === 'Crédito') { dCard += parseFloat(c.saldo_atual); let percUsado = Math.min((Math.abs(c.saldo_atual) / (c.limite_total || 1)) * 100, 100); divCartoes.innerHTML += `<div class="flex items-center text-[12px] py-3 px-2 border-b border-gray-50 last:border-0"><div class="w-1/3 font-bold text-gray-800 flex items-center gap-2"><div class="w-3 h-3 bg-gray-800 rounded-sm shadow-sm"></div> ${c.nome}</div><div class="w-1/2 pr-6"><div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden"><div class="bg-[#102a43] h-1.5" style="width: ${percUsado}%"></div></div></div><div class="w-1/6 text-right font-bold text-gray-600">${String(c.dia_vencimento).padStart(2, '0')}</div></div>`; }
+                if(c.tipo === 'Investimento') { invest += parseFloat(c.saldo_atual); if(c.nome.toUpperCase().includes('BTG')) { btgTotal += parseFloat(c.saldo_atual); btgSubcontasHtml += `<div class="flex justify-between items-center py-1 px-4 text-[11px] text-gray-600 border-l-2 border-blue-200 ml-2"><span>↳ ${c.nome.replace(/BTG Investimentos - |BTG - /i, '')}</span><span class="font-bold">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span></div>`; } else { divInvestimentos.innerHTML += `<div class="flex justify-between items-center py-2 px-2 hover:bg-gray-50 border-b border-gray-50 last:border-0"><span class="text-[12px] text-gray-700 font-bold">🏢 ${c.nome} ${htmlPendente}</span><span class="text-[12px] font-bold text-blue-700">R$ ${c.saldo_atual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span></div>`; } }
             });
 
-            if(btgTotal > 0 || btgSubcontasHtml !== '') {
-                divInvestimentos.innerHTML = `
-                    <div class="bg-blue-50/50 rounded p-2 mb-2 border border-blue-100">
-                        <div class="flex justify-between items-center mb-1 px-2">
-                            <span class="text-[12px] text-blue-900 font-extrabold">🏦 BTG PACTUAL (Consolidado)</span>
-                            <span class="text-[12px] font-extrabold text-blue-800">R$ ${btgTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                        </div>
-                        ${btgSubcontasHtml}
-                    </div>` + divInvestimentos.innerHTML;
-            }
+            if(btgTotal > 0 || btgSubcontasHtml !== '') divInvestimentos.innerHTML = `<div class="bg-blue-50/50 rounded p-2 mb-2 border border-blue-100"><div class="flex justify-between items-center mb-1 px-2"><span class="text-[12px] text-blue-900 font-extrabold">🏦 BTG PACTUAL (Consolidado)</span><span class="text-[12px] font-extrabold text-blue-800">R$ ${btgTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span></div>${btgSubcontasHtml}</div>` + divInvestimentos.innerHTML;
 
-            document.getElementById('kpi-patrimonio').innerText = `R$ ${(sBanco + dCard + invest).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-            document.getElementById('kpi-bancos').innerText = `R$ ${sBanco.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-            document.getElementById('kpi-invest').innerText = `R$ ${invest.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-            document.getElementById('kpi-divida').innerText = `R$ ${Math.abs(dCard).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            document.getElementById('kpi-patrimonio').innerText = `R$ ${(sBanco + dCard + invest).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`; document.getElementById('kpi-bancos').innerText = `R$ ${sBanco.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`; document.getElementById('kpi-invest').innerText = `R$ ${invest.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`; document.getElementById('kpi-divida').innerText = `R$ ${Math.abs(dCard).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
         }
 
         // ==========================================
-        // DESPESAS FIXAS (NOVO)
+        // DESPESAS FIXAS -> VIRA CATEGORIA AUTOMÁTICA
         // ==========================================
         function renderizarFixas() {
             const div = document.getElementById('lista-fixas-modal'); div.innerHTML = '';
             fixasGlobais.forEach(f => {
-                div.innerHTML += `
-                    <div class="p-2 border-b flex justify-between items-center hover:bg-gray-50">
-                        <div>
-                            <span class="font-bold text-sm text-gray-700">${f.nome}</span>
-                            <span class="text-[10px] ml-2 font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded">Venc: Dia ${f.dia_vencimento}</span>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <span class="font-bold text-red-600 text-sm">R$ ${f.valor.toFixed(2)}</span>
-                            <button onclick="deletarFixa('${f.id}')" class="text-red-500 hover:text-red-700 text-lg">🗑️</button>
-                        </div>
-                    </div>`;
+                div.innerHTML += `<div class="p-2 border-b flex justify-between items-center hover:bg-gray-50"><div><span class="font-bold text-sm text-gray-700">${f.nome}</span><span class="text-[10px] ml-2 font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded">Venc: Dia ${f.dia_vencimento}</span></div><div class="flex items-center gap-4"><span class="font-bold text-red-600 text-sm">R$ ${f.valor.toFixed(2)}</span><button onclick="deletarFixa('${f.id}')" class="text-red-500 hover:text-red-700 text-lg">🗑️</button></div></div>`;
             });
         }
 
         document.getElementById('form-nova-fixa').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = e.target.querySelector('button'); btn.innerText = "...";
-            const nome = document.getElementById('fixa-nome').value;
-            const valor = parseFloat(document.getElementById('fixa-valor').value);
-            const dia = parseInt(document.getElementById('fixa-dia').value);
+            e.preventDefault(); const btn = e.target.querySelector('button'); btn.innerText = "...";
+            const nome = document.getElementById('fixa-nome').value; const valor = parseFloat(document.getElementById('fixa-valor').value); const dia = parseInt(document.getElementById('fixa-dia').value);
             
             try {
+                // 1. Salva na lista de Despesas Fixas (Radares)
                 const { error } = await db.from('despesas_fixas').insert([{ nome, valor, dia_vencimento: dia }]).select();
                 if(error) throw error;
+                
+                // 2. INTEGRAÇÃO JARVIS: Checa se a Categoria já existe, se não, cria.
+                const { data: catExiste } = await db.from('categorias').select('id').eq('nome', nome).eq('tipo', 'Despesa');
+                if(!catExiste || catExiste.length === 0) {
+                    await db.from('categorias').insert([{ nome: nome, tipo: 'Despesa' }]);
+                }
+
                 document.getElementById('form-nova-fixa').reset();
-                await carregarDados(); 
-                renderizarFixas(); 
-                mostrarToast(`✅ Despesa Fixa "${nome}" adicionada!`, 'sucesso');
+                await carregarDados(); renderizarFixas(); 
+                mostrarToast(`✅ "${nome}" salva e já adicionada nas Categorias!`, 'sucesso');
             } catch (err) { alert(`❌ ERRO: ${err.message}`); }
             btn.innerText = "ADD";
         });
 
-        async function deletarFixa(id) {
-            if(confirm("Remover esta despesa fixa dos seus alertas?")) {
-                await db.from('despesas_fixas').delete().eq('id', id);
-                await carregarDados(); renderizarFixas();
-            }
-        }
+        async function deletarFixa(id) { if(confirm("Remover esta despesa fixa dos seus alertas?")) { await db.from('despesas_fixas').delete().eq('id', id); await carregarDados(); renderizarFixas(); } }
 
         // ==========================================
         // REGISTRO DE TRANSAÇÕES
         // ==========================================
         document.getElementById('form-transacao').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = e.target.querySelector('button'); btn.innerText = "Processando...";
-            
-            const op = document.getElementById('select-cat').value;
-            const contaOrigem = document.getElementById('select-conta').value;
-            const contaDestino = document.getElementById('select-destino').value;
-            const valor = parseFloat(document.getElementById('input-valor').value);
-            const dataBase = document.getElementById('input-data').value;
-            const desc = document.getElementById('input-desc').value;
+            e.preventDefault(); const btn = e.target.querySelector('button'); btn.innerText = "Processando...";
+            const op = document.getElementById('select-cat').value; const contaOrigem = document.getElementById('select-conta').value; const contaDestino = document.getElementById('select-destino').value; const valor = parseFloat(document.getElementById('input-valor').value); const dataBase = document.getElementById('input-data').value; const desc = document.getElementById('input-desc').value;
 
             try {
                 if (op === 'Investimento') {
-                    const tipo = document.getElementById('select-tipo-invest').value; 
-                    const diasPrazo = parseInt(document.getElementById('select-prazo').value);
-                    const dataLiquidacao = calcularDataDmais(dataBase, diasPrazo);
-
+                    const tipo = document.getElementById('select-tipo-invest').value; const diasPrazo = parseInt(document.getElementById('select-prazo').value); const dataLiquidacao = calcularDataDmais(dataBase, diasPrazo);
                     if(contaOrigem === contaDestino) throw new Error("A origem e destino não podem ser iguais.");
-
                     if(tipo === 'Aporte') {
-                        await db.from('transacoes').insert({ data: dataBase, descricao: `Aporte: ${desc}`, valor: -Math.abs(valor), conta_origem_id: contaOrigem });
-                        await db.from('transacoes').insert({ data: dataBase, descricao: `Aporte Recebido: ${desc}`, valor: Math.abs(valor), conta_origem_id: contaDestino });
+                        await db.from('transacoes').insert({ data: dataBase, descricao: `Aporte: ${desc}`, valor: -Math.abs(valor), conta_origem_id: contaOrigem }); await db.from('transacoes').insert({ data: dataBase, descricao: `Aporte Recebido: ${desc}`, valor: Math.abs(valor), conta_origem_id: contaDestino });
                     } else {
-                        await db.from('transacoes').insert({ data: dataBase, descricao: `Resgate Solicitado: ${desc}`, valor: -Math.abs(valor), conta_origem_id: contaOrigem });
-                        await db.from('transacoes').insert({ data: dataLiquidacao, descricao: `Liquidação Resgate: ${desc}`, valor: Math.abs(valor), conta_origem_id: contaDestino });
+                        await db.from('transacoes').insert({ data: dataBase, descricao: `Resgate Solicitado: ${desc}`, valor: -Math.abs(valor), conta_origem_id: contaOrigem }); await db.from('transacoes').insert({ data: dataLiquidacao, descricao: `Liquidação Resgate: ${desc}`, valor: Math.abs(valor), conta_origem_id: contaDestino });
                     }
-                } 
-                else if (op === 'Transferencia') {
+                } else if (op === 'Transferencia') {
                     if(contaOrigem === contaDestino) throw new Error("A origem e destino não podem ser iguais.");
-                    await db.from('transacoes').insert({ data: dataBase, descricao: `Transf p/: ${desc}`, valor: -Math.abs(valor), conta_origem_id: contaOrigem });
-                    await db.from('transacoes').insert({ data: dataBase, descricao: `Rec. de: ${desc}`, valor: Math.abs(valor), conta_origem_id: contaDestino });
-                } 
-                else {
-                    const parcelas = parseInt(document.getElementById('select-parcelas').value) || 1;
-                    const catInfo = categoriasGlobais.find(c => c.id == op);
-                    let valorFinal = catInfo && catInfo.tipo === 'Despesa' ? -Math.abs(valor/parcelas) : Math.abs(valor/parcelas);
-                    let inserts = [];
-                    let [a, m, d] = dataBase.split('-');
-                    for(let i=0; i<parcelas; i++) {
-                        let dataP = new Date(a, parseInt(m)-1+i, d).toISOString().split('T')[0];
-                        inserts.push({ data: dataP, descricao: parcelas>1 ? `${desc} (${i+1}/${parcelas})` : desc, valor: valorFinal, conta_origem_id: contaOrigem, categoria_id: op });
-                    }
+                    await db.from('transacoes').insert({ data: dataBase, descricao: `Transf p/: ${desc}`, valor: -Math.abs(valor), conta_origem_id: contaOrigem }); await db.from('transacoes').insert({ data: dataBase, descricao: `Rec. de: ${desc}`, valor: Math.abs(valor), conta_origem_id: contaDestino });
+                } else {
+                    const parcelas = parseInt(document.getElementById('select-parcelas').value) || 1; const catInfo = categoriasGlobais.find(c => c.id == op); let valorFinal = catInfo && catInfo.tipo === 'Despesa' ? -Math.abs(valor/parcelas) : Math.abs(valor/parcelas); let inserts = []; let [a, m, d] = dataBase.split('-');
+                    for(let i=0; i<parcelas; i++) { let dataP = new Date(a, parseInt(m)-1+i, d).toISOString().split('T')[0]; inserts.push({ data: dataP, descricao: parcelas>1 ? `${desc} (${i+1}/${parcelas})` : desc, valor: valorFinal, conta_origem_id: contaOrigem, categoria_id: op }); }
                     await db.from('transacoes').insert(inserts);
                 }
-
-                mostrarToast("✅ Operação Registrada com Sucesso!", "sucesso");
-                e.target.reset(); document.getElementById('input-data').valueAsDate = new Date();
-                atualizarVisibilidade(); carregarDados();
+                mostrarToast("✅ Operação Registrada! Saldo Atualizado pelo Robô.", "sucesso"); e.target.reset(); document.getElementById('input-data').valueAsDate = new Date(); atualizarVisibilidade(); carregarDados();
             } catch (error) { mostrarToast(`❌ Erro: ${error.message}`, "critico"); }
             btn.innerText = "PROCESSAR OPERAÇÃO";
         });
 
         // ==========================================
-        // EXTRATO E CATEGORIAS OMITIDOS VISUALMENTE PARA ESPAÇO (MANTIDOS DA V12)
+        // EXTRATO E EDIÇÃO 
         // ==========================================
         async function carregarHistorico() {
             try {
-                const tbody = document.getElementById('tabela-historico');
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Carregando...</td></tr>';
+                const tbody = document.getElementById('tabela-historico'); tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Carregando...</td></tr>';
                 const { data, error } = await db.from('transacoes').select('id, data, descricao, valor, contas(nome)').order('data', { ascending: false }).limit(50);
                 if(error) throw error;
                 tbody.innerHTML = '';
                 data.forEach(t => {
-                    let cor = t.valor < 0 ? 'text-red-600' : 'text-emerald-600';
-                    let descSafe = t.descricao.replace(/'/g, "\\'");
-                    tbody.innerHTML += `
-                        <tr class="border-b">
-                            <td class="p-2">${t.data.split('-').reverse().join('/')}</td>
-                            <td class="p-2 font-medium">${t.descricao}</td>
-                            <td class="p-2 text-gray-500">${t.contas ? t.contas.nome : '-'}</td>
-                            <td class="p-2 text-right font-bold ${cor}">R$ ${Math.abs(t.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-                            <td class="p-2 text-center">
-                                <button onclick="abrirEdicao('${t.id}', '${descSafe}', '${t.data}', ${t.valor})" class="text-blue-500 hover:text-blue-700 mx-1">✏️</button>
-                                <button onclick="deletarTransacao('${t.id}')" class="text-red-500 hover:text-red-700 mx-1">🗑️</button>
-                            </td>
-                        </tr>`;
+                    let cor = t.valor < 0 ? 'text-red-600' : 'text-emerald-600'; let descSafe = t.descricao.replace(/'/g, "\\'");
+                    tbody.innerHTML += `<tr class="border-b"><td class="p-2">${t.data.split('-').reverse().join('/')}</td><td class="p-2 font-medium">${t.descricao}</td><td class="p-2 text-gray-500">${t.contas ? t.contas.nome : '-'}</td><td class="p-2 text-right font-bold ${cor}">R$ ${Math.abs(t.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td><td class="p-2 text-center"><button onclick="abrirEdicao('${t.id}', '${descSafe}', '${t.data}', ${t.valor})" class="text-blue-500 hover:text-blue-700 mx-1">✏️</button><button onclick="deletarTransacao('${t.id}')" class="text-red-500 hover:text-red-700 mx-1">🗑️</button></td></tr>`;
                 });
-            } catch(e) { document.getElementById('tabela-historico').innerHTML = `<tr><td colspan="5" class="text-red-500 text-center p-4">Erro ao carregar: ${e.message}</td></tr>`; }
+            } catch(e) { document.getElementById('tabela-historico').innerHTML = `<tr><td colspan="5" class="text-red-500 text-center p-4">Erro: ${e.message}</td></tr>`; }
         }
 
-        async function deletarTransacao(id) { if(confirm("Excluir este lançamento permanentemente?")) { await db.from('transacoes').delete().eq('id', id); carregarHistorico(); carregarDados(); } }
+        async function deletarTransacao(id) { if(confirm("Excluir lançamento e estornar valor na conta?")) { await db.from('transacoes').delete().eq('id', id); carregarHistorico(); carregarDados(); mostrarToast("✅ Valor Estornado!", "sucesso"); } }
 
-        function abrirEdicao(id, desc, data, valorOriginal) {
-            document.getElementById('edit-id').value = id; document.getElementById('edit-desc').value = desc; document.getElementById('edit-data').value = data; document.getElementById('edit-valor').value = Math.abs(valorOriginal).toFixed(2); document.getElementById('edit-valor-original').value = valorOriginal; document.getElementById('modal-editar').classList.remove('hidden');
-        }
+        function abrirEdicao(id, desc, data, valorOriginal) { document.getElementById('edit-id').value = id; document.getElementById('edit-desc').value = desc; document.getElementById('edit-data').value = data; document.getElementById('edit-valor').value = Math.abs(valorOriginal).toFixed(2); document.getElementById('edit-valor-original').value = valorOriginal; document.getElementById('modal-editar').classList.remove('hidden'); }
 
         document.getElementById('form-editar').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('edit-id').value; const desc = document.getElementById('edit-desc').value; const data = document.getElementById('edit-data').value; let novoValor = parseFloat(document.getElementById('edit-valor').value); const valorOriginal = parseFloat(document.getElementById('edit-valor-original').value);
+            e.preventDefault(); const id = document.getElementById('edit-id').value; const desc = document.getElementById('edit-desc').value; const data = document.getElementById('edit-data').value; let novoValor = parseFloat(document.getElementById('edit-valor').value); const valorOriginal = parseFloat(document.getElementById('edit-valor-original').value);
             if(valorOriginal < 0) novoValor = -Math.abs(novoValor); else novoValor = Math.abs(novoValor);
             const { error } = await db.from('transacoes').update({ descricao: desc, data: data, valor: novoValor }).eq('id', id);
-            if(!error) { mostrarToast("✅ Lançamento Atualizado!", "sucesso"); fecharEditar(); carregarHistorico(); carregarDados(); } else { alert("Erro: " + error.message); }
+            if(!error) { mostrarToast("✅ Atualizado! Robô ajustou os saldos.", "sucesso"); fecharEditar(); carregarHistorico(); carregarDados(); } else { alert("Erro: " + error.message); }
         });
 
+        // ==========================================
+        // CATEGORIAS - ADD, DELETE 
+        // ==========================================
         function renderizarModalCategorias() {
             const div = document.getElementById('lista-categorias-modal'); div.innerHTML = '';
-            categoriasGlobais.forEach(c => {
-                if(c.tipo !== 'Investimento' && c.nome !== 'Aporte / Resgate') {
-                    div.innerHTML += `<div class="p-2 border-b flex justify-between items-center hover:bg-gray-50"><div><span class="font-bold text-sm text-gray-700">${c.nome}</span><span class="text-[10px] ml-2 uppercase font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">${c.tipo}</span></div><button onclick="deletarCategoria('${c.id}')" class="text-red-500 hover:text-red-700 text-lg px-2">🗑️</button></div>`;
-                }
-            });
+            categoriasGlobais.forEach(c => { if(c.tipo !== 'Investimento' && c.nome !== 'Aporte / Resgate') { div.innerHTML += `<div class="p-2 border-b flex justify-between items-center hover:bg-gray-50"><div><span class="font-bold text-sm text-gray-700">${c.nome}</span><span class="text-[10px] ml-2 uppercase font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">${c.tipo}</span></div><button onclick="deletarCategoria('${c.id}')" class="text-red-500 hover:text-red-700 text-lg px-2">🗑️</button></div>`; } });
         }
 
-        async function deletarCategoria(id) { if(confirm("Tem certeza que deseja apagar esta categoria?")) { const { error } = await db.from('categorias').delete().eq('id', id); if(error) alert("Erro ao excluir: " + error.message); else { await carregarDados(); renderizarModalCategorias(); } } }
+        async function deletarCategoria(id) { if(confirm("Apagar esta categoria?")) { const { error } = await db.from('categorias').delete().eq('id', id); if(error) alert("Erro: " + error.message); else { await carregarDados(); renderizarModalCategorias(); } } }
 
         document.getElementById('form-nova-categoria').addEventListener('submit', async (e) => {
-            e.preventDefault(); const btn = e.target.querySelector('button'); btn.innerText = "...";
-            const nome = document.getElementById('cat-nome').value; const tipo = document.getElementById('cat-tipo').value;
-            try {
-                const { error } = await db.from('categorias').insert([{ nome, tipo }]).select();
-                if(error) throw error;
-                mostrarToast(`✅ Categoria "${nome}" criada!`, 'sucesso'); document.getElementById('cat-nome').value = ''; await carregarDados(); renderizarModalCategorias(); 
-            } catch (err) { alert(`❌ ERRO NO SUPABASE:\n${err.message}`); }
-            btn.innerText = "ADD";
+            e.preventDefault(); const btn = e.target.querySelector('button'); btn.innerText = "..."; const nome = document.getElementById('cat-nome').value; const tipo = document.getElementById('cat-tipo').value;
+            try { const { error } = await db.from('categorias').insert([{ nome, tipo }]).select(); if(error) throw error; mostrarToast(`✅ Categoria "${nome}" criada!`, 'sucesso'); document.getElementById('cat-nome').value = ''; await carregarDados(); renderizarModalCategorias(); } catch (err) { alert(`❌ ERRO: ${err.message}`); } btn.innerText = "ADD";
         });
 
         function desenharGrafico(todasTransacoes) {
-            if(!todasTransacoes || todasTransacoes.length === 0) return;
-            let gastos = {}; const hoje = new Date();
-            todasTransacoes.forEach(t => {
-                let dataT = new Date(t.data + 'T12:00:00');
-                if(t.valor < 0 && t.categoria_id && dataT.getMonth() === hoje.getMonth()) {
-                    const catInfo = categoriasGlobais.find(c => c.id == t.categoria_id);
-                    if(catInfo && catInfo.tipo === 'Despesa') gastos[catInfo.nome] = (gastos[catInfo.nome] || 0) + Math.abs(t.valor);
-                }
-            });
-            const ctx = document.getElementById('graficoVazamento').getContext('2d');
-            if(graficoInstance) graficoInstance.destroy();
+            if(!todasTransacoes || todasTransacoes.length === 0) return; let gastos = {}; const hoje = new Date();
+            todasTransacoes.forEach(t => { let dataT = new Date(t.data + 'T12:00:00'); if(t.valor < 0 && t.categoria_id && dataT.getMonth() === hoje.getMonth()) { const catInfo = categoriasGlobais.find(c => c.id == t.categoria_id); if(catInfo && catInfo.tipo === 'Despesa') gastos[catInfo.nome] = (gastos[catInfo.nome] || 0) + Math.abs(t.valor); } });
+            const ctx = document.getElementById('graficoVazamento').getContext('2d'); if(graficoInstance) graficoInstance.destroy();
             graficoInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(gastos).length ? Object.keys(gastos) : ['Sem Gastos no Mês'], datasets: [{ data: Object.values(gastos).length ? Object.values(gastos) : [1], backgroundColor: ['#102a43', '#475569', '#3e9383', '#d97706', '#3b82f6'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 6, font: {size: 10} } } } } });
         }
 
