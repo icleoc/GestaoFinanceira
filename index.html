@@ -29,6 +29,10 @@
 </head>
 <body class="p-4 md:p-8 max-w-[1200px] mx-auto antialiased">
 
+    <div id="aviso-erro" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded text-sm shadow-sm">
+        <strong>🚨 JARVIS INFORMA (ERRO DE SISTEMA):</strong> <span id="msg-erro"></span>
+    </div>
+
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h1 class="text-2xl font-extrabold text-gray-900 uppercase tracking-tight">SISTEMA FINANCEIRO LÉO</h1>
         <div class="flex gap-3">
@@ -244,7 +248,6 @@
         const selectParcelas = document.getElementById('select-parcelas');
         for(let i = 1; i <= 24; i++) selectParcelas.add(new Option(i === 1 ? '1x (À vista)' : `${i}x`, i));
 
-        // CONTROLES DE INTERFACE
         function toggleSection(idLista, idSeta) {
             const lista = document.getElementById(idLista);
             const seta = document.getElementById(idSeta);
@@ -261,8 +264,8 @@
         function fecharCategorias() { document.getElementById('modal-categorias').classList.add('hidden'); }
         function fecharEditar() { document.getElementById('modal-editar').classList.add('hidden'); }
 
-        // MÁGICA DOS DIAS ÚTEIS (D+X)
         function calcularDataDmais(dataBaseIso, diasUteis) {
+            if(!dataBaseIso) return new Date().toISOString().split('T')[0];
             let d = new Date(dataBaseIso + 'T12:00:00'); 
             let adicionados = 0;
             while (adicionados < diasUteis) {
@@ -278,7 +281,7 @@
         }
 
         // ==========================================
-        // RECONSTRUÇÃO DAS OPÇÕES SEM TRAVAR O SELECT
+        // RECONSTRUÇÃO DAS OPÇÕES DE CONTA
         // ==========================================
         function recarregarListaContas() {
             const op = document.getElementById('select-cat').value;
@@ -287,7 +290,6 @@
             const selOrigem = document.getElementById('select-conta');
             const selDestino = document.getElementById('select-destino');
 
-            // Salva as escolhas atuais para tentar manter
             const contaAntiga = selOrigem.value;
             const destinoAntigo = selDestino.value;
 
@@ -319,12 +321,10 @@
                 });
             }
 
-            // Tenta restaurar a seleção antiga, se não existir, vai pra primeira
             if([...selOrigem.options].some(opt => opt.value === contaAntiga)) selOrigem.value = contaAntiga;
             if([...selDestino.options].some(opt => opt.value === destinoAntigo)) selDestino.value = destinoAntigo;
         }
 
-        // Apenas esconde/mostra as caixas sem apagar os selects
         function atualizarVisibilidade() {
             const op = document.getElementById('select-cat').value;
             const contaId = document.getElementById('select-conta').value;
@@ -360,7 +360,6 @@
                 lblOrigem.innerText = 'SAIR DE (ORIGEM)';
                 lblOrigem.classList.add('text-red-600');
             } else {
-                // Libera parcelas apenas se for cartão e despesa
                 if(contaInfo && contaInfo.tipo === 'Crédito' && catInfo && catInfo.tipo === 'Despesa') {
                     boxParcelas.classList.remove('hidden');
                 } else {
@@ -369,36 +368,47 @@
             }
         }
 
-        // LIGANDO OS EVENTOS
         document.getElementById('select-cat').addEventListener('change', () => { recarregarListaContas(); atualizarVisibilidade(); });
         document.getElementById('select-filtro-origem').addEventListener('change', () => { recarregarListaContas(); atualizarVisibilidade(); });
         document.getElementById('select-tipo-invest').addEventListener('change', () => { recarregarListaContas(); atualizarVisibilidade(); });
-        // Mudar a conta só atualiza o visual das parcelas, NÃO RECARREGA A LISTA (Fim do travamento)
         document.getElementById('select-conta').addEventListener('change', atualizarVisibilidade);
 
 
         // ==========================================
-        // CARGA DE DADOS
+        // CARGA DE DADOS COM BLINDAGEM DE ERROS
         // ==========================================
         async function carregarDados() {
             try {
+                // Esconde caixa de erro inicialmente
+                document.getElementById('aviso-erro').classList.add('hidden');
+
                 const [resContas, resCategorias, resTransacoes] = await Promise.all([
                     db.from('contas').select('*').order('nome'),
                     db.from('categorias').select('*').order('nome'),
-                    db.from('transacoes').select('*').gt('data', new Date().toISOString().split('T')[0])
+                    db.from('transacoes').select('*') // Busca tudo e filtra no JS pra evitar bug de Postgres
                 ]);
 
-                if (resContas.error) throw resContas.error;
-                contasGlobais = resContas.data; 
+                if (resContas.error) throw new Error("Falha ao ler Contas: " + resContas.error.message);
+                if (resCategorias.error) throw new Error("Falha ao ler Categorias: " + resCategorias.error.message);
+                if (resTransacoes.error) throw new Error("Falha ao ler Transações: " + resTransacoes.error.message);
+
+                contasGlobais = resContas.data || []; 
                 categoriasGlobais = resCategorias.data || [];
-                transacoesPendentes = resTransacoes.data || [];
+                
+                // Filtra as transações D+x pelo JS
+                const hojeStr = new Date().toISOString().split('T')[0];
+                transacoesPendentes = (resTransacoes.data || []).filter(t => t.data > hojeStr);
                 
                 renderizarCategoriasDropdown();
                 recarregarListaContas(); 
                 atualizarVisibilidade(); 
                 renderizarContasNaTela();
-                buscarERenderizarGrafico();
-            } catch (err) { console.error(err); }
+                desenharGrafico(resTransacoes.data || []);
+            } catch (err) { 
+                console.error("JARVIS INTERCEPTOU UM ERRO:", err);
+                document.getElementById('aviso-erro').classList.remove('hidden');
+                document.getElementById('msg-erro').innerText = err.message;
+            }
         }
 
         function renderizarCategoriasDropdown() {
@@ -523,7 +533,7 @@
                 else {
                     const parcelas = parseInt(document.getElementById('select-parcelas').value) || 1;
                     const catInfo = categoriasGlobais.find(c => c.id == op);
-                    let valorFinal = catInfo.tipo === 'Despesa' ? -Math.abs(valor/parcelas) : Math.abs(valor/parcelas);
+                    let valorFinal = catInfo && catInfo.tipo === 'Despesa' ? -Math.abs(valor/parcelas) : Math.abs(valor/parcelas);
                     let inserts = [];
                     let [a, m, d] = dataBase.split('-');
                     for(let i=0; i<parcelas; i++) {
@@ -544,26 +554,30 @@
         // EXTRATO, EDIÇÃO E EXCLUSÃO
         // ==========================================
         async function carregarHistorico() {
-            const tbody = document.getElementById('tabela-historico');
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Carregando...</td></tr>';
-            const { data, error } = await db.from('transacoes').select('id, data, descricao, valor, contas(nome)').order('data', { ascending: false }).limit(50);
-            if(error) return;
-            tbody.innerHTML = '';
-            data.forEach(t => {
-                let cor = t.valor < 0 ? 'text-red-600' : 'text-emerald-600';
-                let descSafe = t.descricao.replace(/'/g, "\\'");
-                tbody.innerHTML += `
-                    <tr class="border-b">
-                        <td class="p-2">${t.data.split('-').reverse().join('/')}</td>
-                        <td class="p-2 font-medium">${t.descricao}</td>
-                        <td class="p-2 text-gray-500">${t.contas ? t.contas.nome : '-'}</td>
-                        <td class="p-2 text-right font-bold ${cor}">R$ ${Math.abs(t.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-                        <td class="p-2 text-center">
-                            <button onclick="abrirEdicao('${t.id}', '${descSafe}', '${t.data}', ${t.valor})" class="text-blue-500 hover:text-blue-700 mx-1">✏️</button>
-                            <button onclick="deletarTransacao('${t.id}')" class="text-red-500 hover:text-red-700 mx-1">🗑️</button>
-                        </td>
-                    </tr>`;
-            });
+            try {
+                const tbody = document.getElementById('tabela-historico');
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Carregando...</td></tr>';
+                const { data, error } = await db.from('transacoes').select('id, data, descricao, valor, contas(nome)').order('data', { ascending: false }).limit(50);
+                if(error) throw error;
+                tbody.innerHTML = '';
+                data.forEach(t => {
+                    let cor = t.valor < 0 ? 'text-red-600' : 'text-emerald-600';
+                    let descSafe = t.descricao.replace(/'/g, "\\'");
+                    tbody.innerHTML += `
+                        <tr class="border-b">
+                            <td class="p-2">${t.data.split('-').reverse().join('/')}</td>
+                            <td class="p-2 font-medium">${t.descricao}</td>
+                            <td class="p-2 text-gray-500">${t.contas ? t.contas.nome : '-'}</td>
+                            <td class="p-2 text-right font-bold ${cor}">R$ ${Math.abs(t.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                            <td class="p-2 text-center">
+                                <button onclick="abrirEdicao('${t.id}', '${descSafe}', '${t.data}', ${t.valor})" class="text-blue-500 hover:text-blue-700 mx-1">✏️</button>
+                                <button onclick="deletarTransacao('${t.id}')" class="text-red-500 hover:text-red-700 mx-1">🗑️</button>
+                            </td>
+                        </tr>`;
+                });
+            } catch(e) {
+                document.getElementById('tabela-historico').innerHTML = `<tr><td colspan="5" class="text-red-500 text-center p-4">Erro ao carregar: ${e.message}</td></tr>`;
+            }
         }
 
         async function deletarTransacao(id) {
@@ -599,12 +613,11 @@
         });
 
         // ==========================================
-        // CATEGORIAS - ADD, DELETE E RASTREADOR DE ERROS
+        // CATEGORIAS - ADD, DELETE 
         // ==========================================
         function renderizarModalCategorias() {
             const div = document.getElementById('lista-categorias-modal'); 
             div.innerHTML = '';
-            // Não exibimos "Aporte / Resgate" pois é fixo do sistema
             categoriasGlobais.forEach(c => {
                 if(c.tipo !== 'Investimento' && c.nome !== 'Aporte / Resgate') {
                     div.innerHTML += `
@@ -634,42 +647,47 @@
             const tipo = document.getElementById('cat-tipo').value;
             
             try {
-                // RASTREADOR DE ERROS ATIVADO (Usa colchetes e select)
                 const { data, error } = await db.from('categorias').insert([{ nome: nome, tipo: tipo }]).select();
-                
-                if(error) {
-                    alert(`❌ RADAR DE ERRO DO SUPABASE:\n\nMensagem: ${error.message}\nDetalhes: ${error.details}\nDica: ${error.hint}`);
-                    throw error;
-                }
+                if(error) throw error;
                 
                 alert(`✅ Categoria "${nome}" criada com sucesso!`);
                 document.getElementById('cat-nome').value = '';
                 await carregarDados(); 
                 renderizarModalCategorias(); 
-            } catch (err) { 
-                console.error(err);
-            }
+            } catch (err) { alert(`❌ ERRO NO SUPABASE:\n${err.message}`); }
             btn.innerText = "ADD";
         });
 
-        async function buscarERenderizarGrafico() {
-            const { data: transacoes } = await db.from('transacoes').select('valor, categorias(nome)');
-            if(!transacoes) return;
+        // ==========================================
+        // GRÁFICO (AGORA PUXA DO CACHE LOCAL)
+        // ==========================================
+        function desenharGrafico(todasTransacoes) {
+            if(!todasTransacoes || todasTransacoes.length === 0) return;
             let gastos = {};
-            transacoes.forEach(t => {
-                if(t.valor < 0 && t.categorias && t.categorias.nome !== 'Aporte / Resgate') { 
-                    gastos[t.categorias.nome] = (gastos[t.categorias.nome] || 0) + Math.abs(t.valor); 
+            const hoje = new Date();
+            
+            todasTransacoes.forEach(t => {
+                let dataT = new Date(t.data + 'T12:00:00');
+                // Pega só os gastos deste mês
+                if(t.valor < 0 && t.categoria_id && dataT.getMonth() === hoje.getMonth()) {
+                    const catInfo = categoriasGlobais.find(c => c.id == t.categoria_id);
+                    if(catInfo && catInfo.tipo === 'Despesa') {
+                        gastos[catInfo.nome] = (gastos[catInfo.nome] || 0) + Math.abs(t.valor);
+                    }
                 }
             });
+
             const ctx = document.getElementById('graficoVazamento').getContext('2d');
             if(graficoInstance) graficoInstance.destroy();
             graficoInstance = new Chart(ctx, {
                 type: 'doughnut', data: {
-                    labels: Object.keys(gastos).length ? Object.keys(gastos) : ['Sem Gastos'],
+                    labels: Object.keys(gastos).length ? Object.keys(gastos) : ['Sem Gastos no Mês'],
                     datasets: [{ data: Object.values(gastos).length ? Object.values(gastos) : [1], backgroundColor: ['#102a43', '#475569', '#3e9383', '#d97706', '#3b82f6'], borderWidth: 0 }]
                 }, options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 6, font: {size: 10} } } } }
             });
         }
+
+        carregarDados();
     </script>
 </body>
 </html>
