@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA FINANCEIRO LÉO</title>
+    <title>SISTEMA FINANCEIRO LÉO - V20</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -29,10 +29,6 @@
 </head>
 <body class="p-4 md:p-8 max-w-[1200px] mx-auto antialiased relative">
 
-    <div id="aviso-erro" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded text-sm shadow-sm">
-        <strong>🚨 JARVIS INFORMA (ALERTA DE DADOS):</strong> <span id="msg-erro"></span>
-    </div>
-
     <div id="toast-container" class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 w-80"></div>
 
     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -45,10 +41,10 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 text-center md:text-left">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div class="bg-[#102a43] text-white p-5 rounded-xl shadow-md">
             <p class="text-[11px] font-semibold uppercase opacity-80 mb-1">Patrimônio Líquido</p>
-            <h2 class="text-2xl font-bold" id="kpi-patrimonio text-white">R$ 0,00</h2>
+            <h2 class="text-2xl font-bold" id="kpi-patrimonio">R$ 0,00</h2>
         </div>
         <div class="bg-white text-gray-800 p-5 rounded-xl card-shadow">
             <p class="text-[11px] font-semibold uppercase text-gray-500 mb-1">Saldo Bancos</p>
@@ -65,47 +61,45 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
         <div class="lg:col-span-7 space-y-4">
             <div class="bg-white rounded-xl p-4 card-shadow">
-                <div class="section-header cursor-pointer" onclick="toggleSection('lista-bancos', 'seta-bancos')">
+                <div class="section-header" onclick="toggleSection('lista-bancos', 'seta-bancos')">
                     <span class="text-[#3e9383]">🏦 BANCOS (Liquidez)</span>
                     <span id="seta-bancos" class="seta-rot text-gray-400">▼</span>
                 </div>
-                <div id="lista-bancos" class="space-y-1 mt-2 overflow-hidden transition-all duration-300"></div>
+                <div id="lista-bancos" class="space-y-1 mt-2"></div>
             </div>
             
             <div class="bg-white rounded-xl p-4 card-shadow">
-                <div class="section-header cursor-pointer" onclick="toggleSection('lista-cartoes-container', 'seta-cartoes')">
-                    <span class="text-[#d97706]">💳 CARTÕES DE CRÉDITO (Limites Reais)</span>
+                <div class="section-header" onclick="toggleSection('lista-cartoes-container', 'seta-cartoes')">
+                    <span class="text-[#d97706]">💳 CARTÕES DE CRÉDITO</span>
                     <span id="seta-cartoes" class="seta-rot text-gray-400">▼</span>
                 </div>
-                <div id="lista-cartoes-container" class="mt-2 overflow-hidden transition-all duration-300">
+                <div id="lista-cartoes-container" class="mt-2">
                     <div id="lista-cartoes" class="space-y-4"></div>
                 </div>
             </div>
 
             <div class="bg-white rounded-xl p-4 card-shadow border-l-4 border-blue-700">
-                <div class="section-header cursor-pointer bg-blue-50" onclick="toggleSection('lista-investimentos', 'seta-invest')">
+                <div class="section-header bg-blue-50" onclick="toggleSection('lista-investimentos', 'seta-invest')">
                     <span class="text-blue-800 font-extrabold">📈 CARTEIRA DE INVESTIMENTOS</span>
                     <span id="seta-invest" class="seta-rot text-blue-400">▼</span>
                 </div>
-                <div id="lista-investimentos" class="space-y-2 mt-2 overflow-hidden transition-all duration-300"></div>
+                <div id="lista-investimentos" class="space-y-2 mt-2"></div>
             </div>
         </div>
 
         <div class="lg:col-span-5 space-y-6">
             <div class="bg-white rounded-xl p-5 card-shadow border-t-4 border-[#102a43]">
                 <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase">Novo Lançamento</h3>
-                
                 <form id="form-transacao" class="space-y-4">
                     <div class="flex gap-4">
                         <div class="w-1/3">
-                            <label class="block text-[11px] font-bold text-blue-600 mb-1 uppercase">🗓️ Data</label>
-                            <input type="date" id="input-data" class="form-input border-blue-300 bg-blue-50 text-blue-900 font-bold" required>
+                            <label class="block text-[11px] font-bold text-blue-600 mb-1">🗓️ DATA</label>
+                            <input type="date" id="input-data" class="form-input border-blue-300 bg-blue-50 font-bold" required>
                         </div>
                         <div class="w-2/3">
-                            <label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Categoria</label>
+                            <label class="block text-[11px] font-bold text-gray-500 mb-1">CATEGORIA</label>
                             <select id="select-cat" class="form-input font-bold text-white bg-[#102a43]">
                                 <option value="Investimento">📈 Aporte / Resgate</option>
                                 <option value="Transferencia">🔄 Transferência / Pagar Fatura</option>
@@ -115,19 +109,25 @@
                         </div>
                     </div>
 
-                    <div id="box-fixa-resumo" class="hidden bg-purple-100 border border-purple-200 p-3 rounded-lg flex justify-between items-center">
-                        <div><span class="block text-[10px] font-bold text-purple-600 uppercase">Baixa Fixa</span><span class="font-extrabold text-purple-900 text-sm" id="txt-fixa-nome"></span></div>
-                        <div class="text-right"><span class="block text-[10px] font-bold text-purple-600 uppercase">Valor</span><span class="font-extrabold text-lg text-purple-900" id="txt-fixa-valor"></span></div>
+                    <div id="box-fixa-resumo" class="hidden bg-purple-100 p-3 rounded-lg flex justify-between">
+                        <div><span class="block text-[10px] font-bold text-purple-600">BAIXA FIXA</span><span class="font-bold text-purple-900" id="txt-fixa-nome"></span></div>
+                        <div class="text-right"><span class="block text-[10px] font-bold text-purple-600">VALOR</span><span class="font-bold text-purple-900" id="txt-fixa-valor"></span></div>
                     </div>
 
                     <div id="box-desc-valor" class="flex gap-4">
-                        <div class="w-2/3"><label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Descrição</label><input type="text" id="input-desc" class="form-input" placeholder="Mercado, InfinitePay..." required></div>
-                        <div class="w-1/3"><label class="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Valor</label><input type="number" id="input-valor" step="0.01" class="form-input font-bold text-lg" placeholder="0.00" required></div>
+                        <div class="w-2/3"><label class="block text-[11px] font-bold text-gray-500">DESCRIÇÃO</label><input type="text" id="input-desc" class="form-input" required></div>
+                        <div class="w-1/3"><label class="block text-[11px] font-bold text-gray-500">VALOR LÍQ.</label><input type="number" id="input-valor" step="0.01" class="form-input font-bold" required></div>
                     </div>
 
-                    <div id="box-juros-cartao" class="hidden p-3 bg-red-50 border border-red-100 rounded-lg space-y-2">
-                        <div class="flex items-center gap-2"><input type="checkbox" id="check-juros" class="w-4 h-4 text-red-600 font-bold"><label for="check-juros" class="text-xs font-bold text-red-800">COBRAR JUROS (INFINITEPAY)?</label></div>
-                        <div id="sub-box-juros" class="hidden"><label class="block text-[10px] font-bold text-red-600 mb-1">VALOR TOTAL NO BTG (COM JUROS)</label><input type="number" id="input-valor-bruto" step="0.01" class="form-input border-red-300 font-bold" placeholder="0.00"></div>
+                    <div id="box-juros-cartao" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg space-y-2">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="check-juros" class="w-4 h-4">
+                            <label class="text-xs font-bold text-red-800">TAXAS/JUROS (INFINITEPAY)?</label>
+                        </div>
+                        <div id="sub-box-juros" class="hidden">
+                            <label class="block text-[10px] font-bold text-red-600">VALOR TOTAL NO BTG (COM JUROS)</label>
+                            <input type="number" id="input-valor-bruto" step="0.01" class="form-input border-red-300 font-bold">
+                        </div>
                     </div>
 
                     <div id="box-operacao-invest" class="hidden flex gap-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
@@ -135,200 +135,176 @@
                         <div class="w-1/2"><label class="text-[10px] font-bold">PRAZO</label><select id="select-prazo" class="form-input"><option value="0">D+0</option><option value="1">D+1</option><option value="2">D+2</option></select></div>
                     </div>
 
-                    <div class="flex gap-4 items-end">
-                        <div class="w-1/3"><label class="block text-[11px] font-bold uppercase">Filtrar</label><select id="select-filtro-origem" class="form-input bg-blue-50"><option value="Todos">Todos</option><option value="Corrente">Contas</option><option value="Crédito">Cartões</option></select></div>
-                        <div class="w-2/3"><label id="label-origem" class="block text-[11px] font-bold text-gray-500 uppercase">Origem (Sai)</label><select id="select-conta" class="form-input" required></select></div>
+                    <div class="flex gap-4">
+                        <div class="w-1/2">
+                            <label class="block text-[11px] font-bold">ORIGEM (SAI)</label>
+                            <select id="select-conta" class="form-input"></select>
+                        </div>
+                        <div class="w-1/2" id="box-destino">
+                            <label class="block text-[11px] font-bold text-emerald-600">DESTINO (ENTRA)</label>
+                            <select id="select-destino" class="form-input"></select>
+                        </div>
                     </div>
 
-                    <div class="flex gap-4 items-end">
-                        <div class="w-1/2 hidden" id="box-destino"><label class="block text-[11px] font-bold text-emerald-600 uppercase">Destino (Entra)</label><select id="select-destino" class="form-input border-emerald-300 bg-emerald-50"></select></div>
-                        <div class="w-full hidden" id="box-parcelas"><label class="block text-[11px] font-bold text-[#d97706] uppercase">Parcelas</label><select id="select-parcelas" class="form-input border-[#d97706] bg-[#fffbeb]"></select></div>
+                    <div class="hidden" id="box-parcelas">
+                        <label class="block text-[11px] font-bold text-orange-600">PARCELAMENTO</label>
+                        <select id="select-parcelas" class="form-input"></select>
                     </div>
 
-                    <button type="submit" id="btn-submit" class="w-full bg-[#102a43] text-white text-sm font-bold py-3 mt-2 rounded-lg hover:bg-blue-900 shadow-lg disabled:opacity-50">PROCESSAR OPERAÇÃO</button>
+                    <button type="submit" id="btn-submit" class="w-full bg-[#102a43] text-white text-sm font-bold py-3 rounded-lg disabled:opacity-50">PROCESSAR OPERAÇÃO</button>
                 </form>
             </div>
-            
-            <div class="bg-white rounded-xl p-5 card-shadow text-center"><h3 class="text-xs font-bold text-gray-600 mb-2 uppercase">Gastos do Mês</h3><div class="w-full h-48 flex justify-center"><canvas id="graficoVazamento"></canvas></div></div>
+            <div class="bg-white rounded-xl p-5 card-shadow h-64"><canvas id="graficoVazamento"></canvas></div>
         </div>
     </div>
 
-    <div id="modal-parcelas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[70] p-4"><div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"><div class="bg-orange-600 text-white p-4 flex justify-between items-center"><h3 class="font-bold uppercase tracking-wider">Faturas e Parcelas</h3><button onclick="fecharParcelas()" class="text-white hover:text-red-200 font-bold text-xl">&times;</button></div><div class="p-4 overflow-y-auto flex-1"><table class="w-full text-left border-collapse min-w-[500px]"><thead><tr class="text-[11px] text-gray-500 uppercase border-b-2"><th>Data</th><th>Descrição</th><th>Conta</th><th class="text-right">Valor</th></tr></thead><tbody id="tabela-parcelas" class="text-sm"></tbody></table></div></div></div>
-    <div id="modal-historico" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden"><div class="bg-gray-800 text-white p-4 flex justify-between items-center"><h3 class="font-bold uppercase tracking-wider">Extrato</h3><button onclick="fecharHistorico()" class="text-white hover:text-red-400 font-bold text-xl">&times;</button></div><div class="p-4 overflow-y-auto flex-1"><table class="w-full text-left border-collapse min-w-[600px]"><tbody id="tabela-historico" class="text-sm"></tbody></table></div></div></div>
-    <div id="modal-fixas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden"><div class="bg-purple-700 text-white p-4 flex justify-between items-center"><h3 class="font-bold uppercase tracking-wider">Fixas</h3><button onclick="fecharFixas()" class="text-white hover:text-red-400 font-bold text-xl">&times;</button></div><div class="p-5"><form id="form-nova-fixa" class="flex gap-2 mb-4 items-end"><div><label class="text-[10px] uppercase">Nome</label><input type="text" id="fixa-nome" class="form-input"></div><div><label class="text-[10px] uppercase">R$</label><input type="number" id="fixa-valor" class="form-input"></div><div><label class="text-[10px] uppercase">Dia</label><input type="number" id="fixa-dia" class="form-input"></div><button type="submit" class="bg-purple-600 text-white px-3 py-2 rounded">ADD</button></form><div id="lista-fixas-modal"></div></div></div></div>
-    <div id="modal-categorias" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden"><div class="bg-[#102a43] text-white p-4 flex justify-between items-center"><h3 class="font-bold uppercase tracking-wider">Categorias</h3><button onclick="fecharCategorias()" class="text-white hover:text-red-400 font-bold text-xl">&times;</button></div><div class="p-5"><form id="form-nova-categoria" class="flex gap-2 mb-4"><input type="text" id="cat-nome" class="form-input w-1/2"><select id="cat-tipo" class="form-input w-1/3"><option value="Despesa">Despesa</option><option value="Receita">Receita</option></select><button type="submit" class="bg-[#3e9383] text-white font-bold px-4 rounded">ADD</button></form><div id="lista-categorias-modal"></div></div></div></div>
+    <div id="modal-parcelas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[70] p-4"><div class="bg-white rounded-xl w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden"><div class="bg-orange-600 text-white p-4 flex justify-between"><b>Faturas e Parcelas</b><button onclick="fecharParcelas()">✖</button></div><div class="p-4 overflow-y-auto flex-1"><table class="w-full text-left"><tbody id="tabela-parcelas"></tbody></table></div></div></div>
+    <div id="modal-historico" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-5xl max-h-[80vh] flex flex-col overflow-hidden"><div class="bg-gray-800 text-white p-4 flex justify-between"><b>Extrato</b><button onclick="fecharHistorico()">✖</button></div><div class="p-4 overflow-y-auto flex-1"><table class="w-full text-left"><tbody id="tabela-historico"></tbody></table></div></div></div>
+    <div id="modal-fixas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-lg p-5"><div class="flex justify-between mb-4"><b>Contas Fixas</b><button onclick="fecharFixas()">✖</button></div><form id="form-nova-fixa" class="flex gap-2 mb-4"> <input type="text" id="fixa-nome" placeholder="Nome" class="form-input"> <input type="number" id="fixa-valor" placeholder="R$" class="form-input"> <input type="number" id="fixa-dia" placeholder="Dia" class="form-input"> <button type="submit" class="bg-purple-600 text-white px-3 rounded">ADD</button></form><div id="lista-fixas-modal"></div></div></div>
+    <div id="modal-categorias" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-lg p-5"><div class="flex justify-between mb-4"><b>Categorias</b><button onclick="fecharCategorias()">✖</button></div><form id="form-nova-categoria" class="flex gap-2 mb-4"><input type="text" id="cat-nome" class="form-input w-1/2"><select id="cat-tipo" class="form-input"><option value="Despesa">Despesa</option><option value="Receita">Receita</option></select><button type="submit" class="bg-emerald-600 text-white px-4 rounded">ADD</button></form><div id="lista-categorias-modal"></div></div></div>
 
     <script>
         const SUPABASE_URL = 'https://dqhyjrvhasmjwblidnqj.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxaHlqcnZoYXNtandibGlkbnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjMwOTIsImV4cCI6MjA4ODI5OTA5Mn0.F13N0yyQPOlkiR_tNIhSd1gKerJew5mIuHrj4lIk3qU'; 
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let contasGlobais = []; let categoriasGlobais = []; let transacoesGlobais = []; let fixasGlobais = []; let transacoesPendentes = []; let graficoInstance = null;
+        let contasGlobais = []; let categoriasGlobais = []; let transacoesGlobais = []; let fixasGlobais = []; let graficoInstance = null;
 
-        function getHojeLocal() { const data = new Date(); return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`; }
+        function getHojeLocal() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
         document.getElementById('input-data').value = getHojeLocal();
 
-        const selectParcelas = document.getElementById('select-parcelas');
-        for(let i = 1; i <= 24; i++) selectParcelas.add(new Option(i === 1 ? '1x (À vista)' : `${i}x`, i));
+        const selP = document.getElementById('select-parcelas');
+        for(let i = 1; i <= 24; i++) selP.add(new Option(i === 1 ? '1x (À vista)' : `${i}x`, i));
 
-        function toggleSection(idLista, idSeta) { const lista = document.getElementById(idLista); const seta = document.getElementById(idSeta); if (lista.style.maxHeight === '0px' || !lista.style.maxHeight) { lista.style.maxHeight = '2000px'; seta.classList.remove('fechado'); } else { lista.style.maxHeight = '0px'; seta.classList.add('fechado'); } }
+        function toggleSection(id, seta) { 
+            const l = document.getElementById(id); const s = document.getElementById(seta);
+            if (l.style.maxHeight === '0px' || !l.style.maxHeight) { l.style.maxHeight = '2000px'; s.classList.remove('fechado'); } 
+            else { l.style.maxHeight = '0px'; s.classList.add('fechado'); } 
+        }
+
         function abrirHistorico() { document.getElementById('modal-historico').classList.remove('hidden'); carregarHistorico(); } function fecharHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
-        function abrirCategorias() { document.getElementById('modal-categorias').classList.remove('hidden'); renderizarModalCategorias(); } function fecharCategorias() { document.getElementById('modal-categorias').classList.add('hidden'); }
+        function abrirCategorias() { document.getElementById('modal-categorias').classList.remove('hidden'); renderizarModalCats(); } function fecharCategorias() { document.getElementById('modal-categorias').classList.add('hidden'); }
         function abrirFixas() { document.getElementById('modal-fixas').classList.remove('hidden'); renderizarFixas(); } function fecharFixas() { document.getElementById('modal-fixas').classList.add('hidden'); }
-        function fecharEditar() { document.getElementById('modal-editar').classList.add('hidden'); }
         function abrirParcelas() { document.getElementById('modal-parcelas').classList.remove('hidden'); carregarParcelas(); } function fecharParcelas() { document.getElementById('modal-parcelas').classList.add('hidden'); }
 
         function mostrarToast(msg, urg = 'aviso') {
-            const container = document.getElementById('toast-container'); const toast = document.createElement('div');
-            let cor = urg === 'critico' ? 'bg-red-600 animate-pulse' : (urg === 'sucesso' ? 'bg-emerald-600' : 'bg-orange-500');
-            toast.className = `${cor} toast-animate text-white px-4 py-3 rounded-lg shadow-xl font-bold text-sm flex justify-between border border-white/20 mb-2`;
-            toast.innerHTML = `<span class="flex-1">${msg}</span><button onclick="this.parentElement.remove()" class="ml-4">✖</button>`;
-            container.appendChild(toast); setTimeout(() => { if(toast) toast.remove(); }, 8000);
+            const c = document.getElementById('toast-container'); const t = document.createElement('div');
+            t.className = `bg-orange-500 toast-animate text-white px-4 py-3 rounded-lg shadow-xl font-bold text-sm mb-2`;
+            t.innerHTML = msg; c.appendChild(t); setTimeout(() => t.remove(), 6000);
         }
 
-        // ==========================================
-        // DINÂMICA DO FORMULÁRIO (V19 - BLINDADO)
-        // ==========================================
-        function recarregarListaContas() {
-            const op = document.getElementById('select-cat').value; const filtro = document.getElementById('select-filtro-origem').value; const selOrigem = document.getElementById('select-conta'); const selDestino = document.getElementById('select-destino');
-            const contaAntiga = selOrigem.value; selOrigem.innerHTML = ''; selDestino.innerHTML = '';
-            
-            contasGlobais.forEach(c => {
-                if(filtro === 'Todos' || c.tipo === filtro) selOrigem.add(new Option(c.nome, c.id));
-                if(op === 'Transferencia' || op === 'Investimento') selDestino.add(new Option(c.nome, c.id));
-            });
-            if(contaAntiga) selOrigem.value = contaAntiga;
+        function recarregarSelects() {
+            const op = document.getElementById('select-cat').value; const sO = document.getElementById('select-conta'); const sD = document.getElementById('select-destino');
+            const antO = sO.value; sO.innerHTML = ''; sD.innerHTML = '';
+            contasGlobais.forEach(c => { sO.add(new Option(c.nome, c.id)); sD.add(new Option(c.nome, c.id)); });
+            if(antO) sO.value = antO;
             atualizarVisibilidade();
         }
 
         function atualizarVisibilidade() {
-            const op = document.getElementById('select-cat').value; 
-            const contaId = document.getElementById('select-conta').value; 
-            const destinoId = document.getElementById('select-destino').value;
-            const contaInfo = contasGlobais.find(c => c.id == contaId);
-            const destinoInfo = contasGlobais.find(c => c.id == destinoId);
-            const catInfo = categoriasGlobais.find(c => c.id == op);
+            const op = document.getElementById('select-cat').value; const cId = document.getElementById('select-conta').value;
+            const cInfo = contasGlobais.find(c => c.id == cId); const catInfo = categoriasGlobais.find(c => c.id == op);
+            const bD = document.getElementById('box-destino'); const bP = document.getElementById('box-parcelas'); const bI = document.getElementById('box-operacao-invest');
+            const bDV = document.getElementById('box-desc-valor'); const bFR = document.getElementById('box-fixa-resumo'); const btn = document.getElementById('btn-submit');
+            const bJ = document.getElementById('box-juros-cartao');
 
-            const boxDestino = document.getElementById('box-destino'); const boxParcelas = document.getElementById('box-parcelas'); const boxOperacaoInvest = document.getElementById('box-operacao-invest');
-            const boxDescValor = document.getElementById('box-desc-valor'); const boxFixaResumo = document.getElementById('box-fixa-resumo'); const btnSubmit = document.getElementById('btn-submit');
-            const boxJuros = document.getElementById('box-juros-cartao');
+            bD.classList.add('hidden'); bP.classList.add('hidden'); bI.classList.add('hidden'); bJ.classList.add('hidden');
 
-            boxDestino.classList.add('hidden'); boxParcelas.classList.add('hidden'); boxOperacaoInvest.classList.add('hidden'); boxJuros.classList.add('hidden');
+            if(op === 'Transferencia') { bD.classList.remove('hidden'); bJ.classList.remove('hidden'); }
+            if(op === 'Investimento') { bI.classList.remove('hidden'); bD.classList.remove('hidden'); }
+            if(cInfo?.tipo === 'Crédito') bP.classList.remove('hidden');
 
-            if(op === 'Transferencia' && contaInfo?.tipo === 'Crédito' && destinoInfo?.tipo === 'Crédito') boxJuros.classList.remove('hidden');
-
-            let fixaRef = catInfo ? fixasGlobais.find(f => f.nome === catInfo.nome) : null;
-            if(fixaRef) {
-                boxDescValor.classList.add('hidden'); boxFixaResumo.classList.remove('hidden');
-                document.getElementById('txt-fixa-nome').innerText = fixaRef.nome; document.getElementById('txt-fixa-valor').innerText = `R$ ${parseFloat(fixaRef.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-                document.getElementById('input-desc').value = `Pagamento: ${fixaRef.nome}`; document.getElementById('input-valor').value = fixaRef.valor;
-                btnSubmit.innerText = "PAGAR CONTA"; btnSubmit.classList.add('bg-purple-700');
+            let fR = catInfo ? fixasGlobais.find(f => f.nome === catInfo.nome) : null;
+            if(fR) {
+                bDV.classList.add('hidden'); bFR.classList.remove('hidden');
+                document.getElementById('txt-fixa-nome').innerText = fR.nome; 
+                document.getElementById('txt-fixa-valor').innerText = `R$ ${parseFloat(fR.valor).toLocaleString('pt-BR')}`;
+                document.getElementById('input-desc').value = `Pago: ${fR.nome}`; document.getElementById('input-valor').value = fR.valor;
+                btn.innerText = "PAGAR CONTA"; btn.classList.add('bg-purple-700');
             } else {
-                boxDescValor.classList.remove('hidden'); boxFixaResumo.classList.add('hidden');
-                btnSubmit.innerText = "PROCESSAR OPERAÇÃO"; btnSubmit.classList.remove('bg-purple-700');
+                bDV.classList.remove('hidden'); bFR.classList.add('hidden');
+                btn.innerText = "PROCESSAR OPERAÇÃO"; btn.classList.remove('bg-purple-700');
             }
-
-            if (op === 'Investimento') { boxOperacaoInvest.classList.remove('hidden'); boxDestino.classList.remove('hidden'); }
-            else if (op === 'Transferencia') { boxDestino.classList.remove('hidden'); }
-
-            if(contaInfo?.tipo === 'Crédito' && (catInfo?.tipo === 'Despesa' || op === 'Transferencia')) boxParcelas.classList.remove('hidden');
         }
 
-        document.getElementById('select-cat').addEventListener('change', recarregarListaContas);
+        document.getElementById('select-cat').addEventListener('change', recarregarSelects);
         document.getElementById('select-conta').addEventListener('change', atualizarVisibilidade);
-        document.getElementById('select-destino').addEventListener('change', atualizarVisibilidade);
-        document.getElementById('select-filtro-origem').addEventListener('change', recarregarListaContas);
         document.getElementById('check-juros').addEventListener('change', (e) => document.getElementById('sub-box-juros').classList.toggle('hidden', !e.target.checked));
 
-        // ==========================================
-        // CARGA E RENDERIZAÇÃO (V19 - ANTI-CRASH)
-        // ==========================================
         async function carregarDados() {
             try {
-                const [resContas, resCats, resTrans, resFix] = await Promise.all([
+                const [rCo, rCa, rTr, rFi] = await Promise.all([
                     db.from('contas').select('*').order('nome'), db.from('categorias').select('*').order('nome'), db.from('transacoes').select('*'), db.from('despesas_fixas').select('*')
                 ]);
-                contasGlobais = resContas.data || []; categoriasGlobais = resCats.data || []; fixasGlobais = resFix.data || []; transacoesGlobais = resTrans.data || [];
-                transacoesPendentes = transacoesGlobais.filter(t => t.data > getHojeLocal());
-                
-                renderizarCategoriasDropdown(); recarregarListaContas(); renderizarContasNaTela(); desenharGrafico();
+                contasGlobais = rCo.data || []; categoriasGlobais = rCa.data || []; fixasGlobais = rFi.data || []; transacoesGlobais = rTr.data || [];
+                renderizarCatsDropdown(); recarregarSelects(); renderizarContas(); desenharGrafico();
             } catch (err) { console.error(err); }
         }
 
-        function renderizarCategoriasDropdown() {
+        function renderizarCatsDropdown() {
             const d = document.getElementById('opt-despesas'); const r = document.getElementById('opt-receitas'); d.innerHTML = ''; r.innerHTML = '';
-            categoriasGlobais.forEach(c => { const o = new Option(c.nome, c.id); if(c.tipo === 'Despesa') d.appendChild(o); else if(c.tipo === 'Receita') r.appendChild(o); });
+            categoriasGlobais.forEach(c => { const o = new Option(c.nome, c.id); if(c.tipo === 'Despesa') d.appendChild(o); else r.appendChild(o); });
         }
 
-        function renderizarContasNaTela() {
-            let sB = 0, dC = 0, iT = 0; const divB = document.getElementById('lista-bancos'); const divC = document.getElementById('lista-cartoes'); const divI = document.getElementById('lista-investimentos');
-            divB.innerHTML = ''; divC.innerHTML = ''; divI.innerHTML = ''; let btgT = 0; let btgH = '';
-
+        function renderizarContas() {
+            let sB=0, dC=0, iT=0; const diB=document.getElementById('lista-bancos'), diC=document.getElementById('lista-cartoes'), diI=document.getElementById('lista-investimentos');
+            diB.innerHTML=''; diC.innerHTML=''; diI.innerHTML='';
             contasGlobais.forEach(c => {
-                const saldoNum = parseFloat(c.saldo_atual) || 0;
-                if(c.tipo === 'Corrente') { sB += saldoNum; divB.innerHTML += `<div class="flex justify-between py-2 border-b border-gray-50"><span class="text-[12px]">› ${c.nome}</span><span class="text-[12px] font-bold text-[#3e9383]">R$ ${saldoNum.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span></div>`; }
-                
+                const s = parseFloat(c.saldo_atual) || 0;
+                if(c.tipo === 'Corrente') { sB+=s; diB.innerHTML += `<div class="flex justify-between py-1 border-b"><span>› ${c.nome}</span><b>R$ ${s.toLocaleString('pt-BR')}</b></div>`; }
                 if(c.tipo === 'Crédito') { 
-                    dC += saldoNum; const lim = parseFloat(c.limite_total) || 1; const us = Math.abs(saldoNum); const disp = lim - us; 
-                    const pU = Math.min((us/lim)*100, 100); const pR = Math.max(100-pU, 0);
-                    divC.innerHTML += `<div class="flex flex-col py-2 border-b border-gray-100"><div class="flex justify-between text-[11px] font-bold"><span>${c.nome} (Venc: ${c.dia_vencimento || '--'})</span><span class="${pR<=20?'text-red-600':'text-emerald-600'}">R$ ${disp.toLocaleString('pt-BR')} (${pR.toFixed(0)}%)</span></div><div class="w-full bg-gray-200 h-1.5 rounded-full mt-1 overflow-hidden shadow-inner"><div class="${pU>80?'bg-red-500':'bg-[#102a43]'} h-full transition-all duration-500" style="width:${pU}%"></div></div></div>`;
+                    dC+=s; const lim = parseFloat(c.limite_total) || 1; const us = Math.abs(s); const pU = Math.min((us/lim)*100, 100);
+                    diC.innerHTML += `<div class="py-1"><b>${c.nome}</b> (Disp: R$ ${(lim-us).toLocaleString('pt-BR')})<div class="w-full bg-gray-200 h-1.5 rounded-full mt-1 overflow-hidden"><div class="bg-[#102a43] h-full" style="width:${pU}%"></div></div></div>`;
                 }
-
-                if(c.tipo === 'Investimento') { 
-                    iT += saldoNum; 
-                    if(c.nome.toUpperCase().includes('BTG')) { btgT += saldoNum; btgH += `<div class="flex justify-between text-[11px] ml-4 border-l-2 pl-2"><span>↳ ${c.nome.replace(/BTG - /i,'')}</span><b>R$ ${saldoNum.toLocaleString('pt-BR')}</b></div>`; } 
-                    else { divI.innerHTML += `<div class="flex justify-between py-2 text-[12px]"><span>🏢 ${c.nome}</span><b>R$ ${saldoNum.toLocaleString('pt-BR')}</b></div>`; } 
-                }
+                if(c.tipo === 'Investimento') { iT+=s; diI.innerHTML += `<div class="flex justify-between py-1"><span>🏢 ${c.nome}</span><b>R$ ${s.toLocaleString('pt-BR')}</b></div>`; }
             });
-            if(btgT > 0) divI.innerHTML = `<div class="bg-blue-50 p-2 rounded mb-2 shadow-sm"><div class="flex justify-between font-extrabold text-blue-900 text-[12px] mb-1"><span>🏦 BTG PACTUAL</span><span>R$ ${btgT.toLocaleString('pt-BR')}</span></div>${btgH}</div>` + divI.innerHTML;
-            
             document.getElementById('kpi-patrimonio').innerText = `R$ ${(sB+dC+iT).toLocaleString('pt-BR')}`;
             document.getElementById('kpi-bancos').innerText = `R$ ${sB.toLocaleString('pt-BR')}`;
             document.getElementById('kpi-invest').innerText = `R$ ${iT.toLocaleString('pt-BR')}`;
             document.getElementById('kpi-divida').innerText = `R$ ${Math.abs(dC).toLocaleString('pt-BR')}`;
         }
 
-        // ==========================================
-        // PROCESSAR OPERAÇÃO (COM REFRESH AUTOMÁTICO)
-        // ==========================================
         document.getElementById('form-transacao').addEventListener('submit', async (e) => {
             e.preventDefault(); const btn = document.getElementById('btn-submit'); btn.disabled = true;
             const op = document.getElementById('select-cat').value; const orig = document.getElementById('select-conta').value; const dest = document.getElementById('select-destino').value; 
             const liq = parseFloat(document.getElementById('input-valor').value); const dataB = document.getElementById('input-data').value; const desc = document.getElementById('input-desc').value;
+            const comJ = document.getElementById('check-juros').checked; const bruto = parseFloat(document.getElementById('input-valor-bruto').value) || liq;
             const parc = parseInt(document.getElementById('select-parcelas').value) || 1;
-            const comJuros = document.getElementById('check-juros').checked; const bruto = parseFloat(document.getElementById('input-valor-bruto').value) || liq;
 
             try {
-                if (op === 'Transferencia') {
-                    let vP = bruto / parc; let inserts = []; let [a,m,d] = dataB.split('-');
-                    for(let i=0; i<parc; i++) { let dp = new Date(a, parseInt(m)-1+i, d).toISOString().split('T')[0]; inserts.push({ data: dp, descricao: `${desc} (${i+1}/${parc})`, valor: -Math.abs(vP), conta_origem_id: orig }); }
-                    await db.from('transacoes').insert(inserts);
-                    await db.from('transacoes').insert({ data: dataB, descricao: `Recebido: ${desc}`, valor: Math.abs(liq), conta_origem_id: dest });
+                if(op === 'Transferencia') {
+                    let vP = bruto/parc; let [a,m,d] = dataB.split('-');
+                    for(let i=0; i<parc; i++) {
+                        let dp = new Date(a, parseInt(m)-1+i, d).toISOString().split('T')[0];
+                        await db.from('transacoes').insert({ data: dp, descricao: `${desc} (${i+1}/${parc})`, valor: -Math.abs(vP), conta_origem_id: orig });
+                    }
+                    await db.from('transacoes').insert({ data: dataB, descricao: `Rec: ${desc}`, valor: Math.abs(liq), conta_origem_id: dest });
+                    if(comJ && bruto > liq) await db.from('transacoes').insert({ data: dataB, descricao: `Taxa: ${desc}`, valor: -(bruto-liq), conta_origem_id: orig });
                 } else if (op === 'Investimento') {
                     await db.from('transacoes').insert([{ data: dataB, valor: -liq, conta_origem_id: orig }, { data: dataB, valor: liq, conta_origem_id: dest }]);
                 } else {
-                    let vP = liq / parc; let ins = []; let [a,m,d] = dataB.split('-');
-                    for(let i=0; i<parc; i++) { let dp = new Date(a, parseInt(m)-1+i, d).toISOString().split('T')[0]; ins.push({ data: dp, descricao: parc>1?`${desc} (${i+1}/${parc})`:desc, valor: -Math.abs(vP), conta_origem_id: orig, categoria_id: op }); }
-                    await db.from('transacoes').insert(ins);
+                    let vP = liq/parc; let [a,m,d] = dataB.split('-');
+                    for(let i=0; i<parc; i++) {
+                        let dp = new Date(a, parseInt(m)-1+i, d).toISOString().split('T')[0];
+                        await db.from('transacoes').insert({ data: dp, descricao: parc>1?`${desc} (${i+1}/${parc})`:desc, valor: -Math.abs(vP), conta_origem_id: orig, categoria_id: op });
+                    }
                 }
-                mostrarToast("✅ Operação Concluída!", "sucesso"); 
-                setTimeout(() => location.reload(), 1000); // REFRESH FORÇADO
+                mostrarToast("✅ Sucesso!"); setTimeout(() => location.reload(), 800);
             } catch (err) { alert(err.message); btn.disabled = false; }
-        } );
+        });
 
-        // HISTÓRICO, FIXAS, CATEGORIAS E GRÁFICO (REDUZIDOS)
-        async function carregarHistorico() { const tbody = document.getElementById('tabela-historico'); const { data } = await db.from('transacoes').select('id, data, descricao, valor, contas(nome)').order('data', { ascending: false }).limit(30); tbody.innerHTML = ''; data.forEach(t => { tbody.innerHTML += `<tr class="border-b"><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2">${t.contas?.nome || '-'}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td><td class="p-2"><button onclick="deletarTransacao('${t.id}')">🗑️</button></td></tr>`; }); }
-        async function deletarTransacao(id) { if(confirm("Excluir?")) { await db.from('transacoes').delete().eq('id', id); location.reload(); } }
-        function renderizarFixas() { const div = document.getElementById('lista-fixas-modal'); div.innerHTML = ''; fixasGlobais.forEach(f => { div.innerHTML += `<div class="p-2 border-b flex justify-between"><span>${f.nome} (Dia ${f.dia_vencimento})</span><b>R$ ${f.valor}</b><button onclick="deletarFixa('${f.id}')">🗑️</button></div>`; }); }
-        async function deletarFixa(id) { await db.from('despesas_fixas').delete().eq('id', id); location.reload(); }
-        function renderizarModalCategorias() { const div = document.getElementById('lista-categorias-modal'); div.innerHTML = ''; categoriasGlobais.forEach(c => div.innerHTML += `<div class="p-2 border-b flex justify-between"><span>${c.nome}</span><button onclick="deletarCategoria('${c.id}')">🗑️</button></div>`); }
-        async function deletarCategoria(id) { await db.from('categorias').delete().eq('id', id); location.reload(); }
-        async function carregarParcelas() { const tb = document.getElementById('tabela-parcelas'); const { data } = await db.from('transacoes').select('data, descricao, valor, contas!inner(nome, tipo)').eq('contas.tipo', 'Crédito').gt('data', getHojeLocal()).order('data'); tb.innerHTML = ''; data.forEach(t => tb.innerHTML += `<tr class="border-b"><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2">${t.contas.nome}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor)}</td></tr>`); }
+        async function carregarHistorico() { const { data } = await db.from('transacoes').select('id, data, descricao, valor, contas(nome)').order('data', { ascending: false }).limit(30); const tb = document.getElementById('tabela-historico'); tb.innerHTML = ''; data.forEach(t => tb.innerHTML += `<tr class="border-b"><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td><td><button onclick="delTr('${t.id}')">🗑️</button></td></tr>`); }
+        async function delTr(id) { if(confirm("Del?")) { await db.from('transacoes').delete().eq('id', id); location.reload(); } }
+        function renderizarFixas() { const di = document.getElementById('lista-fixas-modal'); di.innerHTML = ''; fixasGlobais.forEach(f => di.innerHTML += `<div class="flex justify-between p-2 border-b"><span>${f.nome}</span><b>R$ ${f.valor}</b><button onclick="delFix('${f.id}')">🗑️</button></div>`); }
+        async function delFix(id) { await db.from('despesas_fixas').delete().eq('id', id); location.reload(); }
+        function renderizarModalCats() { const di = document.getElementById('lista-categorias-modal'); di.innerHTML = ''; categoriasGlobais.forEach(c => di.innerHTML += `<div class="flex justify-between p-2 border-b"><span>${c.nome}</span><button onclick="delCat('${c.id}')">🗑️</button></div>`); }
+        async function delCat(id) { await db.from('categorias').delete().eq('id', id); location.reload(); }
+        async function carregarParcelas() { const { data } = await db.from('transacoes').select('data, descricao, valor, contas!inner(nome, tipo)').eq('contas.tipo', 'Crédito').gt('data', getHojeLocal()).order('data'); const tb = document.getElementById('tabela-parcelas'); tb.innerHTML = ''; data.forEach(t => tb.innerHTML += `<tr class="border-b"><td class="p-2">${t.data}</td><td class="p-2">${t.descricao}</td><td class="p-2 text-right">R$ ${Math.abs(t.valor).toLocaleString('pt-BR')}</td></tr>`); }
 
         function desenharGrafico() {
             let g = {}; transacoesGlobais.forEach(x => { if(x.valor < 0 && x.categoria_id) { let c = categoriasGlobais.find(y => y.id == x.categoria_id); if(c) g[c.nome] = (g[c.nome]||0) + Math.abs(x.valor); } });
             const ctx = document.getElementById('graficoVazamento').getContext('2d'); if(graficoInstance) graficoInstance.destroy();
-            graficoInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(g), datasets: [{ data: Object.values(g), backgroundColor: ['#102a43', '#475569', '#3e9383', '#d97706', '#3b82f6', '#9333ea'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { boxWidth: 8, font: {size: 10} } } } } });
+            graficoInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(g), datasets: [{ data: Object.values(g), backgroundColor: ['#102a43', '#475569', '#3e9383', '#d97706', '#3b82f6', '#9333ea'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
         }
 
         carregarDados();
