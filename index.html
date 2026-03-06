@@ -209,7 +209,20 @@
 
         let contasGlobais = []; let categoriasGlobais = []; let transacoesPendentes = []; let transacoesGlobais = []; let fixasGlobais = []; let graficoInstance = null;
 
-        document.getElementById('input-data').valueAsDate = new Date();
+        // ==========================================
+        // O RELÓGIO JARVIS (CORREÇÃO DE FUSO HORÁRIO)
+        // ==========================================
+        function getHojeLocal() {
+            const data = new Date();
+            const ano = data.getFullYear();
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const dia = String(data.getDate()).padStart(2, '0');
+            return `${ano}-${mes}-${dia}`;
+        }
+
+        // Aplica o relógio corrigido ao carregar a página
+        document.getElementById('input-data').value = getHojeLocal();
+
         const selectParcelas = document.getElementById('select-parcelas');
         for(let i = 1; i <= 24; i++) selectParcelas.add(new Option(i === 1 ? '1x (À vista)' : `${i}x`, i));
 
@@ -220,7 +233,7 @@
         function fecharEditar() { document.getElementById('modal-editar').classList.add('hidden'); }
         function abrirParcelas() { document.getElementById('modal-parcelas').classList.remove('hidden'); carregarParcelas(); } function fecharParcelas() { document.getElementById('modal-parcelas').classList.add('hidden'); }
 
-        function calcularDataDmais(dataBaseIso, diasUteis) { if(!dataBaseIso) return new Date().toISOString().split('T')[0]; let d = new Date(dataBaseIso + 'T12:00:00'); let adicionados = 0; while (adicionados < diasUteis) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0 && d.getDay() !== 6) adicionados++; } return d.toISOString().split('T')[0]; }
+        function calcularDataDmais(dataBaseIso, diasUteis) { if(!dataBaseIso) return getHojeLocal(); let d = new Date(dataBaseIso + 'T12:00:00'); let adicionados = 0; while (adicionados < diasUteis) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0 && d.getDay() !== 6) adicionados++; } return d.toISOString().split('T')[0]; }
         function diferencaEmDias(dataIso) { const hoje = new Date(); hoje.setHours(0,0,0,0); const alvo = new Date(dataIso + 'T12:00:00'); alvo.setHours(0,0,0,0); return Math.ceil((alvo - hoje) / (1000 * 60 * 60 * 24)); }
 
         // ==========================================
@@ -237,10 +250,8 @@
         function verificarRadaresVencimento() {
             const hoje = new Date(); const diaAtual = hoje.getDate(); const mesAtual = hoje.getMonth(); const anoAtual = hoje.getFullYear(); const diasNoMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
             
-            // 1. Radar das Despesas Fixas (COM BAIXA AUTOMÁTICA)
             if(fixasGlobais && fixasGlobais.length > 0) {
                 fixasGlobais.forEach(f => {
-                    // Verifica se já existe um lançamento com o nome desta conta neste mês
                     const cat = categoriasGlobais.find(c => c.nome === f.nome);
                     let jaPaga = false;
                     if(cat && transacoesGlobais.length > 0) {
@@ -250,7 +261,7 @@
                             return dataT.getMonth() === mesAtual && dataT.getFullYear() === anoAtual && t.valor < 0;
                         });
                     }
-                    if(jaPaga) return; // SE TIVER PAGA, PULA O RADAR!
+                    if(jaPaga) return; // Conta já foi paga este mês.
 
                     let diff = f.dia_vencimento - diaAtual;
                     if (f.dia_vencimento < diaAtual) diff = (diasNoMes - diaAtual) + f.dia_vencimento;
@@ -259,7 +270,6 @@
                 });
             }
 
-            // 2. Radar de Cartões
             if(contasGlobais && contasGlobais.length > 0) {
                 contasGlobais.forEach(c => {
                     if(c.tipo === 'Crédito' && c.dia_vencimento) {
@@ -297,21 +307,17 @@
 
             boxDestino.classList.add('hidden'); boxParcelas.classList.add('hidden'); boxOperacaoInvest.classList.add('hidden'); lblOrigem.innerText = 'CONTA / CARTÃO'; lblOrigem.classList.remove('text-red-600');
 
-            // Verifica se a Categoria selecionada é uma Despesa Fixa cadastrada
             let isFixa = false; let fixaRef = null;
             if(catInfo) { fixaRef = fixasGlobais.find(f => f.nome === catInfo.nome); if(fixaRef) isFixa = true; }
 
-            // MÁGICA DA TELA DE DESPESA FIXA
             if(isFixa) {
                 boxDescValor.classList.add('hidden'); boxFixaResumo.classList.remove('hidden');
                 document.getElementById('txt-fixa-nome').innerText = fixaRef.nome; document.getElementById('txt-fixa-valor').innerText = `R$ ${fixaRef.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
                 document.getElementById('input-desc').value = `Pagamento: ${fixaRef.nome}`; document.getElementById('input-valor').value = fixaRef.valor;
-                
                 btnSubmit.innerText = "PAGAR CONTA"; btnSubmit.classList.replace('bg-[#102a43]', 'bg-purple-700'); btnSubmit.classList.replace('hover:bg-blue-900', 'hover:bg-purple-900');
             } else {
                 boxDescValor.classList.remove('hidden'); boxFixaResumo.classList.add('hidden');
                 if(document.getElementById('input-desc').value.startsWith('Pagamento: ')) { document.getElementById('input-desc').value = ''; document.getElementById('input-valor').value = ''; }
-                
                 btnSubmit.innerText = "PROCESSAR OPERAÇÃO"; btnSubmit.classList.replace('bg-purple-700', 'bg-[#102a43]'); btnSubmit.classList.replace('hover:bg-purple-900', 'hover:bg-blue-900');
             }
 
@@ -331,7 +337,7 @@
         document.getElementById('select-conta').addEventListener('change', atualizarVisibilidade);
 
         // ==========================================
-        // CARGA DE DADOS
+        // CARGA DE DADOS (COM A DATA CORRETA)
         // ==========================================
         async function carregarDados() {
             try {
@@ -344,7 +350,9 @@
                 if (resTransacoes.error) throw new Error("Falha ao ler Transações: " + resTransacoes.error.message);
 
                 contasGlobais = resContas.data || []; categoriasGlobais = resCategorias.data || []; fixasGlobais = resFixas.data || []; transacoesGlobais = resTransacoes.data || [];
-                const hojeStr = new Date().toISOString().split('T')[0]; transacoesPendentes = transacoesGlobais.filter(t => t.data > hojeStr);
+                
+                const hojeStr = getHojeLocal(); // Puxa do relógio corrigido
+                transacoesPendentes = transacoesGlobais.filter(t => t.data > hojeStr);
                 
                 renderizarCategoriasDropdown(); recarregarListaContas(); atualizarVisibilidade(); renderizarContasNaTela(); desenharGrafico(transacoesGlobais);
                 verificarRadaresVencimento();
@@ -421,18 +429,18 @@
                     for(let i=0; i<parcelas; i++) { let dataP = new Date(a, parseInt(m)-1+i, d).toISOString().split('T')[0]; inserts.push({ data: dataP, descricao: parcelas>1 ? `${desc} (${i+1}/${parcelas})` : desc, valor: valorFinal, conta_origem_id: contaOrigem, categoria_id: op }); }
                     await db.from('transacoes').insert(inserts);
                 }
-                mostrarToast("✅ Operação Registrada! Saldo Atualizado pelo Robô.", "sucesso"); e.target.reset(); document.getElementById('input-data').valueAsDate = new Date(); atualizarVisibilidade(); carregarDados();
+                mostrarToast("✅ Operação Registrada! Saldo Atualizado pelo Robô.", "sucesso"); e.target.reset(); document.getElementById('input-data').value = getHojeLocal(); atualizarVisibilidade(); carregarDados();
             } catch (error) { mostrarToast(`❌ Erro: ${error.message}`, "critico"); }
             btn.disabled = false; atualizarVisibilidade();
         });
 
         // ==========================================
-        // PARCELAS, EXTRATO E CATEGORIAS 
+        // PARCELAS E EXTRATO
         // ==========================================
         async function carregarParcelas() {
             try {
                 const tbody = document.getElementById('tabela-parcelas'); tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Carregando parcelas futuras...</td></tr>';
-                const hojeStr = new Date().toISOString().split('T')[0];
+                const hojeStr = getHojeLocal();
                 const { data, error } = await db.from('transacoes').select('id, data, descricao, valor, contas!inner(nome, tipo)').eq('contas.tipo', 'Crédito').gt('data', hojeStr).order('data', { ascending: true });
                 if(error) throw error; tbody.innerHTML = '';
                 if(!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">Nenhuma parcela ou despesa futura nos cartões.</td></tr>'; return; }
@@ -453,15 +461,18 @@
         function abrirEdicao(id, desc, data, valorOriginal) { document.getElementById('edit-id').value = id; document.getElementById('edit-desc').value = desc; document.getElementById('edit-data').value = data; document.getElementById('edit-valor').value = Math.abs(valorOriginal).toFixed(2); document.getElementById('edit-valor-original').value = valorOriginal; document.getElementById('modal-editar').classList.remove('hidden'); }
         document.getElementById('form-editar').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('edit-id').value; const desc = document.getElementById('edit-desc').value; const data = document.getElementById('edit-data').value; let novoValor = parseFloat(document.getElementById('edit-valor').value); const valorOriginal = parseFloat(document.getElementById('edit-valor-original').value); if(valorOriginal < 0) novoValor = -Math.abs(novoValor); else novoValor = Math.abs(novoValor); const { error } = await db.from('transacoes').update({ descricao: desc, data: data, valor: novoValor }).eq('id', id); if(!error) { mostrarToast("✅ Atualizado! Robô ajustou os saldos.", "sucesso"); fecharEditar(); carregarHistorico(); carregarDados(); } else { alert("Erro: " + error.message); } });
 
+        // ==========================================
+        // CATEGORIAS E GRÁFICOS
+        // ==========================================
         function renderizarModalCategorias() { const div = document.getElementById('lista-categorias-modal'); div.innerHTML = ''; categoriasGlobais.forEach(c => { if(c.tipo !== 'Investimento' && c.nome !== 'Aporte / Resgate') { div.innerHTML += `<div class="p-2 border-b flex justify-between items-center hover:bg-gray-50"><div><span class="font-bold text-sm text-gray-700">${c.nome}</span><span class="text-[10px] ml-2 uppercase font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">${c.tipo}</span></div><button onclick="deletarCategoria('${c.id}')" class="text-red-500 hover:text-red-700 text-lg px-2">🗑️</button></div>`; } }); }
         async function deletarCategoria(id) { if(confirm("Apagar esta categoria?")) { const { error } = await db.from('categorias').delete().eq('id', id); if(error) alert("Erro: " + error.message); else { await carregarDados(); renderizarModalCategorias(); } } }
         document.getElementById('form-nova-categoria').addEventListener('submit', async (e) => { e.preventDefault(); const btn = e.target.querySelector('button'); btn.innerText = "..."; const nome = document.getElementById('cat-nome').value; const tipo = document.getElementById('cat-tipo').value; try { const { error } = await db.from('categorias').insert([{ nome, tipo }]).select(); if(error) throw error; mostrarToast(`✅ Categoria "${nome}" criada!`, 'sucesso'); document.getElementById('cat-nome').value = ''; await carregarDados(); renderizarModalCategorias(); } catch (err) { alert(`❌ ERRO: ${err.message}`); } btn.innerText = "ADD"; });
 
         function desenharGrafico(todasTransacoes) {
             if(!todasTransacoes || todasTransacoes.length === 0) return; let gastos = {}; const hoje = new Date();
-            todasTransacoes.forEach(t => { let dataT = new Date(t.data + 'T12:00:00'); if(t.valor < 0 && t.categoria_id && dataT.getMonth() === hoje.getMonth()) { const catInfo = categoriasGlobais.find(c => c.id == t.categoria_id); if(catInfo && catInfo.tipo === 'Despesa') gastos[catInfo.nome] = (gastos[catInfo.nome] || 0) + Math.abs(t.valor); } });
+            todasTransacoes.forEach(t => { let dataT = new Date(t.data + 'T12:00:00'); if(t.valor < 0 && t.categoria_id && dataT.getMonth() === hoje.getMonth() && dataT.getFullYear() === hoje.getFullYear()) { const catInfo = categoriasGlobais.find(c => c.id == t.categoria_id); if(catInfo && catInfo.tipo === 'Despesa') gastos[catInfo.nome] = (gastos[catInfo.nome] || 0) + Math.abs(t.valor); } });
             const ctx = document.getElementById('graficoVazamento').getContext('2d'); if(graficoInstance) graficoInstance.destroy();
-            graficoInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(gastos).length ? Object.keys(gastos) : ['Sem Gastos no Mês'], datasets: [{ data: Object.values(gastos).length ? Object.values(gastos) : [1], backgroundColor: ['#102a43', '#475569', '#3e9383', '#d97706', '#3b82f6'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 6, font: {size: 10} } } } } });
+            graficoInstance = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(gastos).length ? Object.keys(gastos) : ['Sem Gastos no Mês'], datasets: [{ data: Object.values(gastos).length ? Object.values(gastos) : [1], backgroundColor: ['#102a43', '#475569', '#3e9383', '#d97706', '#3b82f6', '#9333ea'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 6, font: {size: 10} } } } } });
         }
 
         carregarDados();
