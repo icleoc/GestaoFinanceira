@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA FINANCEIRO LÉO - V50 MASTER</title>
+    <title>SISTEMA FINANCEIRO LÉO - V51 MASTER</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -32,7 +32,7 @@
             <span class="text-2xl">🚨</span>
             <div class="flex-1">
                 <h3 class="font-black text-xs uppercase tracking-widest mb-2">Jarvis: Contas Pendentes</h3>
-                <div id="lista-alertas-texto" class="text-[10px] font-bold opacity-90 space-y-1"></div>
+                <div id="lista-alertas-texto" class="text-[10px] font-bold opacity-90 space-y-1 leading-tight"></div>
             </div>
             <button onclick="document.getElementById('painel-alertas').remove()" class="text-white/40 hover:text-white font-black">✕</button>
         </div>
@@ -44,7 +44,7 @@
             <button onclick="abrirContas()" class="bg-emerald-100 text-emerald-800 text-[11px] py-2.5 px-5 rounded-lg shadow-sm hover:bg-emerald-200">🏦 CONTAS</button>
             <button onclick="abrirFixas()" class="bg-purple-100 text-purple-800 text-[11px] py-2.5 px-5 rounded-lg shadow-sm hover:bg-purple-200">🗓️ FIXAS</button>
             <button onclick="abrirHistorico()" class="bg-blue-600 text-white text-[11px] py-2.5 px-5 rounded-lg shadow-md hover:bg-blue-700">📜 EXTRATO</button>
-            <button onclick="abrirCategorias()" class="bg-gray-800 text-white text-[11px] py-2.5 px-5 rounded-lg shadow-sm">⚙️ CATEGORIAS</button>
+            <button onclick="abrirCategorias()" class="bg-gray-800 text-white text-[11px] py-2.5 px-5 rounded-lg shadow-sm transition">⚙️ CATEGORIAS</button>
         </div>
     </div>
 
@@ -61,104 +61,74 @@
                 <div class="flex justify-between items-center cursor-pointer" onclick="toggleSection('lista-bancos','s1')"><span class="font-black text-emerald-800 text-xs uppercase">🏦 Contas Correntes</span><span id="s1" class="seta-rot">▼</span></div>
                 <div id="lista-bancos" class="mt-4 space-y-3"></div>
             </div>
+            
             <div class="bg-white rounded-2xl p-5 card-shadow">
                 <div class="flex justify-between items-center cursor-pointer" onclick="toggleSection('lista-cartoes-container','s2')"><span class="font-black text-orange-800 text-xs uppercase tracking-widest">💳 Cartões de Crédito</span><span id="s2" class="seta-rot">▼</span></div>
-                <div id="lista-cartoes-container" class="mt-4 space-y-6"><div id="lista-cartoes"></div></div>
+                <div id="lista-cartoes-container" class="mt-4 space-y-6 overflow-hidden transition-all duration-300">
+                    <div id="lista-cartoes"></div>
+                </div>
             </div>
+
             <div class="bg-white rounded-2xl p-5 card-shadow border-l-8 border-blue-800 shadow-xl">
-                <div class="flex justify-between items-center cursor-pointer" onclick="toggleSection('lista-investimentos','s3')"><span class="font-black text-blue-900 text-xs uppercase tracking-widest">📈 Carteira de Investimentos</span><span id="s3" class="seta-rot">▼</span></div>
+                <div class="flex justify-between items-center cursor-pointer" onclick="toggleSection('lista-investimentos','s3')"><span class="font-black text-blue-900 text-xs uppercase tracking-widest">📈 Carteira de Investimentos / BTG</span><span id="s3" class="seta-rot">▼</span></div>
                 <div id="lista-investimentos" class="mt-4 space-y-4"></div>
             </div>
         </div>
 
         <div class="lg:col-span-5 space-y-6">
             <div class="bg-white rounded-2xl p-8 card-shadow border-t-8 border-[#102a43]">
-                <h3 class="text-sm font-black mb-6 uppercase text-gray-800 tracking-widest">Novo Lançamento</h3>
+                <h3 class="text-sm font-black mb-6 uppercase text-gray-800 tracking-widest">Lançamento de Elite</h3>
                 <form id="form-transacao" class="space-y-5">
                     <div class="grid grid-cols-2 gap-4">
                         <div><label class="text-[10px] font-black text-gray-400 uppercase">🗓️ Data</label><input type="date" id="input-data" class="form-input font-bold" required></div>
                         <div><label class="text-[10px] font-black text-gray-400 uppercase">Categoria</label><select id="select-cat" class="form-input font-bold bg-gray-900 text-white"></select></div>
                     </div>
+                    
                     <div id="box-fixa-resumo" class="hidden bg-purple-50 p-4 rounded-xl border border-purple-100 flex justify-between items-center">
                         <span id="txt-fixa-nome" class="font-black text-purple-700 text-xs uppercase"></span>
                         <span id="txt-fixa-valor" class="font-black text-purple-900 text-lg"></span>
                     </div>
+
                     <div class="grid grid-cols-3 gap-4">
                         <div class="col-span-2"><label class="text-[10px] font-black text-gray-400 uppercase">Descrição</label><input type="text" id="input-desc" class="form-input font-bold" onclick="limparSeSugerido(this)" required></div>
                         <div><label class="text-[10px] font-black text-gray-400 uppercase">Valor</label><input type="number" id="input-valor" step="0.01" class="form-input font-black text-blue-900" required></div>
                     </div>
+
                     <div id="box-juros-cartao" class="p-4 bg-red-50 rounded-xl border border-red-200 space-y-3">
                         <div class="flex items-center gap-2"><input type="checkbox" id="check-juros" class="w-5 h-5 text-red-600 rounded"><label for="check-juros" class="text-[10px] font-black text-red-800 uppercase tracking-widest cursor-pointer">Usou InfinitePay / Taxas?</label></div>
                         <div id="sub-box-juros" class="hidden">
-                            <label class="text-[10px] font-black text-red-600 block mb-1">TOTAL NO CARTÃO (COM JUROS)</label>
+                            <label class="text-[10px] font-black text-red-600 block mb-1 uppercase">TOTAL NO CARTÃO (COM JUROS)</label>
                             <input type="number" id="input-valor-bruto" step="0.01" class="form-input border-red-300 font-black text-red-700">
                         </div>
                     </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div><label class="text-[10px] font-black text-gray-400 uppercase">Origem (Sai)</label><select id="select-conta" class="form-input" required></select></div>
-                        <div id="box-destino" class="hidden"><label class="text-[10px] font-black text-emerald-600 uppercase">Destino (Entra)</label><select id="select-destino" class="form-input border-emerald-300 bg-emerald-50 font-bold"></select></div>
+                        <div id="box-destino" class="hidden"><label class="text-[10px] font-black text-emerald-600 uppercase font-black text-[10px]">Destino (Entra)</label><select id="select-destino" class="form-input border-emerald-300 bg-emerald-50 font-bold"></select></div>
                     </div>
-                    <div id="box-parcelas" class="hidden"><label class="text-[10px] font-black text-orange-600 uppercase block mb-1">Número de Parcelas</label><select id="select-parcelas" class="form-input border-orange-300 bg-orange-50 font-black"></select></div>
-                    <button type="submit" id="btn-submit" class="w-full bg-[#102a43] text-white font-black py-4 rounded-xl hover:bg-blue-900 shadow-2xl transition-all active:scale-95">PROCESSAR OPERAÇÃO</button>
+
+                    <div id="box-resgate" class="hidden">
+                        <label class="text-[10px] font-black text-blue-700 uppercase block mb-1">Prazo de Resgate (Liquidez)</label>
+                        <select id="select-resgate" class="form-input border-blue-300 bg-blue-50 font-black">
+                            <option value="0">D+0 (Imediato)</option><option value="1">D+1</option><option value="2">D+2</option><option value="3">D+3</option><option value="30">D+30</option>
+                        </select>
+                    </div>
+
+                    <div id="box-parcelas" class="hidden"><label class="text-[10px] font-black text-orange-600 uppercase block mb-1 font-black text-[10px]">Parcelas</label><select id="select-parcelas" class="form-input border-orange-300 bg-orange-50 font-black"></select></div>
+                    
+                    <button type="submit" id="btn-submit" class="w-full bg-[#102a43] text-white font-black py-4 rounded-xl hover:bg-blue-900 shadow-2xl transition-all">PROCESSAR OPERAÇÃO</button>
                 </form>
             </div>
-            <div class="bg-white rounded-2xl p-6 card-shadow h-56 flex flex-col items-center">
+            <div class="bg-white rounded-2xl p-6 card-shadow h-60 flex flex-col items-center">
                 <h3 class="text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest">Gastos por Categoria</h3>
-                <div class="w-full h-full"><canvas id="graficoVazamento"></canvas></div>
+                <div class="w-full h-full relative"><canvas id="graficoVazamento"></canvas></div>
             </div>
         </div>
     </div>
 
-    <div id="modal-historico" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[100] p-4">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
-            <div class="bg-gray-900 text-white p-5 flex justify-between items-center font-black uppercase tracking-widest"><span>📜 Extrato Completo</span><button onclick="fecharHistorico()" class="hover:text-red-400">✖ Fechar</button></div>
-            <div class="bg-gray-50 p-5 border-b grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                <div><label class="text-[10px] font-black uppercase text-gray-400">Conta</label><select id="filtro-extrato-conta" class="form-input" onchange="carregarHistorico()"></select></div>
-                <div><label class="text-[10px] font-black uppercase text-gray-400">Tipo</label><select id="filtro-extrato-tipo" class="form-input" onchange="carregarHistorico()"><option value="Todos">Todos</option><option value="Despesa">Despesa</option><option value="Receita">Receita</option></select></div>
-                <div class="md:col-span-2 flex justify-end">
-                    <button id="btn-bulk-delete" onclick="deletarEmLote()" disabled class="bg-red-600 text-white text-[11px] px-8 py-3 rounded-full font-black uppercase shadow-lg transition-all">🗑️ Excluir Selecionados (<span id="count-sel">0</span>)</button>
-                </div>
-            </div>
-            <div class="p-4 overflow-y-auto flex-1 scrollbar-hide">
-                <table class="w-full text-left border-collapse">
-                    <thead><tr class="text-[10px] text-gray-400 uppercase border-b-2"><th class="p-3 w-8"><input type="checkbox" onclick="toggleTodosChecks(this)" class="w-4 h-4"></th><th class="p-3 w-10"></th><th class="p-3 w-28">Data</th><th class="p-3">Descrição</th><th class="p-3 w-16 text-center">Parc.</th><th class="p-3">Conta</th><th class="p-3 text-right">Valor</th></tr></thead>
-                    <tbody id="tabela-historico" class="text-xs font-semibold"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-editar-tr" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[110] p-4">
-        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div class="bg-blue-600 text-white p-6 flex justify-between font-black uppercase text-sm"><span>✏️ Editar Registro</span><button onclick="fecharEdicaoTr()">✖</button></div>
-            <div class="p-8 space-y-6">
-                <input type="hidden" id="edit-tr-id"><input type="hidden" id="edit-tr-original-desc">
-                <div><label class="text-[10px] font-black text-gray-400 uppercase">🗓️ Alterar Data</label><input type="date" id="edit-tr-data" class="form-input font-bold"></div>
-                <div><label class="text-[10px] font-black text-gray-400 uppercase">Descrição</label><input type="text" id="edit-tr-desc" class="form-input font-bold"></div>
-                <div><label class="text-[10px] font-black text-gray-400 uppercase">Valor Líquido</label><input type="number" id="edit-tr-valor" step="0.01" class="form-input font-black text-blue-700"></div>
-                <div id="box-edit-cascata" class="hidden flex items-center gap-3 bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                    <input type="checkbox" id="check-cascata" class="w-6 h-6"><label for="check-cascata" class="text-[11px] font-bold text-blue-800 uppercase">Aplicar a todo o grupo de parcelas?</label>
-                </div>
-                <button onclick="salvarEdicaoTr()" id="btn-save-edit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl hover:bg-blue-700 transition-all">SALVAR ALTERAÇÕES</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-fixas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden">
-            <div class="bg-purple-700 text-white p-5 flex justify-between font-black uppercase text-sm"><span>🗓️ Gerenciar Contas Fixas</span><button onclick="fecharFixas()">✖</button></div>
-            <div class="p-6">
-                <form id="form-nova-fixa" class="grid grid-cols-5 gap-3 mb-6 items-end">
-                    <div class="col-span-2"><label class="text-[10px] font-bold uppercase">Nome</label><input type="text" id="fixa-nome" class="form-input" required></div>
-                    <div class="col-span-1"><label class="text-[10px] font-bold uppercase">Valor</label><input type="number" id="fixa-valor" step="0.01" class="form-input" required></div>
-                    <div class="col-span-1"><label class="text-[10px] font-bold uppercase">Dia</label><input type="number" id="fixa-dia" class="form-input" placeholder="01" required></div>
-                    <div><button type="submit" class="w-full bg-purple-600 text-white rounded-lg h-11 font-black text-[10px] uppercase transition hover:bg-purple-800">ADD</button></div>
-                </form>
-                <div id="lista-fixas-modal" class="max-h-64 overflow-y-auto divide-y border rounded-xl"></div>
-            </div>
-        </div>
-    </div>
-
+    <div id="modal-historico" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[100] p-4"><div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden"><div class="bg-gray-900 text-white p-5 flex justify-between items-center font-black uppercase tracking-widest"><span>📜 Extrato Completo</span><button onclick="fecharHistorico()" class="hover:text-red-400">✖ Fechar</button></div><div class="bg-gray-50 p-5 border-b grid grid-cols-1 md:grid-cols-4 gap-4 items-end"><div><label class="text-[10px] font-black uppercase text-gray-400 text-[10px]">Conta</label><select id="filtro-extrato-conta" class="form-input" onchange="carregarHistorico()"></select></div><div><label class="text-[10px] font-black uppercase text-gray-400 text-[10px]">Tipo</label><select id="filtro-extrato-tipo" class="form-input" onchange="carregarHistorico()"><option value="Todos">Todos</option><option value="Despesa">Despesa</option><option value="Receita">Receita</option></select></div><div class="md:col-span-2 flex justify-end"><button id="btn-bulk-delete" onclick="deletarEmLote()" disabled class="bg-red-600 text-white text-[11px] px-8 py-3 rounded-full font-black uppercase">🗑️ Excluir (<span id="count-sel">0</span>)</button></div></div><div class="p-4 overflow-y-auto flex-1 scrollbar-hide"><table class="w-full text-left border-collapse"><thead><tr class="text-[10px] text-gray-400 uppercase border-b-2"><th class="p-3 w-8"><input type="checkbox" onclick="toggleTodosChecks(this)" class="w-4 h-4"></th><th class="p-3 w-10"></th><th class="p-3 w-28 text-center text-[10px]">Data</th><th class="p-3 text-[10px]">Descrição</th><th class="p-3 w-16 text-center text-[10px]">Parc.</th><th class="p-3 text-[10px]">Conta</th><th class="p-3 text-right text-[10px]">Valor</th></tr></thead><tbody id="tabela-historico" class="text-xs font-semibold"></tbody></table></div></div></div>
+    <div id="modal-editar-tr" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-[110] p-4"><div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"><div class="bg-blue-600 text-white p-6 flex justify-between font-black uppercase text-sm"><span>✏️ Editar Registro</span><button onclick="fecharEdicaoTr()">✖</button></div><div class="p-8 space-y-6"><input type="hidden" id="edit-tr-id"><input type="hidden" id="edit-tr-original-desc"><div><label class="text-[10px] font-black text-gray-400 uppercase">🗓️ Data</label><input type="date" id="edit-tr-data" class="form-input font-bold"></div><div><label class="text-[10px] font-black text-gray-400 uppercase">Descrição</label><input type="text" id="edit-tr-desc" class="form-input font-bold"></div><div><label class="text-[10px] font-black text-gray-400 uppercase">Valor Líquido</label><input type="number" id="edit-tr-valor" step="0.01" class="form-input font-black text-blue-700"></div><div id="box-edit-cascata" class="hidden flex items-center gap-3 bg-blue-50 p-4 rounded-2xl border border-blue-100"><input type="checkbox" id="check-cascata" class="w-6 h-6"><label for="check-cascata" class="text-[11px] font-bold text-blue-800 uppercase">Aplicar a todas as parcelas?</label></div><button onclick="salvarEdicaoTr()" id="btn-save-edit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black">SALVAR ALTERAÇÕES</button></div></div></div>
+    <div id="modal-fixas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden"><div class="bg-purple-700 text-white p-5 flex justify-between font-black uppercase text-sm"><span>🗓️ Contas Fixas</span><button onclick="fecharFixas()">✖</button></div><div class="p-6"><form id="form-nova-fixa" class="grid grid-cols-5 gap-3 mb-6 items-end"><div class="col-span-2"><label class="text-[10px] font-bold uppercase">Nome</label><input type="text" id="fixa-nome" class="form-input" required></div><div><label class="text-[10px] font-bold uppercase text-[10px]">Valor</label><input type="number" id="fixa-valor" step="0.01" class="form-input" required></div><div><label class="text-[10px] font-bold uppercase text-[10px]">Dia</label><input type="number" id="fixa-dia" class="form-input" required></div><div><button type="submit" class="w-full bg-purple-600 text-white rounded-lg h-11 font-black text-[10px]">ADD</button></div></form><div id="lista-fixas-modal" class="max-h-64 overflow-y-auto divide-y border rounded-xl"></div></div></div></div>
     <div id="modal-contas" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-2xl p-6 shadow-2xl"><div class="flex justify-between mb-6 font-black uppercase text-sm tracking-widest"><span>🏦 Bancos e Cartões</span><button onclick="fecharContas()">✖</button></div><form id="form-nova-conta" class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8 items-end"><input id="conta-nome" placeholder="Nome" class="form-input" required><select id="conta-tipo" class="form-input"><option value="Corrente">Corrente</option><option value="Crédito">Crédito</option><option value="Investimento">Investimento</option></select><input id="conta-valor" type="number" step="0.01" placeholder="Saldo/Lim" class="form-input"><input id="conta-venc" type="number" placeholder="Venc." class="form-input"><button class="bg-emerald-600 text-white px-4 rounded-lg h-11 font-black text-[10px]">ADD</button></form><div id="lista-contas-modal" class="max-h-64 overflow-y-auto divide-y border rounded-xl"></div></div></div>
     <div id="modal-categorias" class="fixed inset-0 modal-bg hidden flex items-center justify-center z-50 p-4"><div class="bg-white rounded-xl w-full max-w-lg p-6 shadow-2xl"><div class="flex justify-between mb-6 font-black uppercase text-sm tracking-widest"><span>⚙️ Categorias</span><button onclick="fecharCategorias()">✖</button></div><form id="form-nova-categoria" class="flex gap-3 mb-8"><input type="text" id="cat-nome" class="form-input" placeholder="Nova..." required><select id="cat-tipo-new" class="form-input"><option value="Despesa">Despesa</option><option value="Receita">Receita</option></select><button type="submit" class="bg-gray-800 text-white px-6 rounded-lg font-black text-[10px]">ADD</button></form><div id="lista-categorias-modal" class="max-h-64 overflow-y-auto border rounded-xl divide-y"></div></div></div>
 
@@ -173,8 +143,8 @@
         document.getElementById('input-data').value = getHojeLocal();
 
         function toggleSection(id, s) { document.getElementById(id).classList.toggle('hidden'); document.getElementById(s).classList.toggle('fechado'); }
-        function fecharHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
         function abrirHistorico() { document.getElementById('modal-historico').classList.remove('hidden'); carregarHistorico(); }
+        function fecharHistorico() { document.getElementById('modal-historico').classList.add('hidden'); }
         function abrirCategorias() { document.getElementById('modal-categorias').classList.remove('hidden'); renderizarModalCats(); }
         function fecharCategorias() { document.getElementById('modal-categorias').classList.add('hidden'); }
         function abrirContas() { document.getElementById('modal-contas').classList.remove('hidden'); renderizarModalContas(); }
@@ -194,9 +164,9 @@
         async function carregarDados() {
             try {
                 const [rCo, rCa, rTr, rFi] = await Promise.all([db.from('contas').select('*').order('nome'), db.from('categorias').select('*').order('nome'), db.from('transacoes').select('*'), db.from('despesas_fixas').select('*')]);
-                contasGlobais = rCo.data || []; categoriasGlobais = rCa.data || []; transacoesGlobais = rTr.data || []; fixasGlobais = rFi.data || [];
+                contasGlobais = rCo.data; categoriasGlobais = rCa.data; transacoesGlobais = rTr.data; fixasGlobais = rFi.data;
                 
-                const selCat = document.getElementById('select-cat'); selCat.innerHTML = '<option value="Investimento">📈 Investimento / BTG</option><option value="Transferencia">🔄 Transferência / Fatura</option>';
+                const selCat = document.getElementById('select-cat'); selCat.innerHTML = '<option value="Investimento">📈 Investimento / Resgate</option><option value="Transferencia">🔄 Transferência / Fatura</option>';
                 const gD = document.createElement('optgroup'); gD.label = 'Despesas'; const gR = document.createElement('optgroup'); gR.label = 'Receitas';
                 categoriasGlobais.forEach(c => { const o = new Option(c.nome, c.id); if(c.tipo === 'Despesa') gD.appendChild(o); else gR.appendChild(o); });
                 selCat.appendChild(gD); selCat.appendChild(gR);
@@ -212,37 +182,54 @@
             } catch (e) { console.error(e); }
         }
 
-        // --- SCANNER DE VENCIMENTOS (V50) ---
         function scannerDeVencimentos() {
             const hoje = new Date(); const diaH = hoje.getDate(); const mesH = hoje.getMonth() + 1; const anoH = hoje.getFullYear();
             let pendentes = [];
             fixasGlobais.forEach(f => {
                 const jaPago = transacoesGlobais.some(t => t.descricao.includes(f.nome) && t.data.startsWith(`${anoH}-${String(mesH).padStart(2, '0')}`));
-                if (!jaPago && diaH >= f.dia_vencimento) pendentes.push(`<div class="border-l-2 border-white/40 pl-2"><b>${f.nome}</b>: R$ ${f.valor.toLocaleString('pt-BR')} (Dia ${f.dia_vencimento})</div>`);
+                if (!jaPago && diaH >= f.dia_vencimento) pendentes.push(`<div class="border-l-4 border-white/40 pl-3"><b>${f.nome}</b>: R$ ${f.valor.toLocaleString('pt-BR')} (Dia ${f.dia_vencimento})</div>`);
             });
             const p = document.getElementById('painel-alertas');
             if (pendentes.length > 0) { p.classList.remove('hidden'); document.getElementById('lista-alertas-texto').innerHTML = pendentes.join(''); }
             else p.classList.add('hidden');
         }
 
+        // ==========================================
+        // LÓGICA DINÂMICA V51 (PARCELAS, DESTINO, RESGATE)
+        // ==========================================
         function atualizarCampos() {
             const cId = document.getElementById('select-conta').value; const conta = contasGlobais.find(c => c.id == cId);
             const opId = document.getElementById('select-cat').value;
-            // Parcelas Fixo V50
+            
+            // Parcelas: Sempre que for cartão
             document.getElementById('box-parcelas').classList.toggle('hidden', conta?.tipo !== 'Crédito');
-            document.getElementById('box-destino').classList.toggle('hidden', !(opId === 'Transferencia' || opId === 'Investimento'));
+            
+            // Destino: Transferência ou Investimento
+            const isTransf = (opId === 'Transferencia' || opId === 'Investimento');
+            document.getElementById('box-destino').classList.toggle('hidden', !isTransf);
+
+            // Resgate D+X: Somente se for Investimento e tiver destino (Resgate de dinheiro)
+            document.getElementById('box-resgate').classList.toggle('hidden', opId !== 'Investimento');
+
             const cat = categoriasGlobais.find(c => c.id == opId);
-            if (cat && opId !== 'Transferencia' && opId !== 'Investimento') {
+            if (cat && !isTransf) {
                 document.getElementById('input-desc').value = cat.nome;
                 const fixa = fixasGlobais.find(f => f.nome.toUpperCase() === cat.nome.toUpperCase());
-                if(fixa) { document.getElementById('box-fixa-resumo').classList.remove('hidden'); document.getElementById('txt-fixa-nome').innerText = fixa.nome; document.getElementById('txt-fixa-valor').innerText = `R$ ${fixa.valor.toLocaleString('pt-BR')}`; document.getElementById('input-valor').value = fixa.valor; }
-                else document.getElementById('box-fixa-resumo').classList.add('hidden');
+                if(fixa) { 
+                    document.getElementById('box-fixa-resumo').classList.remove('hidden'); 
+                    document.getElementById('txt-fixa-nome').innerText = fixa.nome; 
+                    document.getElementById('txt-fixa-valor').innerText = `R$ ${fixa.valor.toLocaleString('pt-BR')}`; 
+                    document.getElementById('input-valor').value = fixa.valor; 
+                } else document.getElementById('box-fixa-resumo').classList.add('hidden');
+            } else if (isTransf) {
+                document.getElementById('box-fixa-resumo').classList.add('hidden');
+                document.getElementById('input-desc').value = opId === 'Transferencia' ? "Transf / Fatura" : "Resgate / Aporte";
             }
         }
         document.getElementById('select-conta').addEventListener('change', atualizarCampos);
         document.getElementById('select-cat').addEventListener('change', atualizarCampos);
 
-        // --- RENDERIZAÇÃO V50 ---
+        // --- RENDERIZAÇÃO V51 ---
         function renderizarContas() {
             let sB=0, dC=0, iT=0; const diB=document.getElementById('lista-bancos'), diC=document.getElementById('lista-cartoes'), diI=document.getElementById('lista-investimentos');
             diB.innerHTML=''; diC.innerHTML=''; diI.innerHTML=''; let btgT = 0, btgH = '';
@@ -251,7 +238,7 @@
                 if(c.tipo === 'Corrente') { sB+=s; diB.innerHTML += `<div class="flex justify-between py-2.5 border-b text-sm font-bold"><span>› ${c.nome}</span><span class="text-emerald-600 font-black">R$ ${s.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span></div>`; }
                 if(c.tipo === 'Crédito') { 
                     dC+=s; const lim = parseFloat(c.limite_total) || 1; const us = Math.abs(s); const pU = Math.min((us/lim)*100, 100); const disp = lim-us;
-                    diC.innerHTML += `<div class="flex flex-col py-2"><div class="flex justify-between text-[10px] font-black uppercase mb-1.5"><span>${c.nome} (Venc: ${c.dia_vencimento || '--'})</span><span class="text-gray-400">DISP: <b class="text-emerald-600">R$ ${disp.toLocaleString('pt-BR')}</b></span></div><div class="progress-container w-full bg-gray-200 h-3 rounded-full overflow-hidden shadow-inner"><div class="tooltip-valor">Devendo: R$ ${us.toLocaleString('pt-BR')}</div><div class="${pU>80?'bg-red-500':'bg-gray-800'} h-full transition-all duration-1000" style="width:${pU}%"></div></div></div>`;
+                    diC.innerHTML += `<div class="flex flex-col py-2"><div class="flex justify-between text-[10px] font-black uppercase mb-1.5"><span>${c.nome} (Venc: Dia ${c.dia_vencimento || '--'})</span><span class="text-gray-400">DISP: <b class="text-emerald-600">R$ ${disp.toLocaleString('pt-BR')}</b> | LIM: R$ ${lim.toLocaleString('pt-BR')}</span></div><div class="progress-container w-full bg-gray-200 h-3 rounded-full overflow-hidden shadow-inner"><div class="tooltip-valor">Devendo: R$ ${us.toLocaleString('pt-BR')}</div><div class="${pU>80?'bg-red-500':'bg-gray-800'} h-full transition-all duration-1000" style="width:${pU}%"></div></div></div>`;
                 }
                 if(c.tipo === 'Investimento') { iT += s; if(c.nome.toUpperCase().includes('BTG')) { btgT += s; btgH += `<div class="flex justify-between text-[11px] font-bold py-1 pl-4 ml-2 border-l-2 border-blue-200"><span>↳ ${c.nome.replace('BTG - ','')}</span><b>R$ ${s.toLocaleString('pt-BR',{minimumFractionDigits:2})}</b></div>`; } else { diI.innerHTML += `<div class="flex justify-between py-2 border-b text-sm font-bold"><span>🏢 ${c.nome}</span><span class="text-blue-800 font-black">R$ ${s.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span></div>`; } }
             });
@@ -268,13 +255,13 @@
             if(data) {
                 data.forEach(t => {
                     let matches = t.descricao.match(/\((\d+\/\d+)\)$/); let parcela = matches ? matches[1] : '—'; let descLimpa = matches ? t.descricao.replace(/\s\(\d+\/\d+\)$/, '') : t.descricao;
-                    tb.innerHTML += `<tr class="border-b hover:bg-gray-50"><td class="p-4 text-center"><input type="checkbox" class="chk-item" value="${t.id}" onclick="syncBotaoDelete()"></td><td class="p-4"><button onclick="abrirEdicaoTr('${t.id}', '${descLimpa.replace(/'/g, "\\'")}', ${Math.abs(t.valor)}, '${t.data}')" class="text-blue-500 font-black">✏️</button></td><td class="p-4 text-gray-400 font-bold">${t.data.split('-').reverse().join('/')}</td><td class="p-4 font-black text-gray-700">${descLimpa}</td><td class="p-4 text-center text-gray-300 italic font-black">${parcela}</td><td class="p-4 text-gray-400 font-black uppercase text-[10px]">${t.contas?.nome || 'Taxa'}</td><td class="p-4 text-right font-black ${t.valor < 0 ? 'text-red-600' : 'text-emerald-600'}">R$ ${Math.abs(t.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td></tr>`;
+                    tb.innerHTML += `<tr class="border-b hover:bg-blue-50/50 transition"><td class="p-4 text-center"><input type="checkbox" class="chk-item" value="${t.id}" onclick="syncBotaoDelete()"></td><td class="p-4"><button onclick="abrirEdicaoTr('${t.id}', '${descLimpa.replace(/'/g, "\\'")}', ${Math.abs(t.valor)}, '${t.data}')" class="text-blue-500 font-black">✏️</button></td><td class="p-4 text-gray-400 font-bold text-center">${t.data.split('-').reverse().join('/')}</td><td class="p-4 font-black text-gray-700">${descLimpa}</td><td class="p-4 text-center text-gray-300 italic font-black">${parcela}</td><td class="p-4 text-gray-400 font-black uppercase text-[10px]">${t.contas?.nome || 'Taxa'}</td><td class="p-4 text-right font-black ${t.valor < 0 ? 'text-red-600' : 'text-emerald-600'}">R$ ${Math.abs(t.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td></tr>`;
                 });
             }
             syncBotaoDelete();
         }
 
-        // --- EDIÇÃO V50 (MANTIDA DATA) ---
+        // --- EDIÇÃO V51 ---
         function abrirEdicaoTr(id, desc, valor, data) {
             document.getElementById('edit-tr-id').value = id;
             document.getElementById('edit-tr-data').value = data;
@@ -302,17 +289,20 @@
 
         function toggleTodosChecks(m) { document.querySelectorAll('.chk-item').forEach(c => c.checked = m.checked); syncBotaoDelete(); }
         function syncBotaoDelete() { const s = document.querySelectorAll('.chk-item:checked'); const btn = document.getElementById('btn-bulk-delete'); document.getElementById('count-sel').innerText = s.length; btn.disabled = s.length === 0; btn.className = s.length === 0 ? "bg-red-50 text-red-300 text-[11px] px-8 py-3 rounded-full font-black uppercase" : "bg-red-600 text-white text-[11px] px-8 py-3 rounded-full font-black uppercase shadow-xl transition-all scale-105"; }
-        async function deletarEmLote() { if(confirm("Excluir?")) { await db.from('transacoes').delete().in('id', Array.from(document.querySelectorAll('.chk-item:checked')).map(x => x.value)); location.reload(); } }
+        async function deletarEmLote() { if(confirm("Confirmar exclusão?")) { await db.from('transacoes').delete().in('id', Array.from(document.querySelectorAll('.chk-item:checked')).map(x => x.value)); location.reload(); } }
 
         document.getElementById('form-transacao').addEventListener('submit', async (e) => {
             e.preventDefault(); const btn = document.getElementById('btn-submit'); btn.disabled = true;
-            const op=document.getElementById('select-cat').value, ori=document.getElementById('select-conta').value, des=document.getElementById('select-destino').value, liq=parseFloat(document.getElementById('input-valor').value), dataB=document.getElementById('input-data').value, desc=document.getElementById('input-desc').value, comJ=document.getElementById('check-juros').checked, bruto=parseFloat(document.getElementById('input-valor-bruto').value)||liq, parc=parseInt(document.getElementById('select-parcelas').value)||1;
+            const op=document.getElementById('select-cat').value, ori=document.getElementById('select-conta').value, des=document.getElementById('select-destino').value, liq=parseFloat(document.getElementById('input-valor').value), dataB=document.getElementById('input-data').value, desc=document.getElementById('input-desc').value, comJ=document.getElementById('check-juros').checked, bruto=parseFloat(document.getElementById('input-valor-bruto').value)||liq, parc=parseInt(document.getElementById('select-parcelas').value)||1, resgateD=parseInt(document.getElementById('select-resgate').value)||0;
             const ehRec = categoriasGlobais.find(c => c.id == op)?.tipo === 'Receita';
+            
             try {
                 if(op === 'Transferencia' || op === 'Investimento') {
                     let vP=bruto/parc, [a,m,d]=dataB.split('-');
                     for(let i=0;i<parc;i++){ let dp=new Date(a,parseInt(m)-1+i,d).toISOString().split('T')[0]; await db.from('transacoes').insert({data:dp,descricao:`${desc} (${i+1}/${parc})`,valor:-Math.abs(vP),conta_origem_id:ori}); }
-                    await db.from('transacoes').insert({data:dataB,descricao:`Recebido: ${desc}`,valor:Math.abs(liq),conta_origem_id:des});
+                    // Destino com D+Resgate
+                    let [ra, rm, rd] = dataB.split('-'); let dateD = new Date(ra, rm-1, parseInt(rd) + resgateD);
+                    await db.from('transacoes').insert({data:dateD.toISOString().split('T')[0],descricao:`Recebido: ${desc}`,valor:Math.abs(liq),conta_origem_id:des});
                     if(comJ && bruto>liq) await db.from('transacoes').insert({data:dataB,descricao:`Taxa: ${desc}`,valor:-(bruto-liq),conta_origem_id:null});
                 } else {
                     let vP=bruto/parc, [a,m,d]=dataB.split('-'); let sinal = ehRec ? 1 : -1;
@@ -323,7 +313,7 @@
             } catch(err) { btn.disabled=false; }
         });
 
-        // --- AUX ---
+        // --- AUXILIARES ---
         function renderizarFixas() { const di=document.getElementById('lista-fixas-modal'); di.innerHTML=''; fixasGlobais.forEach(f => di.innerHTML+=`<div class="flex justify-between p-4 items-center"><span><b class="uppercase">${f.nome}</b> (Dia ${f.dia_vencimento}) - R$ ${f.valor.toLocaleString('pt-BR')}</span><button onclick="delF('${f.id}')" class="text-red-500 font-bold">🗑️</button></div>`); }
         async function delF(id) { await db.from('despesas_fixas').delete().eq('id',id); location.reload(); }
         document.getElementById('form-nova-fixa').addEventListener('submit', async (e) => { e.preventDefault(); await db.from('despesas_fixas').insert([{ nome: document.getElementById('fixa-nome').value, valor: parseFloat(document.getElementById('fixa-valor').value), dia_vencimento: parseInt(document.getElementById('fixa-dia').value) }]); location.reload(); });
@@ -331,9 +321,10 @@
         async function delC(id) { await db.from('categorias').delete().eq('id',id); location.reload(); }
         document.getElementById('form-nova-categoria').addEventListener('submit', async (e) => { e.preventDefault(); await db.from('categorias').insert([{ nome: document.getElementById('cat-nome').value, tipo: document.getElementById('cat-tipo-new').value }]); location.reload(); });
         function renderizarModalContas() { const di = document.getElementById('lista-contas-modal'); di.innerHTML = ''; contasGlobais.forEach(c => di.innerHTML += `<div class="flex justify-between p-4"><span>${c.nome} (${c.tipo})</span><button onclick="delConta('${c.id}')" class="text-red-500 font-bold">🗑️</button></div>`); }
-        async function delConta(id) { if(confirm("Apagar?")){ await db.from('contas').delete().eq('id',id); location.reload(); } }
+        async function delConta(id) { if(confirm("Apagar conta?")){ await db.from('contas').delete().eq('id',id); location.reload(); } }
         document.getElementById('form-nova-conta').addEventListener('submit', async (e) => { e.preventDefault(); const n = document.getElementById('conta-nome').value, t = document.getElementById('conta-tipo').value, v = parseFloat(document.getElementById('conta-valor').value)||0, d = parseInt(document.getElementById('conta-venc').value)||null; await db.from('contas').insert([{ nome:n, tipo:t, saldo_atual: t==='Crédito'?0:v, limite_total: t==='Crédito'?v:0, dia_vencimento: d }]).select(); location.reload(); });
 
+        // --- GRÁFICO V51 FIXADO ---
         function desenharGrafico() {
             let dg = {}; transacoesGlobais.forEach(x => { if(x.valor < 0 && x.categoria_id) { let c = categoriasGlobais.find(y => y.id == x.categoria_id); if(c) dg[c.nome] = (dg[c.nome] || 0) + Math.abs(x.valor); } });
             const ctx = document.getElementById('graficoVazamento').getContext('2d'); if(graficoInstance) graficoInstance.destroy();
