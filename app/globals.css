@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Cores como triplas "r g b" para o Tailwind aplicar transparência (bg-primary/10). */
+:root {
+  --bg: 234 239 237;
+  --surface: 255 255 255;
+  --sunken: 241 245 243;
+  --ink: 15 31 46;
+  --muted: 92 109 122;
+  --line: 214 222 220;
+  --primary: 18 48 74;
+  --on-primary: 255 255 255;
+  --accent: 43 138 118;
+  --neg: 180 35 24;
+  --warn: 161 98 7;
+
+  --font-sans: "Instrument Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Instrument Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: 10 20 29;
+    --surface: 17 31 43;
+    --sunken: 13 25 35;
+    --ink: 228 236 240;
+    --muted: 140 160 172;
+    --line: 36 54 68;
+    --primary: 120 178 224;
+    --on-primary: 8 18 27;
+    --accent: 74 191 165;
+    --neg: 248 113 100;
+    --warn: 234 179 8;
+    color-scheme: dark;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-bg font-sans text-ink antialiased;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: rgb(var(--accent) / 0.25);
+  }
+}
+
+@layer components {
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  .num {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+  .panel {
+    @apply rounded-2xl border border-line bg-surface;
+  }
+  .field {
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-[15px] text-ink placeholder:text-muted/70;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field:focus {
+    @apply border-accent outline-none;
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.18);
+  }
+  .field:disabled {
+    @apply opacity-60;
+  }
+  .label {
+    @apply mb-1 block text-[13px] font-medium text-muted;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold;
+    transition: background-color 0.15s, opacity 0.15s;
+  }
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+  .btn-primary {
+    @apply bg-primary text-on-primary hover:opacity-90;
+  }
+  .btn-quiet {
+    @apply border border-line bg-surface text-ink hover:bg-sunken;
+  }
+  .btn-danger {
+    @apply bg-neg text-white hover:opacity-90;
+  }
+}
+
+/* Movimento só quando a pessoa age; respeita quem prefere menos animação. */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.pop-in {
+  animation: pop-in 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pop-in {
+    animation: none;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
