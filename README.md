@@ -17,12 +17,11 @@ Painel pessoal de contas, cartões, investimentos e lançamentos. Next.js + Tail
 ## Colocar no ar (Vercel)
 
 1. No Vercel, importe este repositório. O framework é detectado como Next.js sozinho.
-2. Em **Settings > Environment Variables**, cadastre:
-   - `NEXT_PUBLIC_SUPABASE_URL`: a URL do projeto (Supabase > Project Settings > API)
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: a chave **anon / publishable**
-3. Faça o deploy e, em **Settings > Domains**, vincule o seu domínio.
+2. Faça o deploy e, em **Settings > Domains**, vincule o seu domínio.
 
-Use só a chave pública. Nunca coloque a `service_role` nem a `secret` aqui.
+Não precisa cadastrar variáveis de ambiente: a URL e a chave **anon** (públicas por natureza) já estão em `.env.production`. Se mudar de projeto no Supabase, edite esse arquivo, ou cadastre `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` no Vercel (elas têm prioridade).
+
+Nunca coloque a chave `service_role` nem a `secret` em nenhum desses lugares.
 
 ## Segurança (faça nesta ordem)
 
