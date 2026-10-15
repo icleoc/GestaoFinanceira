@@ -1,6 +1,14 @@
-# Gestão Financeira
+# Jarvis Finance
 
 Painel pessoal de contas, cartões, investimentos e lançamentos. Next.js + Tailwind no Vercel, dados no Supabase, com login.
+
+## Como o site é organizado
+
+- `/` é a página inicial pública (landing page, com um simulador de parcelas que usa a mesma conta do sistema).
+- `/login` é a entrada.
+- `/app` é o painel, só para quem está logado.
+
+O nome do produto fica em `lib/brand.ts`: mude lá e tudo acompanha.
 
 ## O que tem
 
@@ -49,7 +57,9 @@ npm run check                # testa as regras de parcelas, taxas, resgate e con
 ## Estrutura
 
 ```
-app/                 telas (painel e login)
+app/page.tsx         página inicial (landing)
+app/app/             painel
+app/login/           entrada
 components/          peças da tela
 lib/finance.ts       regras de negócio, sem tela nem banco (testadas por npm run check)
 lib/data.ts          leitura e gravação no Supabase

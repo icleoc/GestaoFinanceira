@@ -15,6 +15,8 @@
   --accent: 43 138 118;
   --neg: 180 35 24;
   --warn: 161 98 7;
+  --deep: 13 34 52;
+  --paper: 234 239 237;
 
   --font-sans: "Instrument Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Bricolage Grotesque Variable", "Instrument Sans Variable", ui-sans-serif, system-ui, sans-serif;
@@ -34,6 +36,7 @@
     --accent: 74 191 165;
     --neg: 248 113 100;
     --warn: 234 179 8;
+    --deep: 8 20 31;
     color-scheme: dark;
   }
 }
@@ -41,6 +44,13 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    scroll-padding-top: 1rem;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
   body {
     @apply bg-bg font-sans text-ink antialiased;

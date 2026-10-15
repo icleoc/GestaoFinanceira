@@ -15,6 +15,7 @@ import {
 } from "@/lib/finance";
 import { carregarDados, sair } from "@/lib/data";
 import { monthLabel } from "@/lib/format";
+import { MARCA } from "@/lib/brand";
 import Patrimonio from "./Patrimonio";
 import { Bancos, Cartoes, Investimentos } from "./Contas";
 import GastosDoMes from "./GastosDoMes";
@@ -87,7 +88,7 @@ export default function Dashboard() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Gestão Financeira</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{MARCA.nome}</h1>
         <nav className="flex flex-wrap items-center gap-2" aria-label="Ações">
           {resumo && (
             <>

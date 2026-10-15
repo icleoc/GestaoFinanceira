@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser, supabaseConfigurado } from "@/lib/supabase/client";
+import { MARCA } from "@/lib/brand";
 
 function traduzErro(msg: string): string {
   if (/invalid login credentials/i.test(msg)) return "E-mail ou senha incorretos.";
@@ -32,13 +33,13 @@ export default function LoginPage() {
       setEnviando(false);
       return;
     }
-    router.replace("/");
+    router.replace("/app");
     router.refresh();
   }
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-12">
-      <h1 className="font-display text-3xl font-semibold tracking-tight">Gestão Financeira</h1>
+      <h1 className="font-display text-3xl font-semibold tracking-tight">{MARCA.nome}</h1>
       <p className="mt-2 text-muted">Entre para ver suas contas e lançar movimentações.</p>
 
       {!supabaseConfigurado ? (

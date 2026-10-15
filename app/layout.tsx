@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/bricolage-grotesque";
 import "@fontsource-variable/instrument-sans";
 import "./globals.css";
+import { MARCA } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: "Gestão Financeira",
-  description: "Contas, cartões, investimentos e lançamentos num só lugar.",
-  robots: { index: false, follow: false },
+  title: MARCA.nome,
+  description: MARCA.descricao,
 };
 
 export const viewport: Viewport = {

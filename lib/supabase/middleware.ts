@@ -28,9 +28,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const noLogin = request.nextUrl.pathname.startsWith("/login");
+  const caminho = request.nextUrl.pathname;
+  const noLogin = caminho.startsWith("/login");
+  const paginaPublica = caminho === "/"; // a página inicial é aberta a todos
 
-  if (!user && !noLogin) {
+  if (!user && !noLogin && !paginaPublica) {
     const to = request.nextUrl.clone();
     to.pathname = "/login";
     to.search = "";
@@ -38,7 +40,7 @@ export async function updateSession(request: NextRequest) {
   }
   if (user && noLogin) {
     const to = request.nextUrl.clone();
-    to.pathname = "/";
+    to.pathname = "/app";
     to.search = "";
     return NextResponse.redirect(to);
   }
