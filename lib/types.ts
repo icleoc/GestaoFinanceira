@@ -24,6 +24,12 @@ export interface Categoria {
 
 export interface Transacao {
   id: Id;
+  /** Caminho da foto da nota no armazenamento, quando houver. */
+  nota_path?: string | null;
+  /** Moeda em que o valor foi recebido (BRL quando não houve conversão). */
+  moeda?: string | null;
+  valor_original?: number | string | null;
+  taxa_cambio?: number | string | null;
   /** Data no formato AAAA-MM-DD. */
   data: string;
   descricao: string;
@@ -46,6 +52,26 @@ export interface NovaTransacao {
   valor: number;
   conta_origem_id: Id | null;
   categoria_id: Id | null;
+  nota_path?: string | null;
+  moeda?: string;
+  valor_original?: number | null;
+  taxa_cambio?: number | null;
+}
+
+export type FormaCompra = "avista" | "parcelado" | "financiado";
+export type StatusPretensao = "desejo" | "comprada" | "descartada";
+
+export interface Pretensao {
+  id: string;
+  nome: string;
+  categoria: string | null;
+  valor: number | string;
+  forma: FormaCompra;
+  parcelas: number;
+  entrada: number | string;
+  juros_mensal: number | string;
+  prevista: string | null;
+  status: StatusPretensao;
 }
 
 export interface Dados {
@@ -53,4 +79,28 @@ export interface Dados {
   categorias: Categoria[];
   transacoes: Transacao[];
   fixas: DespesaFixa[];
+  pretensoes: Pretensao[];
+}
+
+/** O que cada pessoa da carteira pode fazer. */
+export type Permissao = "ver" | "lancar" | "editar" | "gerenciar" | "planejar" | "equipe";
+export type Papel = "dono" | "admin" | "membro" | "leitor" | "personalizado";
+
+export interface Membro {
+  user_id: string;
+  nome: string | null;
+  email: string | null;
+  papel: Papel;
+  permissoes: Permissao[];
+}
+
+export interface Sessao {
+  userId: string;
+  email: string;
+  carteiraId: string;
+  carteiraNome: string;
+  papel: Papel;
+  permissoes: Permissao[];
+  /** Outras carteiras a que a pessoa tem acesso. */
+  carteiras: { id: string; nome: string }[];
 }

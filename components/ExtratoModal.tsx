@@ -3,20 +3,24 @@
 import { useMemo, useState } from "react";
 import type { Dados, Transacao } from "@/lib/types";
 import { mesesDisponiveis, montarEdicao, num, parseParcela, todayISO } from "@/lib/finance";
-import { atualizarTransacoes, excluirTransacoes } from "@/lib/data";
+import { atualizarTransacoes, excluirTransacoes, removerNotas } from "@/lib/data";
 import { dateBR, money, monthLabel } from "@/lib/format";
+import { formatarEstrangeira, formatarTaxa } from "@/lib/cambio";
 import Modal from "./Modal";
+import NotaViewer from "./NotaViewer";
 
 interface Props {
   dados: Dados;
   mesInicial: string;
+  /** Pode corrigir e apagar lançamentos. */
+  podeEditar: boolean;
   onClose: () => void;
   onMudou: (mensagem: string) => void;
 }
 
 const POR_PAGINA = 100;
 
-export default function ExtratoModal({ dados, mesInicial, onClose, onMudou }: Props) {
+export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, onMudou }: Props) {
   const { contas, categorias, transacoes } = dados;
   const [conta, setConta] = useState("todas");
   const [tipo, setTipo] = useState<"todos" | "despesa" | "receita">("todos");
@@ -28,6 +32,7 @@ export default function ExtratoModal({ dados, mesInicial, onClose, onMudou }: Pr
   const [editando, setEditando] = useState<Transacao | null>(null);
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const [nota, setNota] = useState<{ caminho: string; titulo: string } | null>(null);
 
   const nomeConta = useMemo(() => new Map(contas.map((c) => [String(c.id), c.nome])), [contas]);
   const nomeCategoria = useMemo(() => new Map(categorias.map((c) => [String(c.id), c.nome])), [categorias]);
@@ -67,8 +72,13 @@ export default function ExtratoModal({ dados, mesInicial, onClose, onMudou }: Pr
     setOcupado(true);
     setErro("");
     try {
-      const ids = transacoes.filter((t) => marcados.has(String(t.id))).map((t) => t.id);
+      const apagadas = transacoes.filter((t) => marcados.has(String(t.id)));
+      const ids = apagadas.map((t) => t.id);
       await excluirTransacoes(ids);
+      // Foto de nota que nenhum outro lançamento usa mais também sai do armazenamento.
+      const restantes = new Set(transacoes.filter((t) => !marcados.has(String(t.id))).map((t) => t.nota_path).filter(Boolean));
+      const orfas = [...new Set(apagadas.map((t) => t.nota_path).filter((c): c is string => Boolean(c) && !restantes.has(c)))];
+      await removerNotas(orfas).catch(() => undefined);
       setMarcados(new Set());
       setConfirmando(false);
       onMudou(ids.length === 1 ? "Lançamento excluído." : `${ids.length} lançamentos excluídos.`);
@@ -78,6 +88,8 @@ export default function ExtratoModal({ dados, mesInicial, onClose, onMudou }: Pr
       setOcupado(false);
     }
   }
+
+  if (nota) return <NotaViewer caminho={nota.caminho} titulo={nota.titulo} onClose={() => setNota(null)} />;
 
   if (editando) {
     return (
@@ -144,10 +156,14 @@ export default function ExtratoModal({ dados, mesInicial, onClose, onMudou }: Pr
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
-          <input type="checkbox" checked={todosMarcados} onChange={alternarTodos} className="size-4 accent-[rgb(var(--accent))]" />
-          Selecionar tudo que aparece
-        </label>
+        {podeEditar ? (
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
+            <input type="checkbox" checked={todosMarcados} onChange={alternarTodos} className="size-4 accent-[rgb(var(--accent))]" />
+            Selecionar tudo que aparece
+          </label>
+        ) : (
+          <span className="text-sm text-muted">{filtradas.length} lançamentos</span>
+        )}
         <div className="flex items-center gap-2">
           {erro && (
             <span role="alert" className="text-sm font-medium text-neg">
@@ -183,13 +199,15 @@ export default function ExtratoModal({ dados, mesInicial, onClose, onMudou }: Pr
             const cat = t.categoria_id != null ? nomeCategoria.get(String(t.categoria_id)) : undefined;
             return (
               <li key={id} className="flex items-center gap-3 px-4 py-3 hover:bg-sunken/60">
-                <input
-                  type="checkbox"
-                  checked={marcados.has(id)}
-                  onChange={() => alternar(id)}
-                  aria-label={`Selecionar ${t.descricao}`}
-                  className="size-4 shrink-0 accent-[rgb(var(--accent))]"
-                />
+                {podeEditar && (
+                  <input
+                    type="checkbox"
+                    checked={marcados.has(id)}
+                    onChange={() => alternar(id)}
+                    aria-label={`Selecionar ${t.descricao}`}
+                    className="size-4 shrink-0 accent-[rgb(var(--accent))]"
+                  />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">
                     {p ? p.base : t.descricao}
@@ -202,15 +220,33 @@ export default function ExtratoModal({ dados, mesInicial, onClose, onMudou }: Pr
                   <p className="truncate text-sm text-muted">
                     {dateBR(t.data)} · {t.conta_origem_id != null ? (nomeConta.get(String(t.conta_origem_id)) ?? "Conta removida") : "Sem conta"}
                     {cat ? ` · ${cat}` : ""}
+                    {t.moeda && t.moeda !== "BRL" && t.valor_original != null && num(t.taxa_cambio) > 0
+                      ? ` · ${formatarEstrangeira(num(t.valor_original), t.moeda)} a ${formatarTaxa(num(t.taxa_cambio))}`
+                      : ""}
                   </p>
                 </div>
+                {t.nota_path && (
+                  <button
+                    onClick={() => setNota({ caminho: t.nota_path as string, titulo: p ? p.base : t.descricao })}
+                    className="btn btn-quiet shrink-0 px-2.5 py-1.5"
+                    aria-label={`Ver a foto da nota de ${t.descricao}`}
+                    title="Ver foto da nota"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+                      <circle cx="12" cy="13" r="3.5" />
+                    </svg>
+                  </button>
+                )}
                 <span className={`num shrink-0 font-semibold ${v < 0 ? "text-neg" : "text-accent"}`}>
                   {v > 0 ? "+" : "−"}
                   {money(Math.abs(v))}
                 </span>
-                <button onClick={() => setEditando(t)} className="btn btn-quiet shrink-0 px-3 py-1.5" aria-label={`Editar ${t.descricao}`}>
-                  Editar
-                </button>
+                {podeEditar && (
+                  <button onClick={() => setEditando(t)} className="btn btn-quiet shrink-0 px-3 py-1.5" aria-label={`Editar ${t.descricao}`}>
+                    Editar
+                  </button>
+                )}
               </li>
             );
           })}

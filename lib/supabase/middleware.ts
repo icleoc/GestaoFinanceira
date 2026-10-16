@@ -30,7 +30,9 @@ export async function updateSession(request: NextRequest) {
 
   const caminho = request.nextUrl.pathname;
   const noLogin = caminho.startsWith("/login");
-  const paginaPublica = caminho === "/"; // a página inicial é aberta a todos
+  // A página inicial é aberta a todos. O provisionamento é chamado pelo sistema de
+  // vendas (sem login) e se protege sozinho com um segredo.
+  const paginaPublica = caminho === "/" || caminho === "/api/provisionar";
 
   if (!user && !noLogin && !paginaPublica) {
     const to = request.nextUrl.clone();

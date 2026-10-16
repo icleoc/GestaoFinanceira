@@ -37,12 +37,12 @@ export function monthOf(iso: string): string {
   return iso.slice(0, 7);
 }
 
-function daysInMonth(year: number, month: number): number {
+export function daysInMonth(year: number, month: number): number {
   // month de 1 a 12
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
-function parseISO(iso: string): [number, number, number] {
+export function parseISO(iso: string): [number, number, number] {
   const [y, m, d] = iso.split("-").map(Number);
   return [y, m, d];
 }

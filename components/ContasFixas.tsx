@@ -7,7 +7,7 @@ import { money } from "@/lib/format";
 
 interface Props {
   pendentes: ContaFixaPendente[];
-  onLancar: (p: ContaFixaPendente) => void;
+  onLancar?: (p: ContaFixaPendente) => void;
 }
 
 /** Aviso fixo no topo (sem pulsar nem cobrir a tela) com as contas fixas do mês ainda sem lançamento. */
@@ -35,9 +35,11 @@ export default function ContasFixasPendentes({ pendentes, onLancar }: Props) {
                 {p.atraso === 0 ? `vence hoje (dia ${p.fixa.dia_vencimento})` : `venceu dia ${p.fixa.dia_vencimento}, há ${p.atraso} ${p.atraso === 1 ? "dia" : "dias"}`}
               </p>
             </div>
-            <button onClick={() => onLancar(p)} className="btn btn-quiet px-3 py-1.5">
-              Lançar
-            </button>
+            {onLancar && (
+              <button onClick={() => onLancar(p)} className="btn btn-quiet px-3 py-1.5">
+                Lançar
+              </button>
+            )}
           </li>
         ))}
       </ul>

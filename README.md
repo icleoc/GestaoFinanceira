@@ -16,34 +16,53 @@ O nome do produto fica em `lib/brand.ts`: mude lá e tudo acompanha.
 - Contas correntes, cartões (fatura, limite e vencimento) e investimentos agrupados por instituição
 - Lançamento de despesa, receita, transferência (inclui pagar fatura) e investimento/resgate
 - Compra parcelada no cartão, com a soma sempre fechando no centavo
-- Taxa ou juros cobrados por cima, registrados à parte
-- Aviso de contas fixas do mês ainda sem lançamento, com botão para lançar
+- **Assistente financeiro**: onde você mais gasta, o que subiu acima da média, ritmo do mês, limite do cartão e parcelas já comprometidas
+- **Receita em outra moeda** (EUR, USD, GBP, CHF): converte pela cotação do dia (Banco Central Europeu, via Frankfurter) e guarda valor original, moeda e taxa. Dá para ajustar a cotação à mão
+- **Foto da nota** no lançamento, guardada em bucket privado do Supabase
+- **Planejar compras**: lista de desejos (à vista, parcelado, financiado) e análise de quanto cada uma pesa na renda
+- **Pessoas e permissões**: cada carteira tem dono e pode convidar familiares com permissões ver, lançar, editar, gerenciar, planejar e equipe
 - Extrato com filtros, busca, edição (inclusive em todas as parcelas) e exclusão em lote
-- Resumo por mês: quanto entrou, quanto saiu e para onde foi
 - Tema claro e escuro automáticos, e layout para celular
+
+## Como os dados são separados (para vender o sistema)
+
+Cada cliente tem uma **carteira**. Todos os dados (contas, categorias, lançamentos, contas fixas, pretensões e fotos) pertencem a uma carteira e só aparecem para quem é **membro** dela. A separação é feita pelo próprio banco (segurança por linha), então nem um erro no site deixa um cliente ver o outro. Cada membro tem uma lista de permissões e o banco confere cada uma delas.
+
+### Criar um cliente automaticamente depois da compra
+
+O sistema de vendas chama, no servidor:
+
+```
+POST https://SEU-DOMINIO/api/provisionar
+Authorization: Bearer <PROVISION_SECRET>
+Content-Type: application/json
+
+{ "email": "cliente@exemplo.com", "nome": "Maria", "carteira": "Carteira da Maria" }
+```
+
+A resposta traz `senhaTemporaria` (envie ao cliente por e-mail; ele pode trocar em "Minha conta > Trocar senha"). A carteira já nasce com categorias iniciais.
 
 ## Colocar no ar (Vercel)
 
 1. No Vercel, importe este repositório. O framework é detectado como Next.js sozinho.
-2. Faça o deploy e, em **Settings > Domains**, vincule o seu domínio.
+2. Em **Settings > Environment Variables**, cadastre (só em Production, marcadas como sensíveis): `SUPABASE_SERVICE_ROLE_KEY` e `PROVISION_SECRET`. Sem elas o site funciona, mas convidar pessoas e criar clientes ficam desligados.
+3. Em **Settings > Domains**, vincule o seu domínio.
 
-Não precisa cadastrar variáveis de ambiente: a URL e a chave **anon** (públicas por natureza) já estão em `.env.production`. Se mudar de projeto no Supabase, edite esse arquivo, ou cadastre `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` no Vercel (elas têm prioridade).
+A URL e a chave **anon** (públicas por natureza) já estão em `.env.production`. Nunca coloque a chave `secret`/`service_role` em arquivo do repositório.
 
-Nunca coloque a chave `service_role` nem a `secret` em nenhum desses lugares.
+## Banco de dados (Supabase)
 
-## Segurança (faça nesta ordem)
+Rode **uma vez** `supabase/migrations/001_multiusuario.sql` (SQL Editor). Ela:
 
-1. Publique esta versão e confirme que a tela de login abre.
-2. No Supabase, crie o seu usuário em **Authentication > Users > Add user**.
-3. Em **Authentication > Sign In / Providers**, desligue **Allow new users to sign up**.
-4. Rode `supabase/rls.sql` no **SQL Editor**. Ele liga a segurança por linha e tira o acesso de quem não está logado.
-5. Em **Project Settings > API Keys**, gere uma nova **secret key**, o que revoga a antiga. A chave antiga ficou escrita em arquivos deste repositório (`app.py` e `.streamlit/secrets.toml`) e continua visível no histórico do Git, então considere-a vazada.
+- cria carteiras e membros e passa os dados atuais para a carteira do único usuário existente (se houver mais de um usuário, ela se recusa a rodar);
+- liga a segurança por linha em todas as tabelas e tira todo acesso do papel `anon`;
+- adiciona colunas de câmbio e foto, a tabela de pretensões e o bucket privado `notas`.
 
-Se o repositório for público, torne-o privado em **Settings > General > Danger Zone**. O Vercel funciona normalmente com repositório privado.
+Depois, em **Authentication > Sign In / Providers**, deixe desligado **Allow new users to sign up** (as contas passam a ser criadas pelo servidor), gere uma nova **secret key** (a antiga ficou no histórico do Git) e, se o repositório for público, torne-o privado.
 
 ## Saldos das contas
 
-O sistema só grava lançamentos na tabela `transacoes`. O campo `saldo_atual` das contas precisa ser atualizado pelo próprio banco (um *trigger* no Supabase). Era assim na versão anterior e continua igual. Se os saldos não mudarem depois de um lançamento, o trigger não existe ou não está ativo.
+O campo `saldo_atual` das contas é atualizado por um *trigger* do banco (`atualiza_saldo_conta`) a cada lançamento. Se os saldos não mudarem depois de um lançamento, o trigger não está ativo.
 
 ## Rodar no computador
 
@@ -62,9 +81,14 @@ app/app/             painel
 app/login/           entrada
 components/          peças da tela
 lib/finance.ts       regras de negócio, sem tela nem banco (testadas por npm run check)
+lib/assistente.ts    insights do assistente financeiro
+lib/planejamento.ts  análise das pretensões de compra
+lib/cambio.ts        moedas e conversão
+lib/permissoes.ts    papéis e permissões
+app/api/             cotação, equipe e provisionamento de clientes
 lib/data.ts          leitura e gravação no Supabase
 lib/supabase/        clientes do Supabase e proteção de rotas
 middleware.ts        manda quem não está logado para /login
-supabase/rls.sql     regras de segurança do banco
+supabase/migrations banco multiusuário e segurança por linha
 scripts/             testes das regras
 ```

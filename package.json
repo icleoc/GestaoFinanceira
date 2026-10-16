@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "check": "tsx scripts/check-finance.ts"
+    "check": "tsx scripts/check-finance.ts && tsx scripts/check-novo.ts"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
@@ -15,7 +15,8 @@
     "@supabase/supabase-js": "^2.117.3",
     "next": "^15.5.27",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

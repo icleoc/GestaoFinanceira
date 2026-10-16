@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Simulador from "@/components/landing/Simulador";
 import Previa from "@/components/landing/Previa";
+import Logo from "@/components/Logo";
 import { MARCA } from "@/lib/brand";
 
 export const metadata: Metadata = {
@@ -11,6 +12,22 @@ export const metadata: Metadata = {
 };
 
 const RECURSOS = [
+  {
+    titulo: "Um assistente que explica seus gastos",
+    texto: "Mostra onde você mais gasta, o que subiu acima da média, o ritmo do mês e o que já está comprometido em parcelas.",
+  },
+  {
+    titulo: "Salário em euro, dólar ou outra moeda",
+    texto: "Escolha a moeda ao lançar a receita. A conversão usa a cotação do dia e guarda o valor original e a taxa usada.",
+  },
+  {
+    titulo: "Foto da nota na hora da compra",
+    texto: "Tire a foto, escolha a categoria e informe o valor. A nota fica guardada no lançamento, só para quem tem permissão.",
+  },
+  {
+    titulo: "Planeje antes de comprar",
+    texto: "Liste o que quer comprar, à vista, parcelado ou financiado, e veja quanto cada compra pesa na sua renda.",
+  },
   {
     titulo: "Patrimônio de verdade",
     texto: "Bancos mais investimentos, menos a dívida dos cartões. Um número que não esconde a fatura.",
@@ -45,7 +62,9 @@ const PASSOS = [
 
 const GARANTIAS = [
   { titulo: "Login com e-mail e senha", texto: "Sem entrar, nenhuma tela do painel abre." },
-  { titulo: "Cadastro fechado", texto: "Só existe conta para quem você criar. Ninguém se cadastra sozinho." },
+  { titulo: "Dados separados por cliente", texto: "Cada carteira só aparece para as pessoas que fazem parte dela. Ninguém vê a carteira de outro cliente." },
+  { titulo: "Família com permissões", texto: "Convide pessoas e escolha o que cada uma pode fazer: só ver, lançar, editar, gerenciar contas ou planejar." },
+  { titulo: "Acesso por convite", texto: "Ninguém se cadastra sozinho. A conta nasce na compra ou é criada por quem administra a carteira." },
   { titulo: "Regras de segurança no próprio banco", texto: "Mesmo conhecendo o endereço do banco, quem não está logado não lê nem altera nada." },
   { titulo: "Chaves secretas fora do navegador", texto: "O navegador só recebe a chave pública, que sozinha não abre nenhum dado." },
 ];
@@ -79,7 +98,7 @@ export default function PaginaInicial() {
       <div className="bg-deep text-paper">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <nav className="flex items-center justify-between py-5" aria-label="Principal">
-            <span className="font-display text-lg font-semibold">{MARCA.nome}</span>
+            <Logo tom="claro" tamanho={36} />
             <div className="flex items-center gap-5 text-sm">
               <a href="#como-funciona" className="hidden text-paper/75 hover:text-paper sm:inline">
                 Como funciona
