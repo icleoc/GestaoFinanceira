@@ -31,11 +31,12 @@ import Planejar from "./Planejar";
 import Equipe from "./Equipe";
 import TrocarSenha from "./TrocarSenha";
 import FaceId from "./FaceId";
+import NotaRapida from "./NotaRapida";
 import { biometriaDisponivel, rotuloBiometria } from "@/lib/passkey";
 import Modal from "./Modal";
 
 type Aba = "inicio" | "planejar" | "pessoas";
-type Janela = "extrato" | "gerenciar" | "lancar" | "senha" | "faceid" | null;
+type Janela = "extrato" | "gerenciar" | "lancar" | "senha" | "faceid" | "nota" | null;
 
 export default function Dashboard() {
   const router = useRouter();
@@ -336,18 +337,30 @@ export default function Dashboard() {
       </main>
 
       {podeLancar && dados && aba !== "pessoas" && (
-        <button
-          onClick={() => {
-            setPrefill(null);
-            setJanela("lancar");
-          }}
-          className="btn btn-gold fixed bottom-5 right-4 z-30 gap-2 px-6 py-3.5 text-base sm:right-8"
-        >
-          <span aria-hidden className="text-xl leading-none">
-            +
-          </span>
-          Lançar
-        </button>
+        <div className="fixed bottom-5 right-4 z-30 flex items-center gap-2 sm:right-8">
+          <button
+            onClick={() => setJanela("nota")}
+            aria-label="Lançar por foto da nota"
+            className="btn btn-gold size-[3.25rem] shrink-0 !rounded-full !p-0"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+              <circle cx="12" cy="13" r="3.5" />
+            </svg>
+          </button>
+          <button
+            onClick={() => {
+              setPrefill(null);
+              setJanela("lancar");
+            }}
+            className="btn btn-gold gap-2 px-6 py-3.5 text-base"
+          >
+            <span aria-hidden className="text-xl leading-none">
+              +
+            </span>
+            Lançar
+          </button>
+        </div>
       )}
 
       {janela === "lancar" && dados && (
@@ -355,6 +368,7 @@ export default function Dashboard() {
           <LancamentoForm dados={dados} prefill={prefill} onSalvo={depoisDeMudar} semMoldura />
         </Modal>
       )}
+      {janela === "nota" && dados && <NotaRapida dados={dados} onClose={fechar} onMudou={depoisDeMudar} />}
       {janela === "extrato" && dados && (
         <ExtratoModal dados={dados} mesInicial={mes} podeEditar={podeEditar} onClose={fechar} onMudou={depoisDeMudar} />
       )}

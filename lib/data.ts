@@ -131,22 +131,26 @@ export async function carregarDados(): Promise<Dados> {
   };
 }
 
-/** Grava todas as linhas de uma vez: ou entra tudo, ou nada. */
-export async function inserirTransacoes(linhas: NovaTransacao[]): Promise<void> {
+/** Grava todas as linhas de uma vez: ou entra tudo, ou nada. Devolve os ids criados (para poder desfazer). */
+export async function inserirTransacoes(linhas: NovaTransacao[]): Promise<Id[]> {
   const db = supabaseBrowser();
   const completas = linhas.map((l) => ({ ...l, carteira_id: carteiraAtual }));
-  let { error } = await db.from("transacoes").insert(completas);
+  let { data, error } = await db.from("transacoes").insert(completas).select("id");
   // Banco ainda sem a migração 002: o lançamento entra, só sem os itens lidos da nota.
   if (error && /nota_dados/.test(error.message) && completas.some((l) => l.nota_dados)) {
-    ({ error } = await db.from("transacoes").insert(
-      completas.map((l) => {
-        const { nota_dados, ...resto } = l;
-        void nota_dados;
-        return resto;
-      }),
-    ));
+    ({ data, error } = await db
+      .from("transacoes")
+      .insert(
+        completas.map((l) => {
+          const { nota_dados, ...resto } = l;
+          void nota_dados;
+          return resto;
+        }),
+      )
+      .select("id"));
   }
   if (error) throw falha("Não foi possível registrar o lançamento", error);
+  return ((data ?? []) as { id: Id }[]).map((r) => r.id);
 }
 
 /** A carteira em uso agora (para rotas do servidor que precisam saber). */
@@ -207,9 +211,14 @@ export async function excluirFixa(id: Id): Promise<void> {
   if (error) throw falha("Não foi possível excluir a conta fixa", error);
 }
 
-export async function criarCategoria(c: { nome: string; tipo: TipoCategoria }): Promise<void> {
-  const { error } = await supabaseBrowser().from("categorias").insert({ ...c, carteira_id: carteiraAtual });
-  if (error) throw falha("Não foi possível criar a categoria", error);
+export async function criarCategoria(c: { nome: string; tipo: TipoCategoria }): Promise<Id> {
+  const { data, error } = await supabaseBrowser()
+    .from("categorias")
+    .insert({ ...c, carteira_id: carteiraAtual })
+    .select("id")
+    .single();
+  if (error || !data) throw falha("Não foi possível criar a categoria", error ?? { message: "sem resposta" });
+  return (data as { id: Id }).id;
 }
 
 export async function excluirCategoria(id: Id): Promise<void> {

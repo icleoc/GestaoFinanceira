@@ -147,7 +147,7 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
 
         {aba === "categorias" && (
           <>
-            <NovaCategoria ocupado={ocupado} onCriar={(c) => executar(() => criarCategoria(c), "Categoria criada.")} />
+            <NovaCategoria ocupado={ocupado} onCriar={(c) => executar(async () => void (await criarCategoria(c)), "Categoria criada.")} />
             <ul className="mt-5 divide-y divide-line rounded-xl border border-line">
               {dados.categorias.length === 0 && <li className="p-4 text-sm text-muted">Nenhuma categoria ainda.</li>}
               {dados.categorias.map((c) => (

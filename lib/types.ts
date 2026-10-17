@@ -38,6 +38,8 @@ export interface DadosNota {
   itens: ItemNota[];
   /** Uma das categorias da carteira. */
   categoria: string | null;
+  /** Nome de categoria nova sugerido quando nenhuma da carteira serve (ex.: Combustível). */
+  categoriaNova?: string | null;
 }
 
 export interface Transacao {
