@@ -33,7 +33,7 @@ export async function updateSession(request: NextRequest) {
   // A página inicial é aberta a todos. O provisionamento é chamado pelo sistema de
   // vendas (sem login) e se protege sozinho com um segredo.
   const paginaPublica =
-    caminho === "/" || caminho === "/api/provisionar" || caminho === "/api/passkey/entrar" || caminho === "/manifest.webmanifest";
+    caminho === "/" || caminho === "/api/provisionar" || caminho === "/api/passkey/entrar" || caminho === "/api/saude" || caminho === "/manifest.webmanifest";
 
   if (!user && !noLogin && !paginaPublica) {
     const to = request.nextUrl.clone();

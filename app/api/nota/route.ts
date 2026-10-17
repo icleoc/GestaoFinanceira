@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabaseServidor } from "@/lib/supabase/server";
 import { normalizarLeitura } from "@/lib/nota";
 import { todayISO } from "@/lib/finance";
+import { chaveAnthropic } from "@/lib/ambiente";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -58,7 +59,7 @@ function ferramenta(categorias: string[]) {
 }
 
 export async function POST(req: NextRequest) {
-  const chave = process.env.ANTHROPIC_API_KEY;
+  const chave = chaveAnthropic();
   if (!chave) {
     return erro("A leitura automática da nota ainda não está ligada. Preencha à mão por enquanto.", 501);
   }
