@@ -2,41 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Cores como triplas "r g b" para o Tailwind aplicar transparência (bg-primary/10). */
+/*
+  Sistema visual: tinta de cédula (verde-escuro), papel pérola, esmeralda para o que é
+  positivo e champanhe metálico só sobre fundos escuros e na marca.
+  Cores como triplas "r g b" para o Tailwind aplicar transparência (bg-primary/10).
+*/
 :root {
-  --bg: 234 239 237;
-  --surface: 255 255 255;
-  --sunken: 241 245 243;
-  --ink: 15 31 46;
-  --muted: 92 109 122;
-  --line: 214 222 220;
-  --primary: 18 48 74;
-  --on-primary: 255 255 255;
-  --accent: 43 138 118;
-  --neg: 180 35 24;
-  --warn: 161 98 7;
-  --deep: 13 34 52;
-  --paper: 234 239 237;
+  --bg: 242 244 241;
+  --surface: 252 253 251;
+  --sunken: 233 237 233;
+  --ink: 10 33 37;
+  --muted: 92 111 112;
+  --line: 211 219 215;
+  --primary: 6 38 43;
+  --on-primary: 242 244 241;
+  --accent: 14 107 88;
+  --neg: 163 48 43;
+  --warn: 150 98 10;
+  /* Faixas escuras (cabeçalho da página inicial, certificado de patrimônio). */
+  --deep: 6 38 43;
+  --deep-2: 12 62 68;
+  --paper: 242 244 241;
+  --gold: 214 182 108;
+  --gold-hi: 237 218 162;
+  --gold-lo: 178 132 52;
 
-  --font-sans: "Instrument Sans Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Bricolage Grotesque Variable", "Instrument Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: 10 20 29;
-    --surface: 17 31 43;
-    --sunken: 13 25 35;
-    --ink: 228 236 240;
-    --muted: 140 160 172;
-    --line: 36 54 68;
-    --primary: 120 178 224;
-    --on-primary: 8 18 27;
-    --accent: 74 191 165;
-    --neg: 248 113 100;
-    --warn: 234 179 8;
-    --deep: 8 20 31;
+    --bg: 4 21 25;
+    --surface: 9 33 38;
+    --sunken: 6 27 31;
+    --ink: 232 238 235;
+    --muted: 135 158 158;
+    --line: 26 55 60;
+    --primary: 233 212 154;
+    --on-primary: 6 38 43;
+    --accent: 88 198 168;
+    --neg: 242 120 110;
+    --warn: 232 178 60;
+    --deep: 8 44 50;
+    --deep-2: 14 70 76;
     color-scheme: dark;
   }
 }
@@ -55,35 +65,39 @@
   body {
     @apply bg-bg font-sans text-ink antialiased;
     font-size: 15px;
-    line-height: 1.5;
+    line-height: 1.55;
+    font-feature-settings: "ss01", "cv11";
   }
   :focus-visible {
     outline: 2px solid rgb(var(--accent));
     outline-offset: 2px;
   }
   ::selection {
-    background: rgb(var(--accent) / 0.25);
+    background: rgb(var(--gold) / 0.4);
   }
 }
 
 @layer components {
+  /* Títulos e números grandes: serifa de livro-razão. */
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    font-weight: 500;
+    letter-spacing: -0.018em;
+    font-optical-sizing: auto;
   }
   .num {
     font-variant-numeric: tabular-nums lining-nums;
   }
   .panel {
-    @apply rounded-2xl border border-line bg-surface;
+    @apply rounded-[1.25rem] border border-line bg-surface;
   }
   .field {
-    @apply w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-[15px] text-ink placeholder:text-muted/70;
+    @apply w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-[15px] text-ink placeholder:text-muted/70;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
   .field:focus {
     @apply border-accent outline-none;
-    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.18);
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.16);
   }
   .field:disabled {
     @apply opacity-60;
@@ -92,8 +106,11 @@
     @apply mb-1 block text-[13px] font-medium text-muted;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold;
-    transition: background-color 0.15s, opacity 0.15s;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold;
+    transition: background-color 0.15s, opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
   }
   .btn:disabled {
     @apply cursor-not-allowed opacity-50;
@@ -106,6 +123,40 @@
   }
   .btn-danger {
     @apply bg-neg text-white hover:opacity-90;
+  }
+  /* Botão champanhe, para uso sobre fundo escuro. */
+  .btn-gold {
+    color: rgb(6 38 43);
+    background: linear-gradient(135deg, rgb(var(--gold-hi)), rgb(var(--gold)) 55%, rgb(var(--gold-lo)));
+    box-shadow: 0 8px 24px -10px rgb(var(--gold-lo) / 0.8), inset 0 1px 0 rgb(255 255 255 / 0.45);
+  }
+  .btn-gold:hover:not(:disabled) {
+    filter: brightness(1.06);
+  }
+
+  /* Linha de livro-razão: nome ...... valor. */
+  .razao {
+    @apply flex items-baseline gap-2;
+  }
+  .razao-pontos {
+    flex: 1 1 auto;
+    min-width: 1rem;
+    border-bottom: 2px dotted rgb(var(--ink) / 0.34);
+    transform: translateY(-0.22em);
+  }
+
+  /* Metal champanhe para texto sobre fundo escuro. */
+  .texto-ouro {
+    background: linear-gradient(120deg, rgb(var(--gold-hi)), rgb(var(--gold)) 50%, rgb(var(--gold-lo)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Superfície escura com brilho suave no canto, como tinta de cédula. */
+  .tinta {
+    background:
+      radial-gradient(120% 90% at 100% 0%, rgb(var(--deep-2)) 0%, transparent 60%),
+      rgb(var(--deep));
   }
 }
 
@@ -123,8 +174,23 @@
 .pop-in {
   animation: pop-in 0.18s ease-out;
 }
+/* O guilóchê gira devagar uma única vez, na entrada do certificado. */
+@keyframes girar-entrada {
+  from {
+    transform: rotate(-24deg) scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.guilloche-entrada {
+  animation: girar-entrada 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
 @media (prefers-reduced-motion: reduce) {
-  .pop-in {
+  .pop-in,
+  .guilloche-entrada {
     animation: none;
   }
   * {

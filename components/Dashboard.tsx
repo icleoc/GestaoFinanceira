@@ -186,7 +186,7 @@ export default function Dashboard() {
 
   return (
     <div className="pb-28">
-      <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-4">
             <Logo tamanho={34} />
@@ -222,7 +222,7 @@ export default function Dashboard() {
             )}
             <details className="relative">
               <summary
-                className="grid size-10 cursor-pointer list-none place-items-center rounded-full bg-deep text-sm font-semibold text-paper [&::-webkit-details-marker]:hidden"
+                className="grid size-10 cursor-pointer list-none place-items-center rounded-full bg-deep text-sm font-semibold text-gold-hi ring-1 ring-gold/40 [&::-webkit-details-marker]:hidden"
                 aria-label="Minha conta"
               >
                 {inicial}
@@ -259,7 +259,7 @@ export default function Dashboard() {
                 aria-selected={aba === a.id}
                 onClick={() => setAba(a.id)}
                 className={`-mb-px border-b-2 px-2.5 py-2.5 text-sm sm:px-3 font-semibold transition-colors ${
-                  aba === a.id ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"
+                  aba === a.id ? "border-gold-lo text-ink" : "border-transparent text-muted hover:text-ink"
                 }`}
               >
                 {a.nome}
@@ -330,7 +330,7 @@ export default function Dashboard() {
             setPrefill(null);
             setJanela("lancar");
           }}
-          className="btn btn-primary fixed bottom-5 right-4 z-30 gap-2 px-5 py-3.5 text-base shadow-xl sm:right-8"
+          className="btn btn-gold fixed bottom-5 right-4 z-30 gap-2 px-6 py-3.5 text-base sm:right-8"
         >
           <span aria-hidden className="text-xl leading-none">
             +

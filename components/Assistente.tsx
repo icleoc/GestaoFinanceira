@@ -49,7 +49,7 @@ export default function Assistente({ insights, onIr, permitidos }: Props) {
           const e = ESTILO[i.nivel];
           return (
             <li key={i.id} className={`panel pop-in border-l-4 p-4 ${e.barra}`}>
-              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+              <p className="flex items-center gap-2 text-[13px] font-semibold text-muted">
                 <span className={`size-2 rounded-full ${e.ponto}`} aria-hidden />
                 {e.rotulo}
               </p>

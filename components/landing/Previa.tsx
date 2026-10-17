@@ -1,7 +1,6 @@
 import type { Conta } from "@/lib/types";
 import { calcularKpis } from "@/lib/finance";
-import Patrimonio from "@/components/Patrimonio";
-import { Cartoes, Investimentos } from "@/components/Contas";
+import { Bancos, Cartoes, Investimentos } from "@/components/Contas";
 
 // Dados inventados só para ilustrar a tela. Não são de ninguém.
 const EXEMPLO: Conta[] = [
@@ -14,24 +13,19 @@ const EXEMPLO: Conta[] = [
   { id: 7, nome: "Tesouro Direto", tipo: "Investimento", saldo_atual: 5000, limite_total: 0, dia_vencimento: null },
 ];
 
-/** O painel de verdade, montado com os mesmos componentes e dados de exemplo. */
+export function kpisDeExemplo() {
+  return calcularKpis(EXEMPLO);
+}
+
+/** As listas do painel de verdade, montadas com os mesmos componentes e dados de exemplo. */
 export default function Previa() {
-  const kpis = calcularKpis(EXEMPLO);
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
-      <div className="flex items-center gap-2 border-b border-line bg-sunken px-4 py-2.5">
-        <span className="size-2.5 rounded-full bg-line" aria-hidden />
-        <span className="size-2.5 rounded-full bg-line" aria-hidden />
-        <span className="size-2.5 rounded-full bg-line" aria-hidden />
-        <span className="ml-2 text-sm text-muted">Painel com dados de exemplo</span>
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="space-y-4">
+        <Bancos contas={EXEMPLO} />
+        <Cartoes contas={EXEMPLO} />
       </div>
-      <div className="space-y-4 bg-bg p-4 sm:p-6">
-        <Patrimonio kpis={kpis} />
-        <div className="grid gap-4 md:grid-cols-2">
-          <Cartoes contas={EXEMPLO} />
-          <Investimentos contas={EXEMPLO} />
-        </div>
-      </div>
+      <Investimentos contas={EXEMPLO} />
     </div>
   );
 }

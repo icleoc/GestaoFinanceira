@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Simulador from "@/components/landing/Simulador";
-import Previa from "@/components/landing/Previa";
+import Previa, { kpisDeExemplo } from "@/components/landing/Previa";
+import Patrimonio from "@/components/Patrimonio";
+import Guilloche from "@/components/Guilloche";
 import Logo from "@/components/Logo";
 import { MARCA } from "@/lib/brand";
 
@@ -80,7 +82,7 @@ const PERGUNTAS = [
   },
   {
     p: "Como as parcelas são divididas?",
-    r: "Em centavos exatos. Se 1.000 reais em 3 vezes não divide certinho, os centavos que sobram vão para as primeiras parcelas e a soma fecha. Teste no simulador no topo da página.",
+    r: "Em centavos exatos. Se 1.000 reais em 3 vezes não divide certinho, os centavos que sobram vão para as primeiras parcelas e a soma fecha. Teste no simulador desta página.",
   },
   {
     p: "Funciona no celular?",
@@ -95,85 +97,102 @@ const PERGUNTAS = [
 export default function PaginaInicial() {
   return (
     <>
-      <div className="bg-deep text-paper">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <nav className="flex items-center justify-between py-5" aria-label="Principal">
-            <Logo tom="claro" tamanho={36} />
-            <div className="flex items-center gap-5 text-sm">
+      <div className="tinta relative overflow-hidden text-paper">
+        <Guilloche className="pointer-events-none absolute -bottom-64 -left-40 w-[46rem] max-w-none text-gold opacity-[0.07]" />
+        <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+          <nav className="flex items-center justify-between py-6" aria-label="Principal">
+            <Logo tom="claro" tamanho={42} />
+            <div className="flex items-center gap-6 text-sm">
               <a href="#como-funciona" className="hidden text-paper/75 hover:text-paper sm:inline">
                 Como funciona
               </a>
               <a href="#seguranca" className="hidden text-paper/75 hover:text-paper sm:inline">
                 Segurança
               </a>
-              <Link href="/login" className="btn border border-paper/30 px-4 py-2 text-paper hover:bg-paper/10">
+              <Link href="/login" className="btn border border-gold/50 px-5 py-2 text-gold-hi hover:bg-gold/10">
                 Entrar
               </Link>
             </div>
           </nav>
 
-          <div className="grid items-center gap-10 pb-16 pt-8 lg:grid-cols-[1.15fr_1fr] lg:gap-16 lg:pb-24 lg:pt-14">
+          <div className="grid items-center gap-12 pb-20 pt-10 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pb-28 lg:pt-16">
             <div>
-              <h1 className="font-display text-[2.6rem] font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+              <h1 className="font-display text-[2.8rem] leading-[1.02] sm:text-[4.2rem]" style={{ letterSpacing: "-0.03em" }}>
                 Quanto você tem de verdade, já descontando o cartão?
               </h1>
-              <p className="mt-6 max-w-xl text-lg leading-relaxed text-paper/80">
+              <p className="mt-7 max-w-lg text-lg leading-relaxed text-paper/75">
                 Contas, cartões e investimentos num só painel. Lance um gasto em segundos e veja o patrimônio se ajustar na hora.
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link href="/login" className="btn bg-paper px-6 py-3 text-base text-deep hover:opacity-90">
+              <div className="mt-9 flex flex-wrap items-center gap-4">
+                <Link href="/login" className="btn btn-gold px-7 py-3.5 text-base">
                   Acessar o painel
                 </Link>
-                <a href="#painel" className="btn border border-paper/30 px-6 py-3 text-base text-paper hover:bg-paper/10">
-                  Ver o painel
+                <a href="#painel" className="text-sm font-semibold text-paper/80 underline decoration-gold/60 underline-offset-4 hover:text-paper">
+                  Ver como é por dentro
                 </a>
               </div>
-              <p className="mt-4 text-sm text-paper/60">Acesso restrito por enquanto.</p>
+              <p className="mt-5 text-sm text-paper/55">Acesso restrito por enquanto.</p>
             </div>
-            <Simulador />
+            <div>
+              <Patrimonio kpis={kpisDeExemplo()} animar compacto />
+              <p className="mt-3 text-center text-xs text-paper/50">Dados de exemplo</p>
+            </div>
           </div>
         </div>
       </div>
 
       <main>
-        <section id="painel" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24" aria-labelledby="titulo-painel">
-          <h2 id="titulo-painel" className="font-display max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
-            Tudo o que você tem, e tudo o que você deve, numa tela só.
-          </h2>
-          <p className="mt-4 max-w-xl text-muted">
-            Este é o painel que você abre todo dia, aqui com dados de exemplo.
-          </p>
-          <div className="mt-10">
-            <Previa />
+        <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-[1fr_1.05fr] lg:gap-20">
+          <div>
+            <h2 className="font-display max-w-md text-4xl leading-[1.08] sm:text-5xl">Parcelas que fecham no centavo.</h2>
+            <p className="mt-5 max-w-md text-lg text-muted">
+              Cada compra parcelada vira uma linha por mês e a soma sempre bate com o total. Experimente: o simulador usa a mesma
+              conta do sistema.
+            </p>
+          </div>
+          <Simulador />
+        </section>
+
+        <section id="painel" className="border-y border-line bg-sunken" aria-labelledby="titulo-painel">
+          <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+            <h2 id="titulo-painel" className="font-display max-w-2xl text-4xl leading-[1.08] sm:text-5xl">
+              Tudo o que você tem, e tudo o que você deve, numa tela só.
+            </h2>
+            <p className="mt-4 max-w-xl text-muted">Este é o painel que você abre todo dia, aqui com dados de exemplo.</p>
+            <div className="mt-12">
+              <Previa />
+            </div>
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24" aria-labelledby="titulo-recursos">
-          <h2 id="titulo-recursos" className="font-display max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
+        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28" aria-labelledby="titulo-recursos">
+          <h2 id="titulo-recursos" className="font-display max-w-2xl text-4xl leading-[1.08] sm:text-5xl">
             Feito para quem lança gasto todo dia.
           </h2>
-          <dl className="mt-10 grid gap-x-12 gap-y-0 md:grid-cols-2">
+          <dl className="mt-14 grid gap-x-16 md:grid-cols-2">
             {RECURSOS.map((r) => (
-              <div key={r.titulo} className="border-t border-line py-6">
-                <dt className="font-display text-xl font-semibold">{r.titulo}</dt>
+              <div key={r.titulo} className="border-t border-line py-7">
+                <dt className="font-display text-2xl">{r.titulo}</dt>
                 <dd className="mt-2 max-w-md text-muted">{r.texto}</dd>
               </div>
             ))}
           </dl>
         </section>
 
-        <section id="como-funciona" className="bg-sunken" aria-labelledby="titulo-passos">
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-            <h2 id="titulo-passos" className="font-display max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
+        <section id="como-funciona" className="border-y border-line bg-sunken" aria-labelledby="titulo-passos">
+          <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+            <h2 id="titulo-passos" className="font-display max-w-2xl text-4xl leading-[1.08] sm:text-5xl">
               Em três passos você está usando.
             </h2>
-            <ol className="mt-10 grid gap-8 md:grid-cols-3">
+            <ol className="mt-14 grid gap-10 md:grid-cols-3">
               {PASSOS.map((p, i) => (
-                <li key={p.titulo} className="flex gap-4 md:block">
-                  <span className="font-display num text-5xl font-semibold leading-none text-accent md:text-6xl">{i + 1}</span>
-                  <div className="md:mt-4">
-                    <h3 className="font-display text-xl font-semibold">{p.titulo}</h3>
-                    <p className="mt-1.5 max-w-xs text-muted">{p.texto}</p>
+                <li key={p.titulo} className="flex gap-5 md:block">
+                  <span className="font-display num text-6xl leading-none text-gold-lo md:text-7xl" aria-hidden>
+                    {i + 1}
+                  </span>
+                  <div className="md:mt-5">
+                    <h3 className="font-display text-2xl">{p.titulo}</h3>
+                    <p className="mt-2 max-w-xs text-muted">{p.texto}</p>
                   </div>
                 </li>
               ))}
@@ -181,20 +200,21 @@ export default function PaginaInicial() {
           </div>
         </section>
 
-        <section id="seguranca" className="bg-deep text-paper" aria-labelledby="titulo-seguranca">
-          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
+        <section id="seguranca" className="tinta relative overflow-hidden text-paper" aria-labelledby="titulo-seguranca">
+          <Guilloche className="pointer-events-none absolute -right-40 -top-40 w-[44rem] max-w-none text-gold opacity-[0.08]" />
+          <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-[1fr_1.3fr] lg:gap-20">
             <div>
-              <h2 id="titulo-seguranca" className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+              <h2 id="titulo-seguranca" className="font-display text-4xl leading-[1.08] sm:text-5xl">
                 Seus números ficam atrás de uma porta trancada.
               </h2>
-              <p className="mt-4 max-w-md text-paper/75">
+              <p className="mt-5 max-w-md text-paper/70">
                 Dinheiro é assunto pessoal. Por isso o acesso é fechado e a proteção existe em duas camadas: no site e no banco de dados.
               </p>
             </div>
             <dl className="grid gap-x-10 sm:grid-cols-2">
               {GARANTIAS.map((g) => (
-                <div key={g.titulo} className="border-t border-paper/20 py-5">
-                  <dt className="font-semibold">{g.titulo}</dt>
+                <div key={g.titulo} className="border-t border-gold/25 py-5">
+                  <dt className="font-semibold text-gold-hi">{g.titulo}</dt>
                   <dd className="mt-1.5 text-sm text-paper/70">{g.texto}</dd>
                 </div>
               ))}
@@ -202,16 +222,16 @@ export default function PaginaInicial() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24" aria-labelledby="titulo-faq">
-          <h2 id="titulo-faq" className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+        <section className="mx-auto max-w-3xl px-4 py-20 sm:px-6 sm:py-28" aria-labelledby="titulo-faq">
+          <h2 id="titulo-faq" className="font-display text-4xl sm:text-5xl">
             Perguntas frequentes
           </h2>
-          <div className="mt-8 divide-y divide-line border-y border-line">
+          <div className="mt-10 divide-y divide-line border-y border-line">
             {PERGUNTAS.map((q) => (
-              <details key={q.p} className="group py-4">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium [&::-webkit-details-marker]:hidden">
+              <details key={q.p} className="group py-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-medium [&::-webkit-details-marker]:hidden">
                   {q.p}
-                  <span className="shrink-0 text-xl leading-none text-muted transition-transform group-open:rotate-45" aria-hidden>
+                  <span className="shrink-0 text-2xl leading-none text-gold-lo transition-transform group-open:rotate-45" aria-hidden>
                     +
                   </span>
                 </summary>
@@ -221,21 +241,22 @@ export default function PaginaInicial() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28">
-          <div className="rounded-3xl bg-deep px-6 py-12 text-paper sm:px-12 sm:py-16">
-            <h2 className="font-display max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
-              Pronto para ver o seu número real?
-            </h2>
-            <Link href="/login" className="btn mt-8 bg-paper px-6 py-3 text-base text-deep hover:opacity-90">
-              Acessar o painel
-            </Link>
+        <section className="mx-auto max-w-6xl px-4 pb-24 sm:px-6 sm:pb-32">
+          <div className="tinta relative overflow-hidden rounded-[2rem] border border-gold/20 px-6 py-16 text-paper sm:px-14 sm:py-20">
+            <Guilloche className="pointer-events-none absolute -right-24 -top-32 w-[34rem] max-w-none text-gold opacity-[0.12]" />
+            <div className="relative">
+              <h2 className="font-display max-w-xl text-4xl leading-[1.08] sm:text-5xl">Pronto para ver o seu número real?</h2>
+              <Link href="/login" className="btn btn-gold mt-9 px-7 py-3.5 text-base">
+                Acessar o painel
+              </Link>
+            </div>
           </div>
         </section>
       </main>
 
       <footer className="border-t border-line">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6">
-          <span className="font-display font-semibold text-ink">{MARCA.nome}</span>
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-7 text-sm text-muted sm:px-6">
+          <Logo tamanho={30} />
           <span>© {new Date().getFullYear()}. Todos os direitos reservados.</span>
         </div>
       </footer>

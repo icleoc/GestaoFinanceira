@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource-variable/bricolage-grotesque";
-import "@fontsource-variable/instrument-sans";
+import "@fontsource-variable/newsreader";
+import "@fontsource-variable/hanken-grotesk";
 import "./globals.css";
 import { MARCA } from "@/lib/brand";
 
@@ -13,8 +13,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#EAEFED" },
-    { media: "(prefers-color-scheme: dark)", color: "#0A141D" },
+    { media: "(prefers-color-scheme: light)", color: "#F2F4F1" },
+    { media: "(prefers-color-scheme: dark)", color: "#041519" },
   ],
 };
 

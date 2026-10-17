@@ -20,9 +20,13 @@ const config: Config = {
         accent: token("accent"),
         neg: token("neg"),
         warn: token("warn"),
-        // Faixas escuras da página inicial: iguais nos temas claro e escuro.
+        // Faixas escuras: iguais nos temas claro e escuro.
         deep: token("deep"),
+        "deep-2": token("deep-2"),
         paper: token("paper"),
+        gold: token("gold"),
+        "gold-hi": token("gold-hi"),
+        "gold-lo": token("gold-lo"),
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

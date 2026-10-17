@@ -15,12 +15,12 @@ export default function GastosDoMes({ mes, gastos, receitas, despesas }: Props) 
   const resultado = receitas - despesas;
 
   return (
-    <section className="panel p-5 sm:p-6" aria-labelledby="titulo-gastos">
-      <h2 id="titulo-gastos" className="font-display text-lg font-semibold">
+    <section className="panel p-5 sm:p-7" aria-labelledby="titulo-gastos">
+      <h2 id="titulo-gastos" className="font-display text-xl">
         Para onde foi em {monthLabel(mes)}
       </h2>
 
-      <dl className="mt-4 grid grid-cols-3 gap-3 text-sm">
+      <dl className="mt-5 grid grid-cols-3 divide-x divide-line text-sm">
         <Resumo nome="Entrou" valor={money(receitas)} cor="text-accent" />
         <Resumo nome="Saiu" valor={money(despesas)} />
         <Resumo
@@ -43,8 +43,8 @@ export default function GastosDoMes({ mes, gastos, receitas, despesas }: Props) 
                   <span className="ml-2 text-muted">{Math.round((g.total / total) * 100)}%</span>
                 </span>
               </div>
-              <div className="mt-1 h-2 overflow-hidden rounded-full bg-sunken">
-                <div className="h-full rounded-full bg-primary" style={{ width: `${(g.total / maior) * 100}%` }} />
+              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-sunken">
+                <div className="h-full rounded-full bg-ink" style={{ width: `${(g.total / maior) * 100}%` }} />
               </div>
             </li>
           ))}
@@ -56,9 +56,9 @@ export default function GastosDoMes({ mes, gastos, receitas, despesas }: Props) 
 
 function Resumo({ nome, valor, cor = "" }: { nome: string; valor: string; cor?: string }) {
   return (
-    <div className="rounded-xl bg-sunken px-3 py-2.5">
+    <div className="px-3 first:pl-0 last:pr-0">
       <dt className="text-muted">{nome}</dt>
-      <dd className={`num font-display mt-0.5 text-base font-semibold sm:text-lg ${cor}`}>{valor}</dd>
+      <dd className={`num font-display mt-0.5 text-lg sm:text-xl ${cor}`}>{valor}</dd>
     </div>
   );
 }
