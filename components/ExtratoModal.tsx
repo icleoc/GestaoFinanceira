@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Dados, Transacao } from "@/lib/types";
+import type { Dados, DadosNota, Transacao } from "@/lib/types";
 import { mesesDisponiveis, montarEdicao, num, parseParcela, todayISO } from "@/lib/finance";
 import { atualizarTransacoes, excluirTransacoes, removerNotas } from "@/lib/data";
 import { dateBR, money, monthLabel } from "@/lib/format";
@@ -32,7 +32,7 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
   const [editando, setEditando] = useState<Transacao | null>(null);
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
-  const [nota, setNota] = useState<{ caminho: string; titulo: string } | null>(null);
+  const [nota, setNota] = useState<{ caminho: string; titulo: string; dados?: DadosNota | null } | null>(null);
 
   const nomeConta = useMemo(() => new Map(contas.map((c) => [String(c.id), c.nome])), [contas]);
   const nomeCategoria = useMemo(() => new Map(categorias.map((c) => [String(c.id), c.nome])), [categorias]);
@@ -89,7 +89,7 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
     }
   }
 
-  if (nota) return <NotaViewer caminho={nota.caminho} titulo={nota.titulo} onClose={() => setNota(null)} />;
+  if (nota) return <NotaViewer caminho={nota.caminho} titulo={nota.titulo} dados={nota.dados} onClose={() => setNota(null)} />;
 
   if (editando) {
     return (
@@ -227,7 +227,7 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
                 </div>
                 {t.nota_path && (
                   <button
-                    onClick={() => setNota({ caminho: t.nota_path as string, titulo: p ? p.base : t.descricao })}
+                    onClick={() => setNota({ caminho: t.nota_path as string, titulo: p ? p.base : t.descricao, dados: t.nota_dados })}
                     className="btn btn-quiet shrink-0 px-2.5 py-1.5"
                     aria-label={`Ver a foto da nota de ${t.descricao}`}
                     title="Ver foto da nota"

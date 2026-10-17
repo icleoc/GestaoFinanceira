@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser, supabaseConfigurado } from "@/lib/supabase/client";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import Guilloche from "@/components/Guilloche";
+import { biometriaDisponivel, entrarComBiometria, rotuloBiometria } from "@/lib/passkey";
 
 function traduzErro(msg: string): string {
   if (/invalid login credentials/i.test(msg)) return "E-mail ou senha incorretos.";
@@ -21,6 +22,23 @@ export default function LoginPage() {
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [bio, setBio] = useState(false);
+  useEffect(() => {
+    void biometriaDisponivel().then(setBio);
+  }, []);
+
+  async function comBiometria() {
+    setErro("");
+    setEnviando(true);
+    try {
+      await entrarComBiometria();
+      router.replace("/app");
+      router.refresh();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível entrar.");
+      setEnviando(false);
+    }
+  }
 
   async function entrar(e: React.FormEvent) {
     e.preventDefault();
@@ -70,7 +88,16 @@ export default function LoginPage() {
               </p>
             </div>
           ) : (
-            <form onSubmit={entrar} className="mt-8 space-y-4">
+            <div className="mt-8">
+            {bio && (
+              <>
+                <button type="button" onClick={comBiometria} disabled={enviando} className="btn btn-gold w-full py-3.5 text-base">
+                  Entrar com {rotuloBiometria()}
+                </button>
+                <p className="my-5 text-center text-xs uppercase tracking-widest text-muted">ou com e-mail e senha</p>
+              </>
+            )}
+            <form onSubmit={entrar} className="space-y-4">
               <div>
                 <label htmlFor="email" className="label">
                   E-mail
@@ -108,6 +135,7 @@ export default function LoginPage() {
                 {enviando ? "Entrando…" : "Entrar"}
               </button>
             </form>
+            </div>
           )}
         </div>
       </main>

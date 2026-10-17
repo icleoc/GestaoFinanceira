@@ -7,6 +7,7 @@ import { MARCA } from "@/lib/brand";
 export const metadata: Metadata = {
   title: MARCA.nome,
   description: MARCA.descricao,
+  appleWebApp: { capable: true, title: "Jarvis", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {

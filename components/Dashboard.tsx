@@ -30,10 +30,12 @@ import Evolucao from "./Evolucao";
 import Planejar from "./Planejar";
 import Equipe from "./Equipe";
 import TrocarSenha from "./TrocarSenha";
+import FaceId from "./FaceId";
+import { biometriaDisponivel, rotuloBiometria } from "@/lib/passkey";
 import Modal from "./Modal";
 
 type Aba = "inicio" | "planejar" | "pessoas";
-type Janela = "extrato" | "gerenciar" | "lancar" | "senha" | null;
+type Janela = "extrato" | "gerenciar" | "lancar" | "senha" | "faceid" | null;
 
 export default function Dashboard() {
   const router = useRouter();
@@ -43,6 +45,10 @@ export default function Dashboard() {
   const [aba, setAba] = useState<Aba>("inicio");
   const [mes, setMes] = useState(monthOf(todayISO()));
   const [janela, setJanela] = useState<Janela>(null);
+  const [bio, setBio] = useState(false);
+  useEffect(() => {
+    void biometriaDisponivel().then(setBio);
+  }, []);
   const [prefill, setPrefill] = useState<Prefill | null>(null);
   const [aviso, setAviso] = useState("");
 
@@ -238,6 +244,11 @@ export default function Dashboard() {
                       Gerenciar contas
                     </button>
                   )}
+                  {bio && (
+                    <button onClick={() => setJanela("faceid")} className="btn btn-quiet justify-start">
+                      Entrar com {rotuloBiometria()}
+                    </button>
+                  )}
                   <button onClick={() => setJanela("senha")} className="btn btn-quiet justify-start">
                     Trocar senha
                   </button>
@@ -350,6 +361,7 @@ export default function Dashboard() {
       {janela === "gerenciar" && dados && podeGerenciar && (
         <GerenciarModal dados={dados} onClose={fechar} onMudou={depoisDeMudar} />
       )}
+      {janela === "faceid" && <FaceId onClose={fechar} />}
       {janela === "senha" && (
         <TrocarSenha
           onClose={fechar}

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Dados, Id } from "@/lib/types";
+import type { DadosNota, Dados, Id } from "@/lib/types";
 import { montarLancamento, num, round2, sameId, todayISO, type Operacao } from "@/lib/finance";
-import { enviarNota, inserirTransacoes, removerNotas } from "@/lib/data";
+import { carteiraDaSessao, enviarNota, inserirTransacoes, removerNotas } from "@/lib/data";
+import { camposLidos, lerNotaNoServidor } from "@/lib/nota";
 import { dateBR, money } from "@/lib/format";
 import {
   MOEDAS,
@@ -89,7 +90,11 @@ export default function LancamentoForm({ dados, prefill, onSalvo, semMoldura = f
   const [foto, setFoto] = useState<Blob | null>(null);
   const [fotoUrl, setFotoUrl] = useState("");
   const entradaFoto = useRef<HTMLInputElement>(null);
+  // Leitura automática da nota (empresa, itens, valor, data e categoria).
+  const [leitura, setLeitura] = useState<{ estado: "parado" | "lendo" | "ok" | "erro"; dados?: DadosNota; msg?: string }>({ estado: "parado" });
+  const atual = useRef({ descAuto: true, valor: "", operacao: "despesa" as Operacao });
 
+  atual.current = { descAuto, valor, operacao };
   const ehTransf = operacao === "transferencia" || operacao === "investimento";
   const tipoCategoria = operacao === "receita" ? "Receita" : "Despesa";
   const categoriasDoTipo = useMemo(
@@ -157,7 +162,38 @@ export default function LancamentoForm({ dados, prefill, onSalvo, semMoldura = f
     e.target.value = "";
     if (!arquivo) return;
     setErro("");
-    setFoto(await reduzirImagem(arquivo));
+    const reduzida = await reduzirImagem(arquivo);
+    setFoto(reduzida);
+    if (atual.current.operacao === "despesa") void lerFoto(reduzida);
+  }
+
+  async function lerFoto(blob: Blob) {
+    setLeitura({ estado: "lendo" });
+    try {
+      const nomes = categorias.filter((c) => c.tipo === "Despesa").map((c) => c.nome);
+      const dados = await lerNotaNoServidor(blob, carteiraDaSessao(), nomes);
+      setLeitura({ estado: "ok", dados });
+      preencherComLeitura(dados);
+    } catch (err) {
+      setLeitura({ estado: "erro", msg: err instanceof Error ? err.message : "Não consegui ler a nota." });
+    }
+  }
+
+  /** Só preenche o que a pessoa ainda não digitou. */
+  function preencherComLeitura(d: DadosNota) {
+    if (d.total !== null && atual.current.valor.trim() === "") {
+      setValor(String(d.total).replace(".", ","));
+      setValorAuto(false);
+    }
+    if (d.empresa && atual.current.descAuto) {
+      setDescricao(d.empresa);
+      setDescAuto(false);
+    }
+    if (d.data) setData(d.data);
+    if (d.categoria) {
+      const cat = categorias.find((c) => c.tipo === "Despesa" && c.nome === d.categoria);
+      if (cat) setCategoriaId(String(cat.id));
+    }
   }
 
   // Conta de origem padrão: a primeira conta corrente.
@@ -244,6 +280,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, semMoldura = f
       if (foto && !ehTransf) caminhoNota = await enviarNota(foto);
       const extras = {
         ...(caminhoNota ? { nota_path: caminhoNota } : {}),
+        ...(caminhoNota && leitura.estado === "ok" && leitura.dados ? { nota_dados: leitura.dados } : {}),
         ...(estrangeira ? { moeda, valor_original: digitado, taxa_cambio: taxa } : {}),
       };
       await inserirTransacoes(r.linhas.map((l) => ({ ...l, ...extras })));
@@ -263,6 +300,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, semMoldura = f
       setTotal("");
       setParcelas(1);
       setFoto(null);
+      setLeitura({ estado: "parado" });
       onSalvo(n > 1 ? `Registrado em ${n} parcelas.` : "Lançamento registrado.");
       // devolve a sugestão de descrição/categoria
       setCategoriaId((c) => c);
@@ -547,7 +585,14 @@ export default function LancamentoForm({ dados, prefill, onSalvo, semMoldura = f
                   <p className="font-medium">Nota anexada</p>
                   <p className="text-muted">{Math.max(1, Math.round(foto.size / 1024))} KB</p>
                 </div>
-                <button type="button" onClick={() => setFoto(null)} className="btn btn-quiet px-3 py-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFoto(null);
+                    setLeitura({ estado: "parado" });
+                  }}
+                  className="btn btn-quiet px-3 py-1.5"
+                >
                   Remover
                 </button>
               </div>
@@ -563,6 +608,46 @@ export default function LancamentoForm({ dados, prefill, onSalvo, semMoldura = f
                 </svg>
                 Tirar foto da nota
               </button>
+            )}
+            {foto && leitura.estado === "lendo" && (
+              <p role="status" className="mt-2 animate-pulse text-sm text-muted">
+                Lendo a nota: empresa, itens e valor…
+              </p>
+            )}
+            {foto && leitura.estado === "erro" && (
+              <div role="alert" className="mt-2 text-sm">
+                <p className="text-warn">{leitura.msg}</p>
+                {atual.current.operacao === "despesa" && (
+                  <button type="button" onClick={() => void lerFoto(foto)} className="mt-1 font-semibold underline">
+                    Tentar ler de novo
+                  </button>
+                )}
+              </div>
+            )}
+            {foto && leitura.estado === "ok" && leitura.dados && (
+              <div role="status" className="mt-2 rounded-xl border border-accent/30 bg-accent/5 p-3 text-sm">
+                <p className="font-semibold text-accent">
+                  {camposLidos(leitura.dados) === 0 ? "Não consegui ler esta nota." : "Nota lida. Confira antes de registrar."}
+                </p>
+                {leitura.dados.empresa && <p className="mt-1">{leitura.dados.empresa}</p>}
+                {leitura.dados.total !== null && <p className="num text-muted">Total {money(leitura.dados.total)}</p>}
+                {leitura.dados.itens.length > 0 && (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-muted">{leitura.dados.itens.length} itens</summary>
+                    <ul className="mt-1 space-y-0.5">
+                      {leitura.dados.itens.map((it, i) => (
+                        <li key={i} className="flex justify-between gap-3">
+                          <span className="min-w-0 truncate">
+                            {it.quantidade && it.quantidade !== 1 ? `${it.quantidade}× ` : ""}
+                            {it.nome}
+                          </span>
+                          {it.valor !== null && <span className="num shrink-0">{money(it.valor)}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
             )}
           </div>
         )}

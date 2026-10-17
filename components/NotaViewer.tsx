@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { enderecoDaNota } from "@/lib/data";
+import type { DadosNota } from "@/lib/types";
+import { dateBR, money } from "@/lib/format";
+import { Linha } from "./Razao";
 import Modal from "./Modal";
 
 /** Mostra a foto de uma nota guardada. O endereço dura 2 minutos e só quem tem permissão consegue gerar. */
-export default function NotaViewer({ caminho, titulo, onClose }: { caminho: string; titulo: string; onClose: () => void }) {
+export default function NotaViewer({ caminho, titulo, dados, onClose }: { caminho: string; titulo: string; dados?: DadosNota | null; onClose: () => void }) {
   const [url, setUrl] = useState("");
   const [erro, setErro] = useState("");
 
@@ -35,6 +38,22 @@ export default function NotaViewer({ caminho, titulo, onClose }: { caminho: stri
         {url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={url} alt={`Foto da nota de ${titulo}`} className="mx-auto max-h-[70dvh] w-auto rounded-lg border border-line" />
+        )}
+        {dados && (
+          <div className="mt-5">
+            <p className="label">Lido da nota</p>
+            {dados.empresa && <Linha nome="Empresa" valor={dados.empresa} />}
+            {dados.cnpj && <Linha nome="CNPJ" valor={dados.cnpj} />}
+            {dados.data && <Linha nome="Data" valor={dateBR(dados.data)} />}
+            {dados.itens.map((it, i) => (
+              <Linha
+                key={i}
+                nome={`${it.quantidade && it.quantidade !== 1 ? `${it.quantidade}× ` : ""}${it.nome}`}
+                valor={it.valor !== null ? money(it.valor) : "—"}
+              />
+            ))}
+            {dados.total !== null && <Linha nome="Total" valor={money(dados.total)} destaque />}
+          </div>
         )}
       </div>
     </Modal>

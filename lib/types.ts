@@ -22,8 +22,28 @@ export interface Categoria {
   tipo: TipoCategoria;
 }
 
+/** O que a leitura automática enxergou na foto da nota. */
+export interface ItemNota {
+  nome: string;
+  quantidade: number | null;
+  valor: number | null;
+}
+
+export interface DadosNota {
+  empresa: string | null;
+  cnpj: string | null;
+  /** AAAA-MM-DD */
+  data: string | null;
+  total: number | null;
+  itens: ItemNota[];
+  /** Uma das categorias da carteira. */
+  categoria: string | null;
+}
+
 export interface Transacao {
   id: Id;
+  /** Empresa, itens e total lidos da nota. */
+  nota_dados?: DadosNota | null;
   /** Caminho da foto da nota no armazenamento, quando houver. */
   nota_path?: string | null;
   /** Moeda em que o valor foi recebido (BRL quando não houve conversão). */
@@ -53,6 +73,7 @@ export interface NovaTransacao {
   conta_origem_id: Id | null;
   categoria_id: Id | null;
   nota_path?: string | null;
+  nota_dados?: DadosNota | null;
   moeda?: string;
   valor_original?: number | null;
   taxa_cambio?: number | null;
