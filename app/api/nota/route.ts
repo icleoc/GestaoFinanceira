@@ -154,9 +154,17 @@ export async function POST(req: NextRequest) {
   }
 
   if (!resposta.ok) {
-    if (resposta.status === 401 || resposta.status === 403) return erro("A chave da leitura automática está inválida. Avise quem administra o sistema.", 502);
-    if (resposta.status === 429) return erro("O leitor de notas está ocupado. Tente de novo em instantes.", 503);
-    return erro("Não consegui ler esta nota. Tente outra foto ou preencha à mão.", 502);
+    const corpoErro = (await resposta.json().catch(() => null)) as { error?: { type?: string; message?: string } } | null;
+    const tipo = corpoErro?.error?.type ?? "";
+    const motivo = (corpoErro?.error?.message ?? "").slice(0, 160);
+    console.error("nota: Anthropic respondeu", resposta.status, tipo, motivo);
+    if (/credit balance|billing/i.test(motivo)) {
+      return erro("A conta da Anthropic está sem crédito. Adicione saldo em console.anthropic.com > Billing.", 502);
+    }
+    if (resposta.status === 401 || resposta.status === 403) return erro("A chave da leitura automática foi recusada pela Anthropic. Crie uma nova em console.anthropic.com e troque no Vercel.", 502);
+    if (resposta.status === 404 || /model/i.test(motivo)) return erro(`O modelo de leitura (${MODELO}) não está disponível para esta chave. Defina ANTHROPIC_MODEL no Vercel. Detalhe: ${motivo}`, 502);
+    if (resposta.status === 429) return erro("O leitor de notas está ocupado ou no limite da conta. Tente de novo em instantes.", 503);
+    return erro(`A Anthropic recusou a leitura (${resposta.status}${tipo ? `, ${tipo}` : ""}). ${motivo}`.trim(), 502);
   }
 
   const json = (await resposta.json().catch(() => null)) as { content?: { type: string; input?: unknown }[] } | null;
