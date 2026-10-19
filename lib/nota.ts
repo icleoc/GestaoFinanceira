@@ -66,7 +66,7 @@ export function normalizarLeitura(bruto: unknown, categorias: string[], hoje: st
   const sugerida = texto(o.categoria, 60);
   const categoria = sugerida ? (categorias.find((c) => c.trim().toLowerCase() === sugerida.toLowerCase()) ?? null) : null;
 
-  const nova = texto(o.categoria_nova, 30);
+  const nova = texto(o.categoria_nova, 30) ?? (sugerida && !categoria ? texto(sugerida, 30) : null);
   const categoriaNova = !categoria && nova && !categorias.some((c) => c.trim().toLowerCase() === nova.toLowerCase()) ? nova : null;
 
   return {

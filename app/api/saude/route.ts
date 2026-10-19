@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { estadoDaChaveAnthropic } from "@/lib/ambiente";
+import { estadoDaChaveAnthropic, estadoDaChaveGemini } from "@/lib/ambiente";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export function GET() {
   return NextResponse.json(
     {
-      leituraDeNota: estadoDaChaveAnthropic(),
+      leituraDeNota: estadoDaChaveGemini() === "ok" ? "ok (Gemini)" : estadoDaChaveAnthropic() === "ok" ? "ok (Anthropic)" : "ausente",
       faceId: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY ? "ok" : "ausente",
       criacaoDeClientes: (process.env.PROVISION_SECRET ?? "").length >= 24 ? "ok" : "ausente",
     },
