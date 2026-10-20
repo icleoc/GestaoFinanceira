@@ -1,9 +1,9 @@
 // Modo demonstração: o mesmo painel, com uma família fictícia e tudo guardado só na memória da aba.
 // Nada daqui toca no banco. Ao recarregar a página, volta ao começo.
 
-import type { Categoria, Conta, Dados, DadosNota, DespesaFixa, Id, Limite, Membro, NovaTransacao, Permissao, Pretensao, Sessao, Transacao } from "./types";
+import type { Categoria, Conta, Dados, DadosNota, Divida, DespesaFixa, Id, Limite, Membro, NovaTransacao, Permissao, Pretensao, Sessao, Transacao } from "./types";
 import { gastoPorPessoa } from "./limites";
-import { monthOf } from "./finance";
+import { addMonthsISO, monthOf } from "./finance";
 
 const LEO = "demo-leo";
 const ANA = "demo-ana";
@@ -124,10 +124,16 @@ export function iniciarDemo(hoje: string) {
     { id: "p2", nome: "Viagem de férias", categoria: "Lazer", valor: 14000, forma: "avista", parcelas: 1, entrada: 0, juros_mensal: 0, prevista: null, status: "desejo" },
   ];
 
-  store = { contas, categorias, transacoes, fixas, pretensoes, membros: membros.map((m) => ({ user_id: m.user_id, nome: m.nome, email: m.email })), limites };
+  // Uma dívida que já estava em andamento antes de usar o app (parcelas retroativas, sem lançamentos).
+  const dividas: Divida[] = [
+    { id: "dv1", tipo: "financiamento", nome: "Carro", valor_bem: 68000, entrada: 12000, parcelas: 48, valor_parcela: 1520, primeira_parcela: addMonthsISO(hoje, -14).slice(0, 8) + "10", parcelas_pagas: 14, conta_id: 1, categoria_id: null },
+    { id: "dv2", tipo: "emprestimo", nome: "Empréstimo pessoal", valor_bem: 8000, entrada: 0, parcelas: 12, valor_parcela: 790, primeira_parcela: addMonthsISO(hoje, -3).slice(0, 8) + "20", parcelas_pagas: 3, conta_id: 1, categoria_id: null },
+  ];
+
+  store = { contas, categorias, transacoes, fixas, pretensoes, dividas, membros: membros.map((m) => ({ user_id: m.user_id, nome: m.nome, email: m.email })), limites };
 }
 
-const copia = (): Dados => ({ ...store!, contas: [...store!.contas], categorias: [...store!.categorias], transacoes: [...store!.transacoes], fixas: [...store!.fixas], pretensoes: [...store!.pretensoes], limites: [...(store!.limites ?? [])], membros: [...(store!.membros ?? [])] });
+const copia = (): Dados => ({ ...store!, contas: [...store!.contas], categorias: [...store!.categorias], transacoes: [...store!.transacoes], fixas: [...store!.fixas], pretensoes: [...store!.pretensoes], dividas: [...(store!.dividas ?? [])], limites: [...(store!.limites ?? [])], membros: [...(store!.membros ?? [])] });
 export const demoDados = (): Dados => copia();
 export const demoMembros = (): Membro[] => membros.map((m) => ({ ...m }));
 
@@ -152,13 +158,16 @@ export function demoExcluir(ids: Id[]) {
   }
   store!.transacoes = store!.transacoes.filter((x) => !ids.some((i) => String(i) === String(x.id)));
 }
-export function demoAtualizar(itens: { id: Id; data: string; descricao: string; valor: number }[]) {
+export function demoAtualizar(itens: { id: Id; data: string; descricao: string; valor: number; conta_origem_id?: Id | null }[]) {
   for (const it of itens) {
     const t = store!.transacoes.find((x) => String(x.id) === String(it.id));
     if (!t) continue;
-    const c = store!.contas.find((x) => x.id === t.conta_origem_id);
-    if (c) c.saldo_atual = Number(c.saldo_atual ?? 0) - Number(t.valor) + it.valor;
-    Object.assign(t, { data: it.data, descricao: it.descricao, valor: it.valor });
+    const antiga = store!.contas.find((x) => x.id === t.conta_origem_id);
+    if (antiga) antiga.saldo_atual = Number(antiga.saldo_atual ?? 0) - Number(t.valor);
+    const destino = it.conta_origem_id !== undefined ? it.conta_origem_id : t.conta_origem_id;
+    const nova = store!.contas.find((x) => x.id === destino);
+    if (nova) nova.saldo_atual = Number(nova.saldo_atual ?? 0) + it.valor;
+    Object.assign(t, { data: it.data, descricao: it.descricao, valor: it.valor, conta_origem_id: destino ?? null });
   }
 }
 export function demoCategoria(ids: Id[], categoriaId: Id | null) {
@@ -234,4 +243,18 @@ let proxima = 0;
 export function demoLerNota(hoje: string): DadosNota {
   const n = NOTAS[proxima++ % NOTAS.length];
   return { ...n, data: hoje, itens: n.itens.map((i) => ({ ...i })) };
+}
+
+export function demoCriarDivida(d: Omit<Divida, "id">) {
+  store!.dividas = [...(store!.dividas ?? []), { ...d, id: `dv${seq++}` }];
+}
+export function demoAtualizarDivida(id: string, d: Omit<Divida, "id">) {
+  store!.dividas = (store!.dividas ?? []).map((x) => (x.id === id ? { ...d, id } : x));
+}
+export function demoExcluirDivida(id: string) {
+  store!.dividas = (store!.dividas ?? []).filter((x) => x.id !== id);
+}
+export function demoPagarParcela(id: string, _lancadas: number) {
+  void _lancadas;
+  store!.dividas = (store!.dividas ?? []).map((x) => (x.id === id && x.parcelas_pagas < x.parcelas ? { ...x, parcelas_pagas: x.parcelas_pagas + 1 } : x));
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Dados, Sessao } from "@/lib/types";
+import type { Dados, Divida, Sessao } from "@/lib/types";
 import {
   calcularKpis,
   contasFixasPendentes,
@@ -34,14 +34,16 @@ import Equipe from "./Equipe";
 import TrocarSenha from "./TrocarSenha";
 import FaceId from "./FaceId";
 import ResumoVoz from "./ResumoVoz";
+import Dividas, { ResumoDividas } from "./Dividas";
+import DividaForm from "./DividaForm";
 import { montarResumoFalado } from "@/lib/voz";
 import { situacaoDaPessoa } from "@/lib/limites";
 import NotaRapida from "./NotaRapida";
 import { biometriaDisponivel, rotuloBiometria } from "@/lib/passkey";
 import Modal from "./Modal";
 
-type Aba = "inicio" | "planejar" | "pessoas";
-type Janela = "extrato" | "gerenciar" | "lancar" | "senha" | "faceid" | "nota" | null;
+type Aba = "inicio" | "planejar" | "dividas" | "pessoas";
+type Janela = "extrato" | "gerenciar" | "lancar" | "senha" | "faceid" | "nota" | "divida" | null;
 
 export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const router = useRouter();
@@ -56,6 +58,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
     if (!demo) void biometriaDisponivel().then(setBio);
   }, [demo]);
   const [prefill, setPrefill] = useState<Prefill | null>(null);
+  const [dividaEditando, setDividaEditando] = useState<Divida | undefined>(undefined);
   const [aviso, setAviso] = useState("");
 
   const recarregar = useCallback(async () => {
@@ -96,7 +99,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const depoisDeMudar = useCallback(
     (mensagem: string) => {
       setAviso(mensagem);
-      setJanela((j) => (j === "lancar" ? null : j));
+      setJanela((j) => (j === "lancar" || j === "divida" ? null : j));
       recarregar();
     },
     [recarregar],
@@ -208,6 +211,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const abas: { id: Aba; nome: string }[] = [
     { id: "inicio", nome: "Início" },
     { id: "planejar", nome: "Planejar" },
+    { id: "dividas", nome: "Dívidas" },
     ...(podeEquipe ? ([{ id: "pessoas", nome: "Pessoas" }] as { id: Aba; nome: string }[]) : []),
   ];
   const inicial = (sessao.email || "?").charAt(0).toUpperCase();
@@ -360,9 +364,25 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
           )
         ) : aba === "planejar" ? (
           <Planejar dados={dados} podeEditar={podePlanejar} onMudou={depoisDeMudar} />
+        ) : aba === "dividas" ? (
+          <Dividas
+            dados={dados}
+            podeGerenciar={podeGerenciar}
+            podeLancar={podeLancar}
+            onNova={() => {
+              setDividaEditando(undefined);
+              setJanela("divida");
+            }}
+            onEditar={(d) => {
+              setDividaEditando(d);
+              setJanela("divida");
+            }}
+            onMudou={depoisDeMudar}
+          />
         ) : (
           <div className="space-y-6">
             <ContasFixasPendentes pendentes={resumo.pendentes} onLancar={podeLancar ? lancarFixa : undefined} />
+            <ResumoDividas dados={dados} onAbrir={() => setAba("dividas")} />
             <ResumoVoz
               montarTexto={() =>
                 montarResumoFalado({
@@ -425,7 +445,20 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
 
       {janela === "lancar" && dados && (
         <Modal titulo="Novo lançamento" onClose={fechar}>
-          <LancamentoForm dados={dados} prefill={prefill} onSalvo={depoisDeMudar} semMoldura />
+          <LancamentoForm
+            dados={dados}
+            prefill={prefill}
+            onSalvo={depoisDeMudar}
+            onDivida={
+              podeGerenciar
+                ? () => {
+                    setDividaEditando(undefined);
+                    setJanela("divida");
+                  }
+                : undefined
+            }
+            semMoldura
+          />
         </Modal>
       )}
       {janela === "nota" && dados && <NotaRapida dados={dados} onClose={fechar} onMudou={depoisDeMudar} />}
@@ -434,6 +467,18 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
       )}
       {janela === "gerenciar" && dados && podeGerenciar && (
         <GerenciarModal dados={dados} onClose={fechar} onMudou={depoisDeMudar} />
+      )}
+      {janela === "divida" && dados && (
+        <Modal titulo={dividaEditando ? "Editar financiamento ou empréstimo" : "Novo financiamento ou empréstimo"} onClose={fechar} largura="md">
+          <DividaForm
+            dados={dados}
+            divida={dividaEditando}
+            onSalvo={(m) => {
+              setAba("dividas");
+              depoisDeMudar(m);
+            }}
+          />
+        </Modal>
       )}
       {janela === "faceid" && <FaceId onClose={fechar} />}
       {janela === "senha" && (

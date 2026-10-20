@@ -1,10 +1,12 @@
 import { supabaseBrowser } from "./supabase/client";
 import * as demo from "./demo";
+import { descricaoDaParcela } from "./divida";
 import type {
   Categoria,
   Conta,
   Dados,
   DespesaFixa,
+  Divida,
   FormaCompra,
   Id,
   Limite,
@@ -15,6 +17,7 @@ import type {
   Pretensao,
   Sessao,
   StatusPretensao,
+  TipoDivida,
   TipoCategoria,
   TipoConta,
   Transacao,
@@ -115,7 +118,7 @@ async function todasTransacoes(): Promise<Transacao[]> {
 export async function carregarDados(): Promise<Dados> {
   if (demo.emDemo()) return demo.demoDados();
   const db = supabaseBrowser();
-  const [co, ca, fi, pr, transacoes, mb, li] = await Promise.all([
+  const [co, ca, fi, pr, transacoes, mb, li, dv] = await Promise.all([
     db.from("contas").select("*").eq("carteira_id", carteiraAtual).order("nome"),
     db.from("categorias").select("*").eq("carteira_id", carteiraAtual).order("nome"),
     db.from("despesas_fixas").select("*").eq("carteira_id", carteiraAtual).order("dia_vencimento"),
@@ -124,6 +127,8 @@ export async function carregarDados(): Promise<Dados> {
     db.from("membros").select("user_id, nome, email").eq("carteira_id", carteiraAtual),
     // Antes da migração 003 a tabela não existe: segue sem limites, sem quebrar o painel.
     db.from("limites").select("user_id, valor_mensal").eq("carteira_id", carteiraAtual),
+    // Antes da migração 004 a tabela não existe: segue sem financiamentos, sem quebrar o painel.
+    db.from("dividas").select("*").eq("carteira_id", carteiraAtual).order("criado_em"),
   ]);
   if (co.error) throw falha("Não foi possível carregar as contas", co.error);
   if (ca.error) throw falha("Não foi possível carregar as categorias", ca.error);
@@ -132,6 +137,7 @@ export async function carregarDados(): Promise<Dados> {
   return {
     membros: (mb.data ?? []) as NonNullable<Dados["membros"]>,
     limites: li.error ? [] : ((li.data ?? []) as Limite[]),
+    dividas: dv.error ? [] : ((dv.data ?? []) as Divida[]),
     pretensoes: (pr.data ?? []) as Pretensao[],
     contas: (co.data ?? []) as Conta[],
     categorias: (ca.data ?? []) as Categoria[],
@@ -174,7 +180,7 @@ export async function atualizarTransacoes(itens: AtualizacaoTransacao[]): Promis
   for (const it of itens) {
     const { error } = await db
       .from("transacoes")
-      .update({ data: it.data, descricao: it.descricao, valor: it.valor })
+      .update({ data: it.data, descricao: it.descricao, valor: it.valor, ...(it.conta_origem_id !== undefined ? { conta_origem_id: it.conta_origem_id } : {}) })
       .eq("id", it.id);
     if (error) throw falha("Não foi possível salvar a edição", error);
   }
@@ -399,4 +405,70 @@ export function removerPessoa(userId: string) {
 export async function sair(): Promise<void> {
   if (demo.emDemo()) return;
   await supabaseBrowser().auth.signOut();
+}
+
+
+/* ---------- financiamentos e empréstimos ---------- */
+
+export interface NovaDivida {
+  tipo: TipoDivida;
+  nome: string;
+  valor_bem: number;
+  entrada: number;
+  parcelas: number;
+  valor_parcela: number;
+  primeira_parcela: string;
+  parcelas_pagas: number;
+  conta_id: Id | null;
+  categoria_id: Id | null;
+}
+
+export async function criarDivida(d: NovaDivida): Promise<void> {
+  if (demo.emDemo()) return demo.demoCriarDivida(d);
+  const { error } = await supabaseBrowser().from("dividas").insert({ ...d, carteira_id: carteiraAtual });
+  if (error) throw falha("Não foi possível salvar", error);
+}
+
+export async function atualizarDivida(id: string, d: NovaDivida): Promise<void> {
+  if (demo.emDemo()) return demo.demoAtualizarDivida(id, d);
+  const { error } = await supabaseBrowser().from("dividas").update(d).eq("id", id);
+  if (error) throw falha("Não foi possível salvar", error);
+}
+
+/** Apagar a dívida não apaga os lançamentos das parcelas que já foram pagas pelo app. */
+export async function excluirDivida(id: string): Promise<void> {
+  if (demo.emDemo()) return demo.demoExcluirDivida(id);
+  const { error } = await supabaseBrowser().from("dividas").delete().eq("id", id);
+  if (error) throw falha("Não foi possível excluir", error);
+}
+
+export interface PagamentoParcela {
+  /** Lança a parcela no extrato (sai da conta). Sem isso, só marca como paga. */
+  lancar: boolean;
+  contaId: Id | null;
+  categoriaId: Id | null;
+  data: string;
+}
+
+/** Marca a próxima parcela como paga e, se pedido, lança o valor no extrato. */
+export async function pagarParcela(d: Divida, p: PagamentoParcela): Promise<void> {
+  const indice = d.parcelas_pagas + 1;
+  if (demo.emDemo()) {
+    const ids = p.lancar
+      ? demo.demoInserir([{ data: p.data, descricao: descricaoDaParcela(d.nome, indice, d.parcelas), valor: -Number(d.valor_parcela), conta_origem_id: p.contaId, categoria_id: p.categoriaId }])
+      : [];
+    return demo.demoPagarParcela(d.id, ids.length);
+  }
+  let ids: Id[] = [];
+  if (p.lancar) {
+    ids = await inserirTransacoes([
+      { data: p.data, descricao: descricaoDaParcela(d.nome, indice, d.parcelas), valor: -Number(d.valor_parcela), conta_origem_id: p.contaId, categoria_id: p.categoriaId },
+    ]);
+  }
+  const { error } = await supabaseBrowser().rpc("pagar_parcela", { p_id: d.id });
+  if (error) {
+    // Não deixa o lançamento solto se a parcela não pôde ser marcada.
+    if (ids.length > 0) await excluirTransacoes(ids).catch(() => undefined);
+    throw falha("Não foi possível marcar a parcela como paga", error);
+  }
 }

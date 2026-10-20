@@ -103,6 +103,7 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
           t={editando}
           todas={transacoes}
           categorias={categorias}
+          contas={contas}
           onVerNota={
             editando.nota_path
               ? () => setNota({ caminho: editando.nota_path as string, titulo: editando.descricao, dados: editando.nota_dados })
@@ -296,6 +297,7 @@ function Edicao({
   t,
   todas,
   categorias,
+  contas,
   onVerNota,
   onVoltar,
   onSalvo,
@@ -303,6 +305,7 @@ function Edicao({
   t: Transacao;
   todas: Transacao[];
   categorias: Dados["categorias"];
+  contas: Dados["contas"];
   onVerNota?: () => void;
   onVoltar: () => void;
   onSalvo: (mensagem: string) => void;
@@ -313,8 +316,13 @@ function Edicao({
   const [valor, setValor] = useState(String(Math.abs(num(t.valor)).toFixed(2)));
   const [cascata, setCascata] = useState(false);
   const [categoriaId, setCategoriaId] = useState(t.categoria_id != null ? String(t.categoria_id) : "");
-  const tipoCat = num(t.valor) < 0 ? "Despesa" : "Receita";
-  const opcoesCat = categorias.filter((c) => c.tipo === tipoCat || String(c.id) === String(t.categoria_id));
+  // Conta e tipo (entrada/saída) só mudam em lançamentos comuns; transferências e aportes têm dois lados e ficam como estão.
+  const catAtual = categorias.find((c) => String(c.id) === String(t.categoria_id));
+  const comum = catAtual?.tipo === "Despesa" || catAtual?.tipo === "Receita";
+  const [tipoLanc, setTipoLanc] = useState<"saida" | "entrada">(num(t.valor) < 0 ? "saida" : "entrada");
+  const [contaId, setContaId] = useState(t.conta_origem_id != null ? String(t.conta_origem_id) : "");
+  const tipoCat = tipoLanc === "saida" ? "Despesa" : "Receita";
+  const opcoesCat = categorias.filter((c) => c.tipo === tipoCat || (tipoLanc === (num(t.valor) < 0 ? "saida" : "entrada") && String(c.id) === String(t.categoria_id)));
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
 
@@ -334,7 +342,14 @@ function Edicao({
     setSalvando(true);
     setErro("");
     try {
-      const itens = montarEdicao(t, todas, { data, descricao, valorAbs: v }, cascata);
+      const mudouConta = comum && contaId !== (t.conta_origem_id != null ? String(t.conta_origem_id) : "");
+      const novaConta = contas.find((c) => String(c.id) === contaId)?.id ?? null;
+      const mudouTipo = comum && tipoLanc !== (num(t.valor) < 0 ? "saida" : "entrada");
+      const itens = montarEdicao(t, todas, { data, descricao, valorAbs: v }, cascata).map((i) => ({
+        ...i,
+        ...(mudouTipo ? { valor: (tipoLanc === "saida" ? -1 : 1) * Math.abs(i.valor) } : {}),
+        ...(mudouConta ? { conta_origem_id: novaConta } : {}),
+      }));
       await atualizarTransacoes(itens);
       if (categoriaId !== (t.categoria_id != null ? String(t.categoria_id) : "")) {
         const nova = categorias.find((c) => String(c.id) === categoriaId)?.id ?? null;
@@ -355,6 +370,30 @@ function Edicao({
         </label>
         <input id="e-data" type="date" value={data} onChange={(e) => setData(e.target.value)} className="field" />
       </div>
+      {comum && (
+        <div role="radiogroup" aria-label="Tipo do lançamento" className="grid grid-cols-2 gap-1 rounded-xl bg-sunken p-1">
+          {(
+            [
+              ["saida", "Saída (despesa)"],
+              ["entrada", "Entrada (receita)"],
+            ] as const
+          ).map(([id, rotulo]) => (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={tipoLanc === id}
+              onClick={() => {
+                setTipoLanc(id);
+                setCategoriaId("");
+              }}
+              className={"rounded-lg px-2 py-2 text-sm font-medium transition-colors " + (tipoLanc === id ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink")}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+      )}
       <div>
         <label htmlFor="e-desc" className="label">
           Descrição
@@ -366,8 +405,23 @@ function Edicao({
           Valor (R$)
         </label>
         <input id="e-valor" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} className="field num" />
-        <p className="mt-1 text-sm text-muted">{num(t.valor) < 0 ? "Continua como saída." : "Continua como entrada."}</p>
+        {!comum && <p className="mt-1 text-sm text-muted">{num(t.valor) < 0 ? "Continua como saída." : "Continua como entrada."}</p>}
       </div>
+      {comum && (
+        <div>
+          <label htmlFor="e-conta" className="label">
+            Conta
+          </label>
+          <select id="e-conta" value={contaId} onChange={(e) => setContaId(e.target.value)} className="field">
+            {contas.map((c) => (
+              <option key={String(c.id)} value={String(c.id)}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-sm text-muted">Trocar a conta ajusta o saldo das duas contas.</p>
+        </div>
+      )}
       <div>
         <label htmlFor="e-cat" className="label">
           Categoria

@@ -187,6 +187,8 @@ export interface AtualizacaoTransacao {
   data: string;
   descricao: string;
   valor: number;
+  /** Só quando a conta de origem também muda. */
+  conta_origem_id?: Id | null;
 }
 
 /**

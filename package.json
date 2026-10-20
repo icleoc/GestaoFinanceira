@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "check": "tsx scripts/check-finance.ts && tsx scripts/check-novo.ts"
+    "check": "tsx scripts/check-finance.ts && tsx scripts/check-novo.ts && tsx scripts/check-divida.ts"
   },
   "dependencies": {
     "@fontsource-variable/hanken-grotesk": "^5.3.0",

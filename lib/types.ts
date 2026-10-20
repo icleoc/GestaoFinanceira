@@ -105,6 +105,26 @@ export interface Pretensao {
   status: StatusPretensao;
 }
 
+export type TipoDivida = "financiamento" | "emprestimo";
+
+/** Financiamento de um bem ou empréstimo, com as parcelas calculadas a partir da data da primeira. */
+export interface Divida {
+  id: string;
+  tipo: TipoDivida;
+  nome: string;
+  /** Valor do bem financiado ou valor emprestado. */
+  valor_bem: number | string;
+  entrada: number | string;
+  parcelas: number;
+  valor_parcela: number | string;
+  /** Vencimento da 1ª parcela (AAAA-MM-DD). */
+  primeira_parcela: string;
+  /** Quantas já foram pagas (inclui as de antes de usar o app, que não viram lançamentos). */
+  parcelas_pagas: number;
+  conta_id?: Id | null;
+  categoria_id?: Id | null;
+}
+
 /** Limite de gasto por mês de uma pessoa da carteira. */
 export interface Limite {
   user_id: string;
@@ -120,6 +140,7 @@ export interface Dados {
   transacoes: Transacao[];
   fixas: DespesaFixa[];
   pretensoes: Pretensao[];
+  dividas?: Divida[];
 }
 
 /** O que cada pessoa da carteira pode fazer. */

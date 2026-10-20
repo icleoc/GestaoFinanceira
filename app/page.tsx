@@ -51,6 +51,14 @@ const RECURSOS = [
     texto: "Bancos mais investimentos, menos a dívida dos cartões. Um número que não esconde a fatura.",
   },
   {
+    titulo: "Financiamentos e empréstimos",
+    texto: "Informe o valor do bem, as parcelas e o valor delas: o app mostra quanto você paga de juros e o valor final. Dívida que já está andando entra com as parcelas pagas, sem mexer nos relatórios de hoje.",
+  },
+  {
+    titulo: "Edite qualquer lançamento",
+    texto: "Errou o valor, a conta ou a categoria? Corrija no extrato, e o saldo se ajusta sozinho.",
+  },
+  {
     titulo: "Parcelas que fecham no centavo",
     texto: "Cada compra parcelada vira uma linha por mês e a soma sempre bate com o total. Dia 31 num mês curto cai no último dia do mês.",
   },

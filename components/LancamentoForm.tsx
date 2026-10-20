@@ -29,6 +29,8 @@ interface Props {
   dados: Dados;
   prefill: Prefill | null;
   onSalvo: (mensagem: string) => void;
+  /** Abre o cadastro de financiamento ou empréstimo (só para quem pode gerenciar). */
+  onDivida?: () => void;
   /** Dentro de uma janela: sem caixa e sem título próprios. */
   semMoldura?: boolean;
 }
@@ -61,7 +63,7 @@ function lerValor(texto: string): number {
   return num(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s);
 }
 
-export default function LancamentoForm({ dados, prefill, onSalvo, semMoldura = false }: Props) {
+export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, semMoldura = false }: Props) {
   const { contas, categorias, fixas } = dados;
   const raiz = useRef<HTMLElement>(null);
 
@@ -348,6 +350,11 @@ export default function LancamentoForm({ dados, prefill, onSalvo, semMoldura = f
             {o.nome}
           </button>
         ))}
+        {onDivida && (
+          <button type="button" onClick={onDivida} className="col-span-2 rounded-lg px-2 py-2 text-sm font-medium text-muted transition-colors hover:text-ink">
+            Financiamento ou empréstimo
+          </button>
+        )}
       </div>
 
       <form onSubmit={enviar} className="mt-5 space-y-4" noValidate>
