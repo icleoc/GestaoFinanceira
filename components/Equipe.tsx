@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { Membro, Permissao, Sessao } from "@/lib/types";
-import { convidarPessoa, listarMembros, mudarPermissoes, removerPessoa } from "@/lib/data";
+import type { Dados, Membro, Permissao, Sessao } from "@/lib/types";
+import { convidarPessoa, definirLimite, listarMembros, mudarPermissoes, removerPessoa } from "@/lib/data";
+import { gastoPorPessoa, situacaoDoLimite } from "@/lib/limites";
+import { monthOf, num, todayISO } from "@/lib/finance";
+import { money } from "@/lib/format";
 import { PAPEIS_PRONTOS, ROTULO_PERMISSAO, TODAS_PERMISSOES, nomeDoPapel, papelDe } from "@/lib/permissoes";
 
 function senhaAleatoria(): string {
@@ -73,7 +76,92 @@ function EscolhaDePermissoes({
   );
 }
 
-export default function Equipe({ sessao, onAviso }: { sessao: Sessao; onAviso: (m: string) => void }) {
+function LimiteDaPessoa({
+  userId,
+  atual,
+  gasto,
+  onSalvo,
+  onErro,
+}: {
+  userId: string;
+  atual: number;
+  gasto: number;
+  onSalvo: (msg: string) => void;
+  onErro: (msg: string) => void;
+}) {
+  const [texto, setTexto] = useState(atual > 0 ? String(atual).replace(".", ",") : "");
+  const [ocupado, setOcupado] = useState(false);
+  const sit = atual > 0 ? situacaoDoLimite(gasto, atual) : null;
+
+  async function salvar(valor: number | null) {
+    setOcupado(true);
+    try {
+      await definirLimite(userId, valor);
+      onSalvo(valor === null ? "Limite removido." : "Limite salvo.");
+    } catch (e) {
+      onErro(e instanceof Error ? e.message : "Não foi possível salvar o limite.");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  function aoSalvar(e: React.FormEvent) {
+    e.preventDefault();
+    const v = num(texto.replace(/\./g, "").replace(",", "."));
+    if (!(v > 0)) return onErro("Informe um limite maior que zero.");
+    void salvar(v);
+  }
+
+  return (
+    <div className="mt-3 rounded-xl bg-sunken p-3">
+      <p className="label !mb-1">Limite de gasto por mês</p>
+      {sit && (
+        <>
+          <div className="h-1.5 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(sit.pct))} aria-label="Uso do limite do mês">
+            <div className={`h-full rounded-full ${sit.estado === "ok" ? "bg-accent" : "bg-neg"}`} style={{ width: `${Math.min(100, sit.pct)}%` }} />
+          </div>
+          <p className={`num mt-1.5 text-sm ${sit.estado === "ok" ? "text-muted" : "font-medium text-neg"}`}>
+            {sit.estado === "estourou"
+              ? `Passou do limite: gastou ${money(sit.gasto)} de ${money(sit.limite)}`
+              : `Gastou ${money(sit.gasto)} de ${money(sit.limite)} (restam ${money(sit.restante)})`}
+          </p>
+        </>
+      )}
+      <form onSubmit={aoSalvar} className="mt-2 flex gap-2">
+        <input
+          inputMode="decimal"
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          placeholder="Ex.: 1500"
+          aria-label="Limite mensal em reais"
+          className="field num"
+        />
+        <button type="submit" disabled={ocupado} className="btn btn-quiet shrink-0 px-3">
+          Salvar
+        </button>
+        {atual > 0 && (
+          <button type="button" disabled={ocupado} onClick={() => void salvar(null)} className="btn btn-quiet shrink-0 px-3 text-neg">
+            Tirar
+          </button>
+        )}
+      </form>
+      <p className="mt-1.5 text-xs text-muted">Quando a pessoa chegar a 80% e a 100%, ela vê um aviso no painel. Não bloqueia lançamentos.</p>
+    </div>
+  );
+}
+
+export default function Equipe({
+  sessao,
+  dados,
+  onAviso,
+  onMudou,
+}: {
+  sessao: Sessao;
+  dados: Dados | null;
+  onAviso: (m: string) => void;
+  onMudou?: () => void;
+}) {
+  const gastos = dados ? gastoPorPessoa(dados.transacoes, dados.categorias, monthOf(todayISO())) : new Map<string, number>();
   const [membros, setMembros] = useState<Membro[] | null>(null);
   const [erro, setErro] = useState("");
 
@@ -195,6 +283,19 @@ export default function Equipe({ sessao, onAviso }: { sessao: Sessao; onAviso: (
                   </div>
                   <span className="rounded-full bg-sunken px-2.5 py-1 text-xs font-semibold">{nomeDoPapel(m.papel)}</span>
                 </div>
+                {!ehDono || sessao.papel === "dono" ? (
+                  <LimiteDaPessoa
+                    key={`${m.user_id}-${num(dados?.limites?.find((l) => l.user_id === m.user_id)?.valor_mensal)}`}
+                    userId={m.user_id}
+                    atual={num(dados?.limites?.find((l) => l.user_id === m.user_id)?.valor_mensal)}
+                    gasto={gastos.get(m.user_id) ?? 0}
+                    onSalvo={(msg) => {
+                      onAviso(msg);
+                      onMudou?.();
+                    }}
+                    onErro={setErro}
+                  />
+                ) : null}
                 {editando === m.user_id ? (
                   <div className="mt-4">
                     <EscolhaDePermissoes valor={permsEdicao} onChange={setPermsEdicao} permitidas={permitidas} idBase={`ed-${m.user_id}`} />

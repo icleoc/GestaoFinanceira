@@ -4,6 +4,9 @@ import { converter, lerTaxa } from "../lib/cambio";
 import { gerarInsights, mediaPorCategoria, parcelasFuturas, serieMensal, somarMes } from "../lib/assistente";
 import { analisarPretensao, montarPerfil, parcelaPrice, resumirLista, type Perfil } from "../lib/planejamento";
 import { papelDe, permissoesValidas, pode } from "../lib/permissoes";
+import { falarValor, montarResumoFalado } from "../lib/voz";
+import { gastoPorPessoa, situacaoDoLimite } from "../lib/limites";
+import { grupoDaCompra, sugerirCategoria } from "../lib/categorizar";
 import type { Categoria, Conta, Dados, Transacao } from "../lib/types";
 
 let total = 0;
@@ -230,6 +233,81 @@ test("lista inteira: soma parcelas e entradas só dos desejos ativos", () => {
   assert.equal(r.parcelasPorMes, 1000);
   assert.equal(r.avistaTotal, 3000);
   assert.equal(r.pctRendaParcelas, 10);
+});
+
+/* ---------- categoria por tipo de estabelecimento ---------- */
+test("padaria, restaurante e lanchonete caem em Alimentação; posto em Combustível; farmácia em Saúde", () => {
+  const nome = (e: string) => grupoDaCompra(e)?.nome;
+  assert.equal(nome("PADARIA PÃO QUENTE LTDA"), "Alimentação");
+  assert.equal(nome("Restaurante Sabor & Arte"), "Alimentação");
+  assert.equal(nome("Lanchonete do Zé"), "Alimentação");
+  assert.equal(nome("AUTO POSTO SHELL"), "Combustível");
+  assert.equal(nome("Drogaria São Paulo"), "Saúde");
+  assert.equal(nome("Supermercado Bom Preço"), "Mercado");
+  assert.equal(nome("Empresa Desconhecida SA"), undefined);
+});
+test("usa a categoria que a carteira já tem; senão pede para criar", () => {
+  const cats: Categoria[] = [
+    { id: 1, nome: "Restaurante", tipo: "Despesa" },
+    { id: 2, nome: "Mercado", tipo: "Despesa" },
+  ];
+  assert.equal(sugerirCategoria("Padaria Central", [], cats)?.existente?.nome, "Restaurante");
+  assert.equal(sugerirCategoria("Posto Ipiranga", [], cats)?.criar, "Combustível");
+  assert.equal(sugerirCategoria("Loja X Atacado", [], cats)?.criar, "Compras");
+  assert.equal(sugerirCategoria("Fulano de Tal", [], cats), null);
+  assert.equal(grupoDaCompra("Fulano", [{ nome: "Gasolina comum", quantidade: 30, valor: 180 }])?.nome, "Combustível");
+});
+
+/* ---------- limite de gasto por pessoa ---------- */
+test("soma só as despesas de cada pessoa no mês e avisa a 80% e a 100%", () => {
+  const cats: Categoria[] = [
+    { id: 1, nome: "Mercado", tipo: "Despesa" },
+    { id: 2, nome: "Salário", tipo: "Receita" },
+  ];
+  const tr = (id: number, data: string, valor: number, cat: number, por: string | null): Transacao => ({
+    id, data, descricao: "x", valor, conta_origem_id: 1, categoria_id: cat, criado_por: por,
+  });
+  const g = gastoPorPessoa(
+    [
+      tr(1, "2026-10-02", -300, 1, "ana"),
+      tr(2, "2026-10-09", -450.5, 1, "ana"),
+      tr(3, "2026-10-10", 5000, 2, "ana"),
+      tr(4, "2026-09-30", -999, 1, "ana"),
+      tr(5, "2026-10-11", -80, 1, "beto"),
+      tr(6, "2026-10-12", -80, 1, null),
+    ],
+    cats,
+    "2026-10",
+  );
+  assert.equal(g.get("ana"), 750.5);
+  assert.equal(g.get("beto"), 80);
+  assert.equal(g.size, 2);
+  assert.equal(situacaoDoLimite(500, 1000).estado, "ok");
+  assert.equal(situacaoDoLimite(800, 1000).estado, "perto");
+  assert.equal(situacaoDoLimite(1000, 1000).estado, "estourou");
+  assert.equal(situacaoDoLimite(1200, 1000).restante, 0);
+});
+
+/* ---------- resumo por voz ---------- */
+test("fala valores em reais e centavos e monta o resumo", () => {
+  assert.equal(falarValor(1234.5), "1.234 reais e 50 centavos");
+  assert.equal(falarValor(1), "1 real");
+  assert.equal(falarValor(0.01), "0 reais e 1 centavo");
+  const t = montarResumoFalado({
+    nome: "leo",
+    kpis: { bancos: 10000, divida: 800, investimentos: 5000, patrimonio: 14200 },
+    receitas: 5000,
+    despesas: 1200,
+    gastos: [{ nome: "Mercado", total: 600 }],
+    insights: [],
+    pendentes: 1,
+    limite: null,
+    mesRotulo: "outubro",
+  });
+  assert.match(t, /Olá, leo/);
+  assert.match(t, /14\.200 reais/);
+  assert.match(t, /Mercado, com 600 reais, 50 por cento/);
+  assert.match(t, /1 conta fixa/);
 });
 
 console.log(`\n${total} testes passaram.`);

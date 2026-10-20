@@ -101,7 +101,7 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
 
         {aba === "contas" && (
           <>
-            <NovaConta ocupado={ocupado} onCriar={(c) => executar(() => criarConta(c), "Conta criada.")} />
+            <NovaConta membros={dados.membros ?? []} ocupado={ocupado} onCriar={(c) => executar(() => criarConta(c), "Conta criada.")} />
             <ul className="mt-5 divide-y divide-line rounded-xl border border-line">
               {dados.contas.length === 0 && <li className="p-4 text-sm text-muted">Nenhuma conta ainda.</li>}
               {dados.contas.map((c) => (
@@ -111,6 +111,7 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
                     <p className="num text-sm text-muted">
                       {c.tipo}
                       {c.tipo === "Crédito" ? ` · limite ${money(num(c.limite_total))}` : ` · ${money(num(c.saldo_atual))}`}
+                      {c.tipo === "Crédito" && c.final_cartao ? ` · final ${c.final_cartao}` : ""}
                     </p>
                   </div>
                   <Excluir
@@ -172,7 +173,21 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
   );
 }
 
-function NovaConta({ ocupado, onCriar }: { ocupado: boolean; onCriar: (c: { nome: string; tipo: TipoConta; valor: number; diaVencimento: number | null }) => void }) {
+type DadosNovaConta = Parameters<typeof criarConta>[0];
+
+function NovaConta({
+  ocupado,
+  membros,
+  onCriar,
+}: {
+  ocupado: boolean;
+  membros: NonNullable<Dados["membros"]>;
+  onCriar: (c: DadosNovaConta) => void;
+}) {
+  const [bandeira, setBandeira] = useState("");
+  const [finalCartao, setFinalCartao] = useState("");
+  const [fechamento, setFechamento] = useState("");
+  const [titular, setTitular] = useState("");
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState<TipoConta>("Corrente");
   const [valor, setValor] = useState("");
@@ -186,11 +201,27 @@ function NovaConta({ ocupado, onCriar }: { ocupado: boolean; onCriar: (c: { nome
     if (!nome.trim()) return setErro("Informe o nome.");
     const d = dia ? Math.trunc(Number(dia)) : null;
     if (tipo === "Crédito" && (!d || d < 1 || d > 31)) return setErro("Informe o dia de vencimento da fatura (1 a 31).");
+    const f = fechamento ? Math.trunc(Number(fechamento)) : null;
+    if (tipo === "Crédito" && f !== null && (f < 1 || f > 31)) return setErro("O dia de fechamento vai de 1 a 31.");
+    if (tipo === "Crédito" && finalCartao && !/^\d{4}$/.test(finalCartao)) return setErro("Informe só os 4 últimos dígitos do cartão.");
     setErro("");
-    onCriar({ nome: nome.trim(), tipo, valor: lerValor(valor), diaVencimento: tipo === "Crédito" ? d : null });
+    onCriar({
+      nome: nome.trim(),
+      tipo,
+      valor: lerValor(valor),
+      diaVencimento: tipo === "Crédito" ? d : null,
+      bandeira: tipo === "Crédito" ? bandeira || null : null,
+      finalCartao: tipo === "Crédito" ? finalCartao || null : null,
+      diaFechamento: tipo === "Crédito" ? f : null,
+      titularId: tipo === "Crédito" ? titular || null : null,
+    });
     setNome("");
     setValor("");
     setDia("");
+    setBandeira("");
+    setFinalCartao("");
+    setFechamento("");
+    setTitular("");
   }
 
   return (
@@ -224,6 +255,49 @@ function NovaConta({ ocupado, onCriar }: { ocupado: boolean; onCriar: (c: { nome
           </label>
           <input id="n-dia" inputMode="numeric" value={dia} onChange={(e) => setDia(e.target.value)} className="field num" placeholder="10" />
         </div>
+      )}
+      {tipo === "Crédito" && (
+        <>
+          <div>
+            <label htmlFor="n-fecha" className="label">
+              Fecha no dia
+            </label>
+            <input id="n-fecha" inputMode="numeric" value={fechamento} onChange={(e) => setFechamento(e.target.value)} className="field num" placeholder="3" />
+          </div>
+          <div>
+            <label htmlFor="n-band" className="label">
+              Bandeira
+            </label>
+            <select id="n-band" value={bandeira} onChange={(e) => setBandeira(e.target.value)} className="field">
+              <option value="">Não informar</option>
+              {["Visa", "Mastercard", "Elo", "American Express", "Hipercard"].map((b) => (
+                <option key={b}>{b}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="n-final" className="label">
+              Final do cartão
+            </label>
+            <input id="n-final" inputMode="numeric" maxLength={4} value={finalCartao} onChange={(e) => setFinalCartao(e.target.value.replace(/\D/g, ""))} className="field num" placeholder="1234" />
+          </div>
+          {membros.length > 0 && (
+            <div className="col-span-2 sm:col-span-1">
+              <label htmlFor="n-tit" className="label">
+                De quem é o cartão
+              </label>
+              <select id="n-tit" value={titular} onChange={(e) => setTitular(e.target.value)} className="field">
+                <option value="">Não informar</option>
+                {membros.map((m) => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.nome || m.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <p className="col-span-2 text-xs text-muted">Guardamos só os 4 últimos dígitos, nunca o número completo nem o código de segurança.</p>
+        </>
       )}
       {erro && (
         <p role="alert" className="col-span-2 text-sm font-medium text-neg">

@@ -5,6 +5,7 @@ import type { DadosNota, Dados, Id } from "@/lib/types";
 import { montarLancamento, num, round2, sameId, todayISO, type Operacao } from "@/lib/finance";
 import { carteiraDaSessao, enviarNota, inserirTransacoes, removerNotas } from "@/lib/data";
 import { camposLidos, lerNotaNoServidor } from "@/lib/nota";
+import { sugerirCategoria } from "@/lib/categorizar";
 import { dateBR, money } from "@/lib/format";
 import {
   MOEDAS,
@@ -190,10 +191,9 @@ export default function LancamentoForm({ dados, prefill, onSalvo, semMoldura = f
       setDescAuto(false);
     }
     if (d.data) setData(d.data);
-    if (d.categoria) {
-      const cat = categorias.find((c) => c.tipo === "Despesa" && c.nome === d.categoria);
-      if (cat) setCategoriaId(String(cat.id));
-    }
+    const regra = sugerirCategoria(d.empresa, d.itens, categorias);
+    const cat = regra?.existente ?? (!regra && d.categoria ? categorias.find((c) => c.tipo === "Despesa" && c.nome === d.categoria) : undefined);
+    if (cat) setCategoriaId(String(cat.id));
   }
 
   // Conta de origem padrão: a primeira conta corrente.

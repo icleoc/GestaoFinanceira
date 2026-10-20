@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Dados, Sessao } from "@/lib/types";
 import {
@@ -15,7 +15,9 @@ import {
 } from "@/lib/finance";
 import { gerarInsights, serieMensal, type Destino } from "@/lib/assistente";
 import { carregarDados, carregarSessao, sair, usarCarteira } from "@/lib/data";
-import { monthLabel } from "@/lib/format";
+import { emDemo, iniciarDemo } from "@/lib/demo";
+import Link from "next/link";
+import { money, monthLabel } from "@/lib/format";
 import { nomeDoPapel, pode } from "@/lib/permissoes";
 import Logo from "./Logo";
 import Patrimonio from "./Patrimonio";
@@ -31,6 +33,9 @@ import Planejar from "./Planejar";
 import Equipe from "./Equipe";
 import TrocarSenha from "./TrocarSenha";
 import FaceId from "./FaceId";
+import ResumoVoz from "./ResumoVoz";
+import { montarResumoFalado } from "@/lib/voz";
+import { situacaoDaPessoa } from "@/lib/limites";
 import NotaRapida from "./NotaRapida";
 import { biometriaDisponivel, rotuloBiometria } from "@/lib/passkey";
 import Modal from "./Modal";
@@ -38,7 +43,7 @@ import Modal from "./Modal";
 type Aba = "inicio" | "planejar" | "pessoas";
 type Janela = "extrato" | "gerenciar" | "lancar" | "senha" | "faceid" | "nota" | null;
 
-export default function Dashboard() {
+export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const router = useRouter();
   const [sessao, setSessao] = useState<Sessao | null | undefined>(undefined);
   const [dados, setDados] = useState<Dados | null>(null);
@@ -48,8 +53,8 @@ export default function Dashboard() {
   const [janela, setJanela] = useState<Janela>(null);
   const [bio, setBio] = useState(false);
   useEffect(() => {
-    void biometriaDisponivel().then(setBio);
-  }, []);
+    if (!demo) void biometriaDisponivel().then(setBio);
+  }, [demo]);
   const [prefill, setPrefill] = useState<Prefill | null>(null);
   const [aviso, setAviso] = useState("");
 
@@ -65,6 +70,7 @@ export default function Dashboard() {
   // Descobre quem é a pessoa, em qual carteira e com quais permissões; só então carrega os dados.
   useEffect(() => {
     let vivo = true;
+    if (demo && !emDemo()) iniciarDemo(todayISO());
     carregarSessao()
       .then((s) => {
         if (!vivo) return;
@@ -79,7 +85,7 @@ export default function Dashboard() {
     return () => {
       vivo = false;
     };
-  }, [recarregar]);
+  }, [recarregar, demo]);
 
   useEffect(() => {
     if (!aviso) return;
@@ -111,6 +117,20 @@ export default function Dashboard() {
     };
   }, [dados, hoje, mes]);
 
+  // Limite de gasto da própria pessoa neste mês (só existe se alguém definiu um).
+  const meuLimite = useMemo(
+    () => (dados && sessao ? situacaoDaPessoa(sessao.userId, dados.limites, dados.transacoes, dados.categorias, monthOf(hoje)) : null),
+    [dados, sessao, hoje],
+  );
+  const estadoAnterior = useRef<string | null>(null);
+  useEffect(() => {
+    const atual = meuLimite?.estado ?? null;
+    if (estadoAnterior.current !== null && atual !== estadoAnterior.current && atual === "estourou") {
+      setAviso("Você atingiu seu limite de gasto mensal.");
+    }
+    if (dados) estadoAnterior.current = atual ?? "sem";
+  }, [meuLimite, dados]);
+
   const permissoes = sessao?.permissoes ?? [];
   const podeLancar = pode(permissoes, "lancar");
   const podeEditar = pode(permissoes, "editar");
@@ -140,6 +160,7 @@ export default function Dashboard() {
   ];
 
   async function deslogar() {
+    if (demo) return router.push("/");
     await sair();
     router.replace("/login");
     router.refresh();
@@ -193,6 +214,14 @@ export default function Dashboard() {
 
   return (
     <div className="pb-28">
+      {demo && (
+        <div className="tinta flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2 text-center text-sm text-paper">
+          <span>Demonstração com uma família fictícia. Mexa à vontade: nada é salvo.</span>
+          <Link href="/#comecar" className="font-semibold text-gold-hi underline underline-offset-2">
+            Quero o meu painel
+          </Link>
+        </div>
+      )}
       <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-4">
@@ -245,16 +274,18 @@ export default function Dashboard() {
                       Gerenciar contas
                     </button>
                   )}
-                  {bio && (
+                  {bio && !demo && (
                     <button onClick={() => setJanela("faceid")} className="btn btn-quiet justify-start">
                       Entrar com {rotuloBiometria()}
                     </button>
                   )}
-                  <button onClick={() => setJanela("senha")} className="btn btn-quiet justify-start">
-                    Trocar senha
-                  </button>
+                  {!demo && (
+                    <button onClick={() => setJanela("senha")} className="btn btn-quiet justify-start">
+                      Trocar senha
+                    </button>
+                  )}
                   <button onClick={deslogar} className="btn btn-quiet justify-start">
-                    Sair
+                    {demo ? "Sair da demonstração" : "Sair"}
                   </button>
                 </div>
               </div>
@@ -296,6 +327,20 @@ export default function Dashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        {meuLimite && meuLimite.estado !== "ok" && (
+          <div
+            role="alert"
+            className={`panel mb-6 p-4 ${meuLimite.estado === "estourou" ? "border-neg/50 bg-neg/5" : "border-gold/50"}`}
+          >
+            <p className={`font-semibold ${meuLimite.estado === "estourou" ? "text-neg" : ""}`}>
+              {meuLimite.estado === "estourou" ? "Você atingiu seu limite de gasto mensal." : "Você está perto do seu limite de gasto mensal."}
+            </p>
+            <p className="num mt-0.5 text-sm text-muted">
+              Gastou {money(meuLimite.gasto)} de {money(meuLimite.limite)} neste mês
+              {meuLimite.estado === "perto" ? ` (restam ${money(meuLimite.restante)}).` : "."}
+            </p>
+          </div>
+        )}
         {erro && (
           <div role="alert" className="panel mb-6 flex flex-wrap items-center justify-between gap-3 border-neg/40 p-4">
             <p className="text-sm font-medium text-neg">{erro}</p>
@@ -306,7 +351,7 @@ export default function Dashboard() {
         )}
 
         {aba === "pessoas" && podeEquipe ? (
-          <Equipe sessao={sessao} onAviso={setAviso} />
+          <Equipe sessao={sessao} dados={dados} onAviso={setAviso} onMudou={recarregar} />
         ) : !dados || !resumo ? (
           !erro && (
             <p className="py-20 text-center text-muted" role="status">
@@ -318,13 +363,28 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-6">
             <ContasFixasPendentes pendentes={resumo.pendentes} onLancar={podeLancar ? lancarFixa : undefined} />
+            <ResumoVoz
+              montarTexto={() =>
+                montarResumoFalado({
+                  nome: sessao.email.split("@")[0],
+                  kpis: resumo.kpis,
+                  receitas: resumo.totais.receitas,
+                  despesas: resumo.totais.despesas,
+                  gastos: resumo.gastos,
+                  insights: resumo.insights,
+                  pendentes: resumo.pendentes.length,
+                  limite: meuLimite,
+                  mesRotulo: monthLabel(mes),
+                })
+              }
+            />
             <Assistente insights={resumo.insights} onIr={irPara} permitidos={destinosPermitidos} />
             <Patrimonio kpis={resumo.kpis} />
 
             <div className="grid gap-6 lg:grid-cols-12">
               <div className="space-y-6 lg:col-span-7">
                 <Bancos contas={dados.contas} />
-                <Cartoes contas={dados.contas} />
+                <Cartoes contas={dados.contas} membros={dados.membros} />
                 <Investimentos contas={dados.contas} />
               </div>
               <div className="space-y-6 lg:col-span-5">

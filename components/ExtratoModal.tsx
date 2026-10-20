@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Dados, DadosNota, Transacao } from "@/lib/types";
 import { mesesDisponiveis, montarEdicao, num, parseParcela, todayISO } from "@/lib/finance";
-import { atualizarTransacoes, excluirTransacoes, removerNotas } from "@/lib/data";
+import { atualizarTransacoes, excluirTransacoes, mudarCategoria, removerNotas } from "@/lib/data";
 import { dateBR, money, monthLabel } from "@/lib/format";
 import { formatarEstrangeira, formatarTaxa } from "@/lib/cambio";
 import Modal from "./Modal";
@@ -26,6 +26,7 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
   const [tipo, setTipo] = useState<"todos" | "despesa" | "receita">("todos");
   const [mes, setMes] = useState(mesInicial);
   const [busca, setBusca] = useState("");
+  const [pessoa, setPessoa] = useState("todas");
   const [limite, setLimite] = useState(POR_PAGINA);
   const [marcados, setMarcados] = useState<Set<string>>(new Set());
   const [confirmando, setConfirmando] = useState(false);
@@ -37,6 +38,9 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
   const nomeConta = useMemo(() => new Map(contas.map((c) => [String(c.id), c.nome])), [contas]);
   const nomeCategoria = useMemo(() => new Map(categorias.map((c) => [String(c.id), c.nome])), [categorias]);
   const meses = useMemo(() => mesesDisponiveis(transacoes, todayISO()), [transacoes]);
+  const nomePessoa = useMemo(() => new Map((dados.membros ?? []).map((m) => [m.user_id, m.nome || m.email || "Pessoa"])), [dados.membros]);
+  // O filtro por pessoa só aparece quando há lançamentos de mais de uma pessoa.
+  const autores = useMemo(() => [...new Set(transacoes.map((t) => t.criado_por).filter((x): x is string => Boolean(x)))], [transacoes]);
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -47,9 +51,10 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
       if (tipo === "despesa" && v >= 0) return false;
       if (tipo === "receita" && v <= 0) return false;
       if (q && !t.descricao.toLowerCase().includes(q)) return false;
+      if (pessoa !== "todas" && t.criado_por !== pessoa) return false;
       return true;
     });
-  }, [transacoes, mes, conta, tipo, busca]);
+  }, [transacoes, mes, conta, tipo, busca, pessoa]);
 
   const visiveis = filtradas.slice(0, limite);
   const todosMarcados = visiveis.length > 0 && visiveis.every((t) => marcados.has(String(t.id)));
@@ -97,6 +102,12 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
         <Edicao
           t={editando}
           todas={transacoes}
+          categorias={categorias}
+          onVerNota={
+            editando.nota_path
+              ? () => setNota({ caminho: editando.nota_path as string, titulo: editando.descricao, dados: editando.nota_dados })
+              : undefined
+          }
           onVoltar={() => setEditando(null)}
           onSalvo={(m) => {
             setEditando(null);
@@ -147,6 +158,21 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
             <option value="receita">Só entradas</option>
           </select>
         </div>
+        {autores.length > 1 && (
+          <div>
+            <label htmlFor="x-pessoa" className="label">
+              Quem lançou
+            </label>
+            <select id="x-pessoa" value={pessoa} onChange={(e) => setPessoa(e.target.value)} className="field">
+              <option value="todas">Todos</option>
+              {autores.map((id) => (
+                <option key={id} value={id}>
+                  {nomePessoa.get(id) ?? "Outra pessoa"}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label htmlFor="x-busca" className="label">
             Buscar
@@ -220,6 +246,7 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
                   <p className="truncate text-sm text-muted">
                     {dateBR(t.data)} · {t.conta_origem_id != null ? (nomeConta.get(String(t.conta_origem_id)) ?? "Conta removida") : "Sem conta"}
                     {cat ? ` · ${cat}` : ""}
+                    {autores.length > 1 && t.criado_por ? ` · ${nomePessoa.get(t.criado_por) ?? "outra pessoa"}` : ""}
                     {t.moeda && t.moeda !== "BRL" && t.valor_original != null && num(t.taxa_cambio) > 0
                       ? ` · ${formatarEstrangeira(num(t.valor_original), t.moeda)} a ${formatarTaxa(num(t.taxa_cambio))}`
                       : ""}
@@ -228,7 +255,7 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
                 {t.nota_path && (
                   <button
                     onClick={() => setNota({ caminho: t.nota_path as string, titulo: p ? p.base : t.descricao, dados: t.nota_dados })}
-                    className="btn btn-quiet shrink-0 px-2.5 py-1.5"
+                    className="btn btn-quiet shrink-0 gap-1.5 px-2.5 py-1.5 text-sm"
                     aria-label={`Ver a foto da nota de ${t.descricao}`}
                     title="Ver foto da nota"
                   >
@@ -236,6 +263,7 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
                       <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
                       <circle cx="12" cy="13" r="3.5" />
                     </svg>
+                    <span className="hidden sm:inline">Nota</span>
                   </button>
                 )}
                 <span className={`num shrink-0 font-semibold ${v < 0 ? "text-neg" : "text-accent"}`}>
@@ -267,11 +295,15 @@ export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, o
 function Edicao({
   t,
   todas,
+  categorias,
+  onVerNota,
   onVoltar,
   onSalvo,
 }: {
   t: Transacao;
   todas: Transacao[];
+  categorias: Dados["categorias"];
+  onVerNota?: () => void;
   onVoltar: () => void;
   onSalvo: (mensagem: string) => void;
 }) {
@@ -280,6 +312,9 @@ function Edicao({
   const [descricao, setDescricao] = useState(info ? info.base : t.descricao);
   const [valor, setValor] = useState(String(Math.abs(num(t.valor)).toFixed(2)));
   const [cascata, setCascata] = useState(false);
+  const [categoriaId, setCategoriaId] = useState(t.categoria_id != null ? String(t.categoria_id) : "");
+  const tipoCat = num(t.valor) < 0 ? "Despesa" : "Receita";
+  const opcoesCat = categorias.filter((c) => c.tipo === tipoCat || String(c.id) === String(t.categoria_id));
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
 
@@ -301,6 +336,10 @@ function Edicao({
     try {
       const itens = montarEdicao(t, todas, { data, descricao, valorAbs: v }, cascata);
       await atualizarTransacoes(itens);
+      if (categoriaId !== (t.categoria_id != null ? String(t.categoria_id) : "")) {
+        const nova = categorias.find((c) => String(c.id) === categoriaId)?.id ?? null;
+        await mudarCategoria(itens.map((i) => i.id), nova);
+      }
       onSalvo(itens.length > 1 ? `${itens.length} parcelas atualizadas.` : "Lançamento atualizado.");
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Não foi possível salvar.");
@@ -329,6 +368,24 @@ function Edicao({
         <input id="e-valor" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} className="field num" />
         <p className="mt-1 text-sm text-muted">{num(t.valor) < 0 ? "Continua como saída." : "Continua como entrada."}</p>
       </div>
+      <div>
+        <label htmlFor="e-cat" className="label">
+          Categoria
+        </label>
+        <select id="e-cat" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="field">
+          <option value="">Sem categoria</option>
+          {opcoesCat.map((c) => (
+            <option key={String(c.id)} value={String(c.id)}>
+              {c.nome}
+            </option>
+          ))}
+        </select>
+      </div>
+      {onVerNota && (
+        <button type="button" onClick={onVerNota} className="btn btn-quiet w-full">
+          Ver a foto da nota e os itens lidos
+        </button>
+      )}
       {irmas > 1 && (
         <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-sunken p-3 text-sm">
           <input type="checkbox" checked={cascata} onChange={(e) => setCascata(e.target.checked)} className="mt-0.5 size-4 accent-[rgb(var(--accent))]" />

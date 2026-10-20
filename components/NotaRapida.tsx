@@ -5,6 +5,7 @@ import type { Dados, DadosNota, Id } from "@/lib/types";
 import { montarLancamento, todayISO } from "@/lib/finance";
 import { carteiraDaSessao, criarCategoria, enviarNota, excluirTransacoes, inserirTransacoes, removerNotas } from "@/lib/data";
 import { camposLidos, lerNotaNoServidor } from "@/lib/nota";
+import { sugerirCategoria } from "@/lib/categorizar";
 import { reduzirImagem } from "@/lib/imagem";
 import { dateBR, money } from "@/lib/format";
 import Modal from "./Modal";
@@ -83,16 +84,24 @@ export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; 
         return setFase({ f: "erro", url, msg: "A leitura ficou incompleta. Tente outra foto, com a nota inteira e bem enquadrada." });
       }
 
-      // Categoria: a da lista; se nenhuma serve, cria a sugerida (quando a pessoa pode); senão "Outros".
+      // Categoria: primeiro as regras por tipo de estabelecimento (padaria, posto, farmácia...); se nenhuma
+      // reconhecer, vale a sugestão da leitura. Se a carteira não tiver a categoria, ela é criada (quando a pessoa pode).
+      const regra = sugerirCategoria(lido.empresa, lido.itens, dados.categorias);
       let categoriaId: Id | null = null;
-      let categoriaNome: string | null = lido.categoria;
+      let categoriaNome: string | null = null;
       let criada = false;
-      if (lido.categoria) {
-        categoriaId = dados.categorias.find((c) => c.tipo === "Despesa" && c.nome === lido.categoria)?.id ?? null;
-      } else if (lido.categoriaNova) {
+      const nomeParaCriar = regra ? regra.criar : lido.categoria ? null : lido.categoriaNova ?? null;
+      if (regra?.existente) {
+        categoriaId = regra.existente.id;
+        categoriaNome = regra.existente.nome;
+      } else if (!regra && lido.categoria) {
+        const c = dados.categorias.find((x) => x.tipo === "Despesa" && x.nome === lido.categoria);
+        categoriaId = c?.id ?? null;
+        categoriaNome = c?.nome ?? null;
+      } else if (nomeParaCriar) {
         try {
-          categoriaId = await criarCategoria({ nome: lido.categoriaNova, tipo: "Despesa" });
-          categoriaNome = lido.categoriaNova;
+          categoriaId = await criarCategoria({ nome: nomeParaCriar, tipo: "Despesa" });
+          categoriaNome = nomeParaCriar;
           criada = true;
         } catch {
           /* sem permissão para criar: cai para Outros */

@@ -15,6 +15,22 @@ export const metadata: Metadata = {
 
 const RECURSOS = [
   {
+    titulo: "Foto da nota e pronto",
+    texto: "Escolha de onde saiu o dinheiro e tire a foto. O sistema lê a empresa, os itens e o total, e já registra a despesa. Errou? Um toque em desfazer.",
+  },
+  {
+    titulo: "Categoria automática",
+    texto: "Padaria, restaurante e lanchonete viram Alimentação; posto vira Combustível; farmácia vira Saúde. Se a categoria não existir, ela é criada.",
+  },
+  {
+    titulo: "Entre com Face ID",
+    texto: "Ative uma vez no celular e abra o app só com o rosto ou a digital, sem digitar e-mail e senha. Funciona também com Touch ID e Windows Hello.",
+  },
+  {
+    titulo: "Assistente que fala",
+    texto: "Toque em um botão e ouça o resumo do dia: patrimônio, o que entrou e saiu no mês, onde você mais gastou e o que está por vencer.",
+  },
+  {
     titulo: "Um assistente que explica seus gastos",
     texto: "Mostra onde você mais gasta, o que subiu acima da média, o ritmo do mês e o que já está comprometido em parcelas.",
   },
@@ -23,20 +39,16 @@ const RECURSOS = [
     texto: "Escolha a moeda ao lançar a receita. A conversão usa a cotação do dia e guarda o valor original e a taxa usada.",
   },
   {
-    titulo: "Foto da nota na hora da compra",
-    texto: "Tire a foto, escolha a categoria e informe o valor. A nota fica guardada no lançamento, só para quem tem permissão.",
-  },
-  {
     titulo: "Planeje antes de comprar",
     texto: "Liste o que quer comprar, à vista, parcelado ou financiado, e veja quanto cada compra pesa na sua renda.",
   },
   {
-    titulo: "Patrimônio de verdade",
-    texto: "Bancos mais investimentos, menos a dívida dos cartões. Um número que não esconde a fatura.",
+    titulo: "Cartões sob controle",
+    texto: "Bandeira, final, fechamento, vencimento, fatura e limite disponível de cada cartão, e quanto cada pessoa da família gastou nele.",
   },
   {
-    titulo: "Cartões sob controle",
-    texto: "Fatura, limite disponível e dia de vencimento de cada cartão, com a barra ficando vermelha quando passa de 80% do limite.",
+    titulo: "Patrimônio de verdade",
+    texto: "Bancos mais investimentos, menos a dívida dos cartões. Um número que não esconde a fatura.",
   },
   {
     titulo: "Parcelas que fecham no centavo",
@@ -51,9 +63,19 @@ const RECURSOS = [
     texto: "Aluguel, internet, academia: o painel mostra o que já venceu e ainda não foi lançado, com um botão para lançar na hora.",
   },
   {
-    titulo: "Extrato que dá para editar",
-    texto: "Filtre por mês, conta e tipo. Mudou um valor? Aplique em todas as parcelas da compra de uma vez, ou exclua vários lançamentos juntos.",
+    titulo: "Extrato com a nota à mão",
+    texto: "Veja a foto e os itens lidos de cada compra, corrija valor, categoria ou data, filtre por mês, conta e por quem lançou.",
   },
+  {
+    titulo: "Instale no celular",
+    texto: "Adicione à tela inicial e use como um aplicativo, em tela cheia, com ícone próprio.",
+  },
+];
+
+const FAMILIA = [
+  { nome: "Você", papel: "Dono", detalhe: "Vê e muda tudo", gasto: 2310, limite: 2600 },
+  { nome: "Ana", papel: "Administradora", detalhe: "Lança, edita e planeja", gasto: 1150, limite: 2400 },
+  { nome: "Pedro", papel: "Filho", detalhe: "Só lança despesas", gasto: 420, limite: 400 },
 ];
 
 const PASSOS = [
@@ -65,7 +87,7 @@ const PASSOS = [
 const GARANTIAS = [
   { titulo: "Login com e-mail e senha", texto: "Sem entrar, nenhuma tela do painel abre." },
   { titulo: "Dados separados por cliente", texto: "Cada carteira só aparece para as pessoas que fazem parte dela. Ninguém vê a carteira de outro cliente." },
-  { titulo: "Família com permissões", texto: "Convide pessoas e escolha o que cada uma pode fazer: só ver, lançar, editar, gerenciar contas ou planejar." },
+  { titulo: "Família com permissões e limite", texto: "Convide pessoas, escolha o que cada uma pode fazer e defina quanto cada uma pode gastar por mês." },
   { titulo: "Acesso por convite", texto: "Ninguém se cadastra sozinho. A conta nasce na compra ou é criada por quem administra a carteira." },
   { titulo: "Regras de segurança no próprio banco", texto: "Mesmo conhecendo o endereço do banco, quem não está logado não lê nem altera nada." },
   { titulo: "Chaves secretas fora do navegador", texto: "O navegador só recebe a chave pública, que sozinha não abre nenhum dado." },
@@ -75,6 +97,18 @@ const PERGUNTAS = [
   {
     p: "Preciso ligar minha conta de banco?",
     r: "Não. Você lança as movimentações em segundos e nada pede a senha do seu banco. O sistema só conhece o que você registrar.",
+  },
+  {
+    p: "Dá para pagar com o celular, por aproximação?",
+    r: "Não. O Jarvis Finance é para controlar e entender os gastos, não é um meio de pagamento. Você paga com o cartão ou a carteira digital de sempre e registra no sistema, de preferência com a foto da nota.",
+  },
+  {
+    p: "Posso ter minha família no mesmo painel?",
+    r: "Sim. Você convida cada pessoa, escolhe o que ela pode fazer e pode definir um limite de gasto mensal para ela. Quando o limite é atingido, a pessoa vê o aviso.",
+  },
+  {
+    p: "Posso ver como é antes de contratar?",
+    r: "Sim. A demonstração abre o painel completo com uma família fictícia. Você pode lançar, editar e testar tudo; nada é salvo.",
   },
   {
     p: "Posso criar minha conta agora?",
@@ -106,9 +140,15 @@ export default function PaginaInicial() {
               <a href="#como-funciona" className="hidden text-paper/75 hover:text-paper sm:inline">
                 Como funciona
               </a>
+              <a href="#familia" className="hidden text-paper/75 hover:text-paper sm:inline">
+                Família
+              </a>
               <a href="#seguranca" className="hidden text-paper/75 hover:text-paper sm:inline">
                 Segurança
               </a>
+              <Link href="/demo" className="hidden text-paper/75 hover:text-paper sm:inline">
+                Demonstração
+              </Link>
               <Link href="/login" className="btn border border-gold/50 px-5 py-2 text-gold-hi hover:bg-gold/10">
                 Entrar
               </Link>
@@ -124,12 +164,12 @@ export default function PaginaInicial() {
                 Contas, cartões e investimentos num só painel. Lance um gasto em segundos e veja o patrimônio se ajustar na hora.
               </p>
               <div className="mt-9 flex flex-wrap items-center gap-4">
-                <Link href="/login" className="btn btn-gold px-7 py-3.5 text-base">
-                  Acessar o painel
+                <Link href="/demo" className="btn btn-gold px-7 py-3.5 text-base">
+                  Ver a demonstração
                 </Link>
-                <a href="#painel" className="text-sm font-semibold text-paper/80 underline decoration-gold/60 underline-offset-4 hover:text-paper">
-                  Ver como é por dentro
-                </a>
+                <Link href="/login" className="text-sm font-semibold text-paper/80 underline decoration-gold/60 underline-offset-4 hover:text-paper">
+                  Já tenho acesso
+                </Link>
               </div>
               <p className="mt-5 text-sm text-paper/55">Acesso restrito por enquanto.</p>
             </div>
@@ -179,7 +219,63 @@ export default function PaginaInicial() {
           </dl>
         </section>
 
-        <section id="como-funciona" className="border-y border-line bg-sunken" aria-labelledby="titulo-passos">
+        <section id="familia" className="border-y border-line bg-sunken" aria-labelledby="titulo-familia">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-[1fr_1.1fr] lg:gap-20">
+            <div>
+              <h2 id="titulo-familia" className="font-display max-w-md text-4xl leading-[1.08] sm:text-5xl">
+                A família inteira no mesmo painel, cada um no seu limite.
+              </h2>
+              <p className="mt-5 max-w-md text-lg text-muted">
+                Convide o cônjuge, os filhos ou quem ajuda a cuidar das contas. Você escolhe o que cada pessoa pode fazer e quanto ela pode gastar por mês.
+              </p>
+              <ul className="mt-6 max-w-md space-y-3 text-muted">
+                <li className="flex gap-3">
+                  <span className="mt-2 size-1.5 shrink-0 rounded-full bg-gold-lo" aria-hidden />
+                  Permissões por pessoa: só ver, lançar, editar, gerenciar contas ou planejar.
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-2 size-1.5 shrink-0 rounded-full bg-gold-lo" aria-hidden />
+                  Limite de gasto mensal: a pessoa vê &ldquo;você atingiu seu limite de gasto mensal&rdquo; ao chegar lá.
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-2 size-1.5 shrink-0 rounded-full bg-gold-lo" aria-hidden />
+                  Extrato mostra quem lançou cada compra, e cada cartão mostra quem gastou quanto.
+                </li>
+              </ul>
+              <Link href="/demo" className="btn btn-primary mt-8 px-6 py-3">
+                Ver na demonstração
+              </Link>
+            </div>
+            <div className="panel space-y-5 p-6" aria-label="Exemplo de limites da família">
+              {FAMILIA.map((m) => {
+                const pct = Math.round((m.gasto / m.limite) * 100);
+                const estourou = pct >= 100;
+                const perto = pct >= 80;
+                return (
+                  <div key={m.nome}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="font-medium">
+                        {m.nome} <span className="text-sm text-muted">· {m.papel}</span>
+                      </p>
+                      <p className="num text-sm text-muted">
+                        R$ {m.gasto.toLocaleString("pt-BR")} de R$ {m.limite.toLocaleString("pt-BR")}
+                      </p>
+                    </div>
+                    <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-line" role="img" aria-label={`${pct}% do limite`}>
+                      <div className={`h-full rounded-full ${estourou ? "bg-neg" : perto ? "bg-gold-lo" : "bg-accent"}`} style={{ width: `${Math.min(100, pct)}%` }} />
+                    </div>
+                    <p className={`mt-1.5 text-sm ${estourou ? "font-semibold text-neg" : "text-muted"}`}>
+                      {estourou ? "Você atingiu seu limite de gasto mensal." : m.detalhe}
+                    </p>
+                  </div>
+                );
+              })}
+              <p className="text-xs text-muted">Exemplo ilustrativo.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="como-funciona" aria-labelledby="titulo-passos">
           <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
             <h2 id="titulo-passos" className="font-display max-w-2xl text-4xl leading-[1.08] sm:text-5xl">
               Em três passos você está usando.
@@ -245,10 +341,20 @@ export default function PaginaInicial() {
           <div className="tinta relative overflow-hidden rounded-[2rem] border border-gold/20 px-6 py-16 text-paper sm:px-14 sm:py-20">
             <Guilloche className="pointer-events-none absolute -right-24 -top-32 w-[34rem] max-w-none text-gold opacity-[0.12]" />
             <div className="relative">
-              <h2 className="font-display max-w-xl text-4xl leading-[1.08] sm:text-5xl">Pronto para ver o seu número real?</h2>
-              <Link href="/login" className="btn btn-gold mt-9 px-7 py-3.5 text-base">
-                Acessar o painel
-              </Link>
+              <h2 id="comecar" className="font-display max-w-xl text-4xl leading-[1.08] sm:text-5xl">
+                Pronto para ver o seu número real?
+              </h2>
+              <p className="mt-4 max-w-lg text-paper/70">
+                Abra o painel completo com uma família fictícia e mexa em tudo: lance despesas, leia uma nota, defina limites. Nada é salvo.
+              </p>
+              <div className="mt-9 flex flex-wrap items-center gap-4">
+                <Link href="/demo" className="btn btn-gold px-7 py-3.5 text-base">
+                  Experimentar o painel agora
+                </Link>
+                <Link href="/login" className="btn border border-gold/50 px-7 py-3.5 text-base text-gold-hi hover:bg-gold/10">
+                  Já tenho acesso
+                </Link>
+              </div>
             </div>
           </div>
         </section>

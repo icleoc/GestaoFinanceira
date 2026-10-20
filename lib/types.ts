@@ -14,6 +14,12 @@ export interface Conta {
   saldo_atual: number | string | null;
   limite_total: number | string | null;
   dia_vencimento: number | null;
+  /** Dados do cartão (só os 4 últimos dígitos). */
+  bandeira?: string | null;
+  final_cartao?: string | null;
+  dia_fechamento?: number | null;
+  /** Pessoa da carteira dona do cartão. */
+  titular_id?: string | null;
 }
 
 export interface Categoria {
@@ -59,6 +65,8 @@ export interface Transacao {
   valor: number | string;
   conta_origem_id: Id | null;
   categoria_id: Id | null;
+  /** Quem fez o lançamento (vazio nos lançamentos antigos). */
+  criado_por?: string | null;
 }
 
 export interface DespesaFixa {
@@ -97,7 +105,16 @@ export interface Pretensao {
   status: StatusPretensao;
 }
 
+/** Limite de gasto por mês de uma pessoa da carteira. */
+export interface Limite {
+  user_id: string;
+  valor_mensal: number | string;
+}
+
 export interface Dados {
+  /** Pessoas da carteira (para mostrar quem lançou e os limites). */
+  membros?: { user_id: string; nome: string | null; email: string | null }[];
+  limites?: Limite[];
   contas: Conta[];
   categorias: Categoria[];
   transacoes: Transacao[];

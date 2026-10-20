@@ -46,7 +46,7 @@ export function Bancos({ contas }: { contas: Conta[] }) {
   );
 }
 
-export function Cartoes({ contas }: { contas: Conta[] }) {
+export function Cartoes({ contas, membros = [] }: { contas: Conta[]; membros?: { user_id: string; nome: string | null; email: string | null }[] }) {
   const lista = contas.filter((c) => c.tipo === "Crédito");
   const fatura = lista.reduce((s, c) => s + usoCartao(c).usado, 0);
   return (
@@ -63,11 +63,20 @@ export function Cartoes({ contas }: { contas: Conta[] }) {
             return (
               <li key={c.id}>
                 <div className="flex items-baseline justify-between gap-4">
-                  <span className="font-semibold">{c.nome}</span>
+                  <span className="font-semibold">
+                    {c.nome}
+                    {c.final_cartao && <span className="num ml-2 text-sm font-normal text-muted">•••• {c.final_cartao}</span>}
+                  </span>
                   <span className="text-sm text-muted">
+                    {c.dia_fechamento ? `fecha dia ${c.dia_fechamento} · ` : ""}
                     {c.dia_vencimento ? `vence dia ${c.dia_vencimento}` : "sem vencimento"}
                   </span>
                 </div>
+                {(c.bandeira || c.titular_id) && (
+                  <p className="mt-0.5 text-xs text-muted">
+                    {[c.bandeira, membros.find((m) => m.user_id === c.titular_id)?.nome].filter(Boolean).join(" · ")}
+                  </p>
+                )}
                 <div
                   className="relative mt-2.5 h-1.5 rounded-full bg-sunken"
                   role="progressbar"

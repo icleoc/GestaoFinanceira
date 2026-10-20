@@ -2,6 +2,7 @@
 // devolveu) e a chamada do navegador para a rota /api/nota; a IA em si roda no servidor.
 
 import type { DadosNota, ItemNota } from "./types";
+import { demoLerNota, emDemo } from "./demo";
 
 const MAX_ITENS = 60;
 
@@ -87,6 +88,10 @@ export function camposLidos(d: DadosNota): number {
 
 /** Envia a foto para o servidor e devolve o que foi lido. */
 export async function lerNotaNoServidor(foto: Blob, carteiraId: string, categorias: string[]): Promise<DadosNota> {
+  if (emDemo()) {
+    await new Promise((r) => setTimeout(r, 1200)); // um instante, como a leitura de verdade
+    return demoLerNota(new Date().toISOString().slice(0, 10));
+  }
   const corpo = new FormData();
   corpo.append("foto", foto, "nota.jpg");
   corpo.append("carteiraId", carteiraId);
