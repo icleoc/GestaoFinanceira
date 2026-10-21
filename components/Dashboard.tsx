@@ -24,6 +24,7 @@ import Patrimonio from "./Patrimonio";
 import { Bancos, Cartoes, Investimentos } from "./Contas";
 import GastosDoMes from "./GastosDoMes";
 import ContasFixasPendentes from "./ContasFixas";
+import Vencimentos from "./Vencimentos";
 import LancamentoForm, { type Prefill } from "./LancamentoForm";
 import ExtratoModal from "./ExtratoModal";
 import GerenciarModal from "./GerenciarModal";
@@ -382,6 +383,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
         ) : (
           <div className="space-y-6">
             <ContasFixasPendentes pendentes={resumo.pendentes} onLancar={podeLancar ? lancarFixa : undefined} />
+            <Vencimentos dados={dados} sessao={sessao} hoje={hoje} onAviso={(m) => { setAviso(m); recarregar(); }} />
             <ResumoDividas dados={dados} onAbrir={() => setAba("dividas")} />
             <ResumoVoz
               montarTexto={() =>

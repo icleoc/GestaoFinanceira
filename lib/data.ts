@@ -2,6 +2,7 @@ import { supabaseBrowser } from "./supabase/client";
 import * as demo from "./demo";
 import { descricaoDaParcela } from "./divida";
 import type {
+  Aviso,
   Categoria,
   Conta,
   Dados,
@@ -118,7 +119,7 @@ async function todasTransacoes(): Promise<Transacao[]> {
 export async function carregarDados(): Promise<Dados> {
   if (demo.emDemo()) return demo.demoDados();
   const db = supabaseBrowser();
-  const [co, ca, fi, pr, transacoes, mb, li, dv] = await Promise.all([
+  const [co, ca, fi, pr, transacoes, mb, li, dv, av] = await Promise.all([
     db.from("contas").select("*").eq("carteira_id", carteiraAtual).order("nome"),
     db.from("categorias").select("*").eq("carteira_id", carteiraAtual).order("nome"),
     db.from("despesas_fixas").select("*").eq("carteira_id", carteiraAtual).order("dia_vencimento"),
@@ -129,6 +130,8 @@ export async function carregarDados(): Promise<Dados> {
     db.from("limites").select("user_id, valor_mensal").eq("carteira_id", carteiraAtual),
     // Antes da migração 004 a tabela não existe: segue sem financiamentos, sem quebrar o painel.
     db.from("dividas").select("*").eq("carteira_id", carteiraAtual).order("criado_em"),
+    // Antes da migração 005 a tabela não existe: segue sem avisos, sem quebrar o painel.
+    db.from("avisos").select("user_id, ativo, dias, contas").eq("carteira_id", carteiraAtual),
   ]);
   if (co.error) throw falha("Não foi possível carregar as contas", co.error);
   if (ca.error) throw falha("Não foi possível carregar as categorias", ca.error);
@@ -138,6 +141,7 @@ export async function carregarDados(): Promise<Dados> {
     membros: (mb.data ?? []) as NonNullable<Dados["membros"]>,
     limites: li.error ? [] : ((li.data ?? []) as Limite[]),
     dividas: dv.error ? [] : ((dv.data ?? []) as Divida[]),
+    avisos: av.error ? [] : ((av.data ?? []) as Aviso[]),
     pretensoes: (pr.data ?? []) as Pretensao[],
     contas: (co.data ?? []) as Conta[],
     categorias: (ca.data ?? []) as Categoria[],
@@ -360,6 +364,29 @@ export async function definirLimite(userId: string, valorMensal: number | null):
       ? new Error("O limite por pessoa precisa da atualização 003 do banco (ver README).")
       : falha("Não foi possível salvar o limite", error);
   }
+}
+
+/* ---------- avisos de vencimento ---------- */
+
+const SEM_005 = /relation .*avisos|does not exist|schema cache|function .*token_aviso/i;
+
+/** Liga, desliga ou ajusta os avisos de uma pessoa: dias antes e quais contas (nulo = todas). */
+export async function salvarAviso(userId: string, a: Omit<Aviso, "user_id">): Promise<void> {
+  if (demo.emDemo()) return demo.demoAviso(userId, a);
+  const { error } = await supabaseBrowser()
+    .from("avisos")
+    .upsert({ carteira_id: carteiraAtual, user_id: userId, ativo: a.ativo, dias: a.dias, contas: a.contas, atualizado_em: new Date().toISOString() }, { onConflict: "carteira_id,user_id" });
+  if (error) {
+    throw SEM_005.test(error.message) ? new Error("Os avisos precisam da atualização 005 do banco.") : falha("Não foi possível salvar os avisos", error);
+  }
+}
+
+/** O segredo do link de calendário de quem está logado (nulo se ainda não ligou os avisos). */
+export async function tokenAviso(renovar = false): Promise<string | null> {
+  if (demo.emDemo()) return "00000000-0000-4000-8000-000000000000";
+  const { data, error } = await supabaseBrowser().rpc(renovar ? "renovar_token_aviso" : "meu_token_aviso", { p_carteira: carteiraAtual });
+  if (error) throw falha("Não foi possível obter o link do calendário", error);
+  return (data as string | null) ?? null;
 }
 
 /* ---------- equipe ---------- */

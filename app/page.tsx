@@ -55,6 +55,10 @@ const RECURSOS = [
     texto: "Informe o valor do bem, as parcelas e o valor delas: o app mostra quanto você paga de juros e o valor final. Dívida que já está andando entra com as parcelas pagas, sem mexer nos relatórios de hoje.",
   },
   {
+    titulo: "Aviso de conta a vencer",
+    texto: "Alarme no calendário do celular 7, 4 e 1 dia antes e no dia do vencimento. Cada pessoa da família escolhe de quais contas quer ser avisada.",
+  },
+  {
     titulo: "Edite qualquer lançamento",
     texto: "Errou o valor, a conta ou a categoria? Corrija no extrato, e o saldo se ajusta sozinho.",
   },

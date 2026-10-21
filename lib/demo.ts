@@ -1,7 +1,7 @@
 // Modo demonstração: o mesmo painel, com uma família fictícia e tudo guardado só na memória da aba.
 // Nada daqui toca no banco. Ao recarregar a página, volta ao começo.
 
-import type { Categoria, Conta, Dados, DadosNota, Divida, DespesaFixa, Id, Limite, Membro, NovaTransacao, Permissao, Pretensao, Sessao, Transacao } from "./types";
+import type { Aviso, Categoria, Conta, Dados, DadosNota, Divida, DespesaFixa, Id, Limite, Membro, NovaTransacao, Permissao, Pretensao, Sessao, Transacao } from "./types";
 import { gastoPorPessoa } from "./limites";
 import { addMonthsISO, monthOf } from "./finance";
 
@@ -133,7 +133,7 @@ export function iniciarDemo(hoje: string) {
   store = { contas, categorias, transacoes, fixas, pretensoes, dividas, membros: membros.map((m) => ({ user_id: m.user_id, nome: m.nome, email: m.email })), limites };
 }
 
-const copia = (): Dados => ({ ...store!, contas: [...store!.contas], categorias: [...store!.categorias], transacoes: [...store!.transacoes], fixas: [...store!.fixas], pretensoes: [...store!.pretensoes], dividas: [...(store!.dividas ?? [])], limites: [...(store!.limites ?? [])], membros: [...(store!.membros ?? [])] });
+const copia = (): Dados => ({ ...store!, contas: [...store!.contas], categorias: [...store!.categorias], transacoes: [...store!.transacoes], fixas: [...store!.fixas], pretensoes: [...store!.pretensoes], dividas: [...(store!.dividas ?? [])], limites: [...(store!.limites ?? [])], avisos: [...(store!.avisos ?? [])], membros: [...(store!.membros ?? [])] });
 export const demoDados = (): Dados => copia();
 export const demoMembros = (): Membro[] => membros.map((m) => ({ ...m }));
 
@@ -202,6 +202,10 @@ export function demoStatusPretensao(id: string, status: Pretensao["status"]) {
 }
 export function demoExcluirPretensao(id: string) {
   store!.pretensoes = store!.pretensoes.filter((x) => x.id !== id);
+}
+export function demoAviso(userId: string, a: Omit<Aviso, "user_id">) {
+  const resto = (store!.avisos ?? []).filter((x) => x.user_id !== userId);
+  store!.avisos = [...resto, { user_id: userId, ...a }];
 }
 export function demoLimite(userId: string, valor: number | null) {
   const resto = (store!.limites ?? []).filter((l) => l.user_id !== userId);

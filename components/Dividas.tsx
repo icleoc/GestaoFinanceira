@@ -45,7 +45,7 @@ export default function Dividas({ dados, podeGerenciar, podeLancar, onNova, onEd
         <div className="panel p-8 text-center">
           <p className="font-display text-xl">Nenhum financiamento ou empréstimo ainda.</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-            Já tem um em andamento? Cadastre com as parcelas que já pagou. As parcelas antigas não entram no seu extrato nem nos relatórios do mês.
+            Já tem um em andamento? Cadastre com a data da 1ª parcela e marque as antigas como pagas depois. Elas não entram no extrato nem nos relatórios do mês.
           </p>
           {podeGerenciar && (
             <button onClick={onNova} className="btn btn-primary mt-5">
@@ -110,18 +110,25 @@ function Cartao({ d, dados, hoje, podeGerenciar, podeLancar, onEditar, onMudou }
   const [lancar, setLancar] = useState(true);
   const [contaId, setContaId] = useState(d.conta_id != null ? String(d.conta_id) : contas[0] ? String(contas[0].id) : "");
   const [data, setData] = useState(hoje);
+  const [qtd, setQtd] = useState("1");
 
   async function pagar() {
     setErro("");
     const conta = contas.find((x) => String(x.id) === contaId);
     if (lancar && !conta) return setErro("Escolha a conta de onde saiu o pagamento.");
+    const quantas = lancar ? 1 : Math.min(s.restantes, Math.max(1, Math.trunc(Number(qtd) || 1)));
     setOcupado(true);
+    let feitas = 0;
     try {
-      await pagarParcela(d, { lancar, contaId: conta?.id ?? null, categoriaId: d.categoria_id ?? null, data });
+      for (let i = 0; i < quantas; i++) {
+        await pagarParcela({ ...d, parcelas_pagas: d.parcelas_pagas + i }, { lancar, contaId: conta?.id ?? null, categoriaId: d.categoria_id ?? null, data });
+        feitas++;
+      }
       setPagando(false);
-      onMudou(lancar ? `Parcela ${s.pagas + 1}/${s.total} paga e lançada no extrato.` : `Parcela ${s.pagas + 1}/${s.total} marcada como paga.`);
+      onMudou(lancar ? `Parcela ${s.pagas + 1}/${s.total} paga e lançada no extrato.` : quantas === 1 ? `Parcela ${s.pagas + 1}/${s.total} marcada como paga.` : `${quantas} parcelas marcadas como pagas.`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível pagar.");
+      if (feitas > 0) onMudou(`${feitas} parcela(s) marcada(s) antes do erro.`);
     } finally {
       setOcupado(false);
     }
@@ -192,12 +199,20 @@ function Cartao({ d, dados, hoje, podeGerenciar, podeLancar, onEditar, onMudou }
             </span>
           </label>
           <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-            <input type="radio" name={`modo-${d.id}`} checked={!lancar} onChange={() => setLancar(false)} className="mt-0.5 size-4 accent-[rgb(var(--accent))]" />
+            <input type="radio" name={`modo-${d.id}`} checked={!lancar} onChange={() => { setLancar(false); setQtd(String(Math.max(1, s.atrasadas))); }} className="mt-0.5 size-4 accent-[rgb(var(--accent))]" />
             <span>
               Só marcar como paga
-              <span className="block text-muted">Para parcela que você já pagou antes. Não mexe em saldo nem em relatório.</span>
+              <span className="block text-muted">Para parcelas que você já pagou antes de usar o app. Não mexe em saldo nem em relatório.</span>
             </span>
           </label>
+          {!lancar && s.restantes > 1 && (
+            <div>
+              <label htmlFor={`qtd-${d.id}`} className="label">
+                Quantas parcelas marcar como pagas
+              </label>
+              <input id={`qtd-${d.id}`} inputMode="numeric" value={qtd} onChange={(e) => setQtd(e.target.value.replace(/\D/g, ""))} className="field num" />
+            </div>
+          )}
           {lancar && (
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -240,7 +255,7 @@ function Cartao({ d, dados, hoje, podeGerenciar, podeLancar, onEditar, onMudou }
       {!pagando && (
         <div className="mt-4 flex flex-wrap gap-2">
           {podeLancar && s.proxima && (
-            <button onClick={() => setPagando(true)} className="btn btn-primary px-4 py-2">
+            <button onClick={() => { setLancar(true); setErro(""); setPagando(true); }} className="btn btn-primary px-4 py-2">
               Pagar parcela
             </button>
           )}

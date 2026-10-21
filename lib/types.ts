@@ -131,7 +131,18 @@ export interface Limite {
   valor_mensal: number | string;
 }
 
+/** Quando e de quais contas uma pessoa da carteira quer ser avisada. */
+export interface Aviso {
+  user_id: string;
+  ativo: boolean;
+  /** Dias antes do vencimento (0 = no dia). */
+  dias: number[];
+  /** 'fixa:<id>' / 'divida:<id>'. Nulo = todas as contas. */
+  contas: string[] | null;
+}
+
 export interface Dados {
+  avisos?: Aviso[];
   /** Pessoas da carteira (para mostrar quem lançou e os limites). */
   membros?: { user_id: string; nome: string | null; email: string | null }[];
   limites?: Limite[];

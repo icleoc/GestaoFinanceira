@@ -31,7 +31,6 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
   const [parcelas, setParcelas] = useState(divida ? String(divida.parcelas) : "");
   const [valorParcela, setValorParcela] = useState(texto(divida?.valor_parcela));
   const [primeira, setPrimeira] = useState(divida?.primeira_parcela ?? todayISO());
-  const [pagas, setPagas] = useState(divida ? String(divida.parcelas_pagas) : "0");
   const [contaId, setContaId] = useState(divida?.conta_id != null ? String(divida.conta_id) : "");
   const [categoriaId, setCategoriaId] = useState(divida?.categoria_id != null ? String(divida.categoria_id) : categoriaPadrao(dados, divida?.tipo ?? "financiamento"));
   const [erro, setErro] = useState("");
@@ -43,7 +42,7 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
     () => calcular({ valorBem: lerNumero(valorBem), entrada: emprestimo ? 0 : lerNumero(entrada), parcelas: n, valorParcela: lerNumero(valorParcela) }),
     [valorBem, entrada, n, valorParcela, emprestimo],
   );
-  const nPagas = Math.min(Math.max(0, Math.trunc(lerNumero(pagas))), Math.max(0, n));
+  const nPagas = Math.min(divida?.parcelas_pagas ?? 0, Math.max(0, n));
   const contas = dados.contas.filter((c) => c.tipo !== "Investimento");
   const categoriasDespesa = dados.categorias.filter((c) => c.tipo === "Despesa");
   const idDe = <T extends { id: Id }>(lista: T[], v: string): Id | null => lista.find((x) => String(x.id) === v)?.id ?? null;
@@ -68,7 +67,7 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
     if (!calc.ok) return setErro(calc.aviso ?? "Preencha o valor, as parcelas e o valor de cada parcela.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(primeira)) return setErro("Informe o vencimento da 1ª parcela.");
     if (n > 600) return setErro("Use até 600 parcelas.");
-    if (Math.trunc(lerNumero(pagas)) > n) return setErro("As parcelas pagas não podem passar do total.");
+    if (n < (divida?.parcelas_pagas ?? 0)) return setErro(`Já constam ${divida?.parcelas_pagas} parcelas pagas; o total não pode ser menor.`);
     setSalvando(true);
     try {
       const corpo = {
@@ -179,22 +178,14 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label htmlFor="d-primeira" className="label">
-            Vencimento da 1ª parcela
-          </label>
-          <input id="d-primeira" type="date" value={primeira} onChange={(e) => setPrimeira(e.target.value)} className="field" />
-        </div>
-        <div>
-          <label htmlFor="d-pagas" className="label">
-            Parcelas já pagas
-          </label>
-          <input id="d-pagas" inputMode="numeric" value={pagas} onChange={(e) => setPagas(e.target.value.replace(/\D/g, ""))} className="field num" />
-        </div>
+      <div>
+        <label htmlFor="d-primeira" className="label">
+          Vencimento da 1ª parcela
+        </label>
+        <input id="d-primeira" type="date" value={primeira} onChange={(e) => setPrimeira(e.target.value)} className="field" />
       </div>
       <p className="-mt-2 text-sm text-muted">
-        Já está em andamento? Informe a data da 1ª parcela e quantas já pagou. As parcelas antigas ficam só aqui: não entram no extrato nem nos relatórios de agora. Só as que você pagar daqui para frente pelo app viram lançamento.
+        Já está em andamento? Coloque a data da 1ª parcela. As parcelas antigas você marca como pagas na hora de pagar, e elas não entram no extrato nem nos relatórios.
       </p>
       {previa && previa.proxima && (
         <p className="rounded-xl bg-sunken p-3 text-sm">
