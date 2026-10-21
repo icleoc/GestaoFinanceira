@@ -1,0 +1,19 @@
+   ▲ Next.js 15.5.27
+   - Local:        http://localhost:3100
+   - Network:      http://192.0.2.2:3100
+
+ ✓ Starting...
+ ✓ Ready in 7.2s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 2.1s (174 modules)
+ ○ Compiling /login ...
+ ✓ Compiled /login in 7.2s (814 modules)
+ GET /login 200 in 8767ms
+ ○ Compiling /icon.svg ...
+ ✓ Compiled /app in 1269ms (503 modules)
+ ✓ Compiled in 2.4s (366 modules)
+ GET /icon.svg?04763c429bdeadf7 200 in 4589ms
+ GET /app 200 in 3794ms
+ GET /app 200 in 85ms
+ GET /app 200 in 84ms
+ GET /icon.svg?04763c429bdeadf7 200 in 18ms

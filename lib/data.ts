@@ -248,6 +248,40 @@ export async function criarConta(c: {
   if (error) throw falha("Não foi possível criar a conta", error);
 }
 
+/** Edita nome, tipo e saldo (ou limite e fatura, no cartão). Não cria lançamento: os relatórios não mudam. */
+export async function atualizarConta(
+  id: Id,
+  c: {
+    nome: string;
+    tipo: TipoConta;
+    valor: number;
+    /** Só cartão: quanto está devendo na fatura (positivo). */
+    fatura?: number;
+    diaVencimento: number | null;
+    bandeira?: string | null;
+    finalCartao?: string | null;
+    diaFechamento?: number | null;
+    titularId?: string | null;
+  },
+): Promise<void> {
+  const credito = c.tipo === "Crédito";
+  const base = {
+    nome: c.nome,
+    tipo: c.tipo,
+    saldo_atual: credito ? -Math.abs(c.fatura ?? 0) : c.valor,
+    limite_total: credito ? c.valor : 0,
+    dia_vencimento: credito ? c.diaVencimento : null,
+  };
+  const cartao = { bandeira: credito ? c.bandeira || null : null, final_cartao: credito ? c.finalCartao || null : null, dia_fechamento: credito ? c.diaFechamento ?? null : null, titular_id: credito ? c.titularId || null : null };
+  if (demo.emDemo()) return demo.demoAtualizarConta(id, { ...base, ...cartao });
+  const db = supabaseBrowser();
+  let { error } = await db.from("contas").update({ ...base, ...cartao }).eq("id", id);
+  if (error && /bandeira|final_cartao|dia_fechamento|titular_id/.test(error.message)) {
+    ({ error } = await db.from("contas").update(base).eq("id", id));
+  }
+  if (error) throw falha("Não foi possível salvar a conta", error);
+}
+
 export async function excluirConta(id: Id): Promise<void> {
   if (demo.emDemo()) return demo.demoExcluirConta(id);
   const { error } = await supabaseBrowser().from("contas").delete().eq("id", id);

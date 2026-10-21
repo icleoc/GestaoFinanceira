@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { Dados, Id, TipoCategoria, TipoConta } from "@/lib/types";
+import type { Conta, Dados, Id, TipoCategoria, TipoConta } from "@/lib/types";
 import { num } from "@/lib/finance";
 import {
+  atualizarConta,
   criarCategoria,
   criarConta,
   criarFixa,
@@ -37,6 +38,7 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  const [editando, setEditando] = useState<Id | null>(null);
 
   async function executar(acao: () => Promise<void>, mensagem: string) {
     setOcupado(true);
@@ -101,27 +103,45 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
 
         {aba === "contas" && (
           <>
-            <NovaConta membros={dados.membros ?? []} ocupado={ocupado} onCriar={(c) => executar(() => criarConta(c), "Conta criada.")} />
+            <FormConta membros={dados.membros ?? []} ocupado={ocupado} rotulo="Adicionar conta" limpar onEnviar={(c) => executar(() => criarConta(c), "Conta criada.")} />
             <ul className="mt-5 divide-y divide-line rounded-xl border border-line">
               {dados.contas.length === 0 && <li className="p-4 text-sm text-muted">Nenhuma conta ainda.</li>}
-              {dados.contas.map((c) => (
-                <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                  <div>
-                    <p className="font-medium">{c.nome}</p>
-                    <p className="num text-sm text-muted">
-                      {c.tipo}
-                      {c.tipo === "Crédito" ? ` · limite ${money(num(c.limite_total))}` : ` · ${money(num(c.saldo_atual))}`}
-                      {c.tipo === "Crédito" && c.final_cartao ? ` · final ${c.final_cartao}` : ""}
-                    </p>
-                  </div>
-                  <Excluir
-                    chave={`c${c.id}`}
-                    acao={() => excluirConta(c.id as Id)}
-                    mensagem="Conta excluída."
-                    aviso="Os lançamentos dela podem impedir a exclusão."
-                  />
-                </li>
-              ))}
+              {dados.contas.map((c) =>
+                editando === c.id ? (
+                  <li key={c.id} className="bg-sunken/50 p-4">
+                    <FormConta
+                      membros={dados.membros ?? []}
+                      ocupado={ocupado}
+                      conta={c}
+                      rotulo="Salvar alterações"
+                      onCancelar={() => setEditando(null)}
+                      onEnviar={(v) =>
+                        executar(async () => {
+                          await atualizarConta(c.id as Id, v);
+                          setEditando(null);
+                        }, "Conta atualizada.")
+                      }
+                    />
+                  </li>
+                ) : (
+                  <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                    <div>
+                      <p className="font-medium">{c.nome}</p>
+                      <p className="num text-sm text-muted">
+                        {c.tipo}
+                        {c.tipo === "Crédito" ? ` · limite ${money(num(c.limite_total))}` : ` · ${money(num(c.saldo_atual))}`}
+                        {c.tipo === "Crédito" && c.final_cartao ? ` · final ${c.final_cartao}` : ""}
+                      </p>
+                    </div>
+                    <span className="flex items-center gap-2">
+                      <button type="button" className="btn btn-quiet px-3 py-1.5" onClick={() => { setEditando(c.id); setConfirmando(null); setErro(""); }}>
+                        Editar
+                      </button>
+                      <Excluir chave={`c${c.id}`} acao={() => excluirConta(c.id as Id)} mensagem="Conta excluída." aviso="Os lançamentos dela podem impedir a exclusão." />
+                    </span>
+                  </li>
+                ),
+              )}
             </ul>
           </>
         )}
@@ -175,23 +195,37 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
 
 type DadosNovaConta = Parameters<typeof criarConta>[0];
 
-function NovaConta({
+type DadosEdicaoConta = Parameters<typeof atualizarConta>[1];
+
+/** Formulário de conta: serve para criar e, com `conta`, para editar nome, tipo e saldo. */
+function FormConta({
   ocupado,
   membros,
-  onCriar,
+  conta,
+  rotulo,
+  limpar,
+  onCancelar,
+  onEnviar,
 }: {
   ocupado: boolean;
   membros: NonNullable<Dados["membros"]>;
-  onCriar: (c: DadosNovaConta) => void;
+  conta?: Conta;
+  rotulo: string;
+  limpar?: boolean;
+  onCancelar?: () => void;
+  onEnviar: (c: DadosNovaConta & DadosEdicaoConta) => void;
 }) {
-  const [bandeira, setBandeira] = useState("");
-  const [finalCartao, setFinalCartao] = useState("");
-  const [fechamento, setFechamento] = useState("");
-  const [titular, setTitular] = useState("");
-  const [nome, setNome] = useState("");
-  const [tipo, setTipo] = useState<TipoConta>("Corrente");
-  const [valor, setValor] = useState("");
-  const [dia, setDia] = useState("");
+  const editar = !!conta;
+  const texto = (n: unknown) => (n == null || n === "" ? "" : String(n).replace(".", ","));
+  const [bandeira, setBandeira] = useState(conta?.bandeira ?? "");
+  const [finalCartao, setFinalCartao] = useState(conta?.final_cartao ?? "");
+  const [fechamento, setFechamento] = useState(conta?.dia_fechamento ? String(conta.dia_fechamento) : "");
+  const [titular, setTitular] = useState(conta?.titular_id ?? "");
+  const [nome, setNome] = useState(conta?.nome ?? "");
+  const [tipo, setTipo] = useState<TipoConta>(conta?.tipo ?? "Corrente");
+  const [valor, setValor] = useState(conta ? texto(conta.tipo === "Crédito" ? conta.limite_total : conta.saldo_atual) : "");
+  const [fatura, setFatura] = useState(conta?.tipo === "Crédito" ? texto(Math.abs(num(conta.saldo_atual))) : "");
+  const [dia, setDia] = useState(conta?.dia_vencimento ? String(conta.dia_vencimento) : "");
   const [erro, setErro] = useState("");
 
   const rotuloValor = tipo === "Crédito" ? "Limite do cartão (R$)" : tipo === "Investimento" ? "Valor investido (R$)" : "Saldo atual (R$)";
@@ -205,70 +239,82 @@ function NovaConta({
     if (tipo === "Crédito" && f !== null && (f < 1 || f > 31)) return setErro("O dia de fechamento vai de 1 a 31.");
     if (tipo === "Crédito" && finalCartao && !/^\d{4}$/.test(finalCartao)) return setErro("Informe só os 4 últimos dígitos do cartão.");
     setErro("");
-    onCriar({
+    onEnviar({
       nome: nome.trim(),
       tipo,
       valor: lerValor(valor),
+      fatura: tipo === "Crédito" ? lerValor(fatura) : 0,
       diaVencimento: tipo === "Crédito" ? d : null,
       bandeira: tipo === "Crédito" ? bandeira || null : null,
       finalCartao: tipo === "Crédito" ? finalCartao || null : null,
       diaFechamento: tipo === "Crédito" ? f : null,
       titularId: tipo === "Crédito" ? titular || null : null,
     });
-    setNome("");
-    setValor("");
-    setDia("");
-    setBandeira("");
-    setFinalCartao("");
-    setFechamento("");
-    setTitular("");
+    if (limpar) {
+      setNome("");
+      setValor("");
+      setFatura("");
+      setDia("");
+      setBandeira("");
+      setFinalCartao("");
+      setFechamento("");
+      setTitular("");
+    }
   }
 
   return (
     <form onSubmit={enviar} className="grid grid-cols-2 gap-3" noValidate>
       <div className="col-span-2 sm:col-span-1">
-        <label htmlFor="n-nome" className="label">
+        <label htmlFor={`${editar ? "e" : "n"}-nome`} className="label">
           Nome
         </label>
-        <input id="n-nome" value={nome} onChange={(e) => setNome(e.target.value)} className="field" placeholder="Ex.: Nubank" />
+        <input id={`${editar ? "e" : "n"}-nome`} value={nome} onChange={(e) => setNome(e.target.value)} className="field" placeholder="Ex.: Nubank" />
       </div>
       <div className="col-span-2 sm:col-span-1">
-        <label htmlFor="n-tipo" className="label">
+        <label htmlFor={`${editar ? "e" : "n"}-tipo`} className="label">
           Tipo
         </label>
-        <select id="n-tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoConta)} className="field">
+        <select id={`${editar ? "e" : "n"}-tipo`} value={tipo} onChange={(e) => setTipo(e.target.value as TipoConta)} className="field">
           <option value="Corrente">Conta corrente</option>
           <option value="Crédito">Cartão de crédito</option>
           <option value="Investimento">Investimento</option>
         </select>
       </div>
       <div className={tipo === "Crédito" ? "col-span-1" : "col-span-2"}>
-        <label htmlFor="n-valor" className="label">
+        <label htmlFor={`${editar ? "e" : "n"}-valor`} className="label">
           {rotuloValor}
         </label>
-        <input id="n-valor" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} className="field num" placeholder="0,00" />
+        <input id={`${editar ? "e" : "n"}-valor`} inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} className="field num" placeholder="0,00" />
       </div>
+      {editar && tipo === "Crédito" && (
+        <div className="col-span-1">
+          <label htmlFor={`${editar ? "e" : "n"}-fatura`} className="label">
+            Fatura em aberto (R$)
+          </label>
+          <input id={`${editar ? "e" : "n"}-fatura`} inputMode="decimal" value={fatura} onChange={(e) => setFatura(e.target.value)} className="field num" placeholder="0,00" />
+        </div>
+      )}
       {tipo === "Crédito" && (
         <div>
-          <label htmlFor="n-dia" className="label">
+          <label htmlFor={`${editar ? "e" : "n"}-dia`} className="label">
             Vence no dia
           </label>
-          <input id="n-dia" inputMode="numeric" value={dia} onChange={(e) => setDia(e.target.value)} className="field num" placeholder="10" />
+          <input id={`${editar ? "e" : "n"}-dia`} inputMode="numeric" value={dia} onChange={(e) => setDia(e.target.value)} className="field num" placeholder="10" />
         </div>
       )}
       {tipo === "Crédito" && (
         <>
           <div>
-            <label htmlFor="n-fecha" className="label">
+            <label htmlFor={`${editar ? "e" : "n"}-fecha`} className="label">
               Fecha no dia
             </label>
-            <input id="n-fecha" inputMode="numeric" value={fechamento} onChange={(e) => setFechamento(e.target.value)} className="field num" placeholder="3" />
+            <input id={`${editar ? "e" : "n"}-fecha`} inputMode="numeric" value={fechamento} onChange={(e) => setFechamento(e.target.value)} className="field num" placeholder="3" />
           </div>
           <div>
-            <label htmlFor="n-band" className="label">
+            <label htmlFor={`${editar ? "e" : "n"}-band`} className="label">
               Bandeira
             </label>
-            <select id="n-band" value={bandeira} onChange={(e) => setBandeira(e.target.value)} className="field">
+            <select id={`${editar ? "e" : "n"}-band`} value={bandeira} onChange={(e) => setBandeira(e.target.value)} className="field">
               <option value="">Não informar</option>
               {["Visa", "Mastercard", "Elo", "American Express", "Hipercard"].map((b) => (
                 <option key={b}>{b}</option>
@@ -276,17 +322,17 @@ function NovaConta({
             </select>
           </div>
           <div>
-            <label htmlFor="n-final" className="label">
+            <label htmlFor={`${editar ? "e" : "n"}-final`} className="label">
               Final do cartão
             </label>
-            <input id="n-final" inputMode="numeric" maxLength={4} value={finalCartao} onChange={(e) => setFinalCartao(e.target.value.replace(/\D/g, ""))} className="field num" placeholder="1234" />
+            <input id={`${editar ? "e" : "n"}-final`} inputMode="numeric" maxLength={4} value={finalCartao} onChange={(e) => setFinalCartao(e.target.value.replace(/\D/g, ""))} className="field num" placeholder="1234" />
           </div>
           {membros.length > 0 && (
             <div className="col-span-2 sm:col-span-1">
-              <label htmlFor="n-tit" className="label">
+              <label htmlFor={`${editar ? "e" : "n"}-tit`} className="label">
                 De quem é o cartão
               </label>
-              <select id="n-tit" value={titular} onChange={(e) => setTitular(e.target.value)} className="field">
+              <select id={`${editar ? "e" : "n"}-tit`} value={titular} onChange={(e) => setTitular(e.target.value)} className="field">
                 <option value="">Não informar</option>
                 {membros.map((m) => (
                   <option key={m.user_id} value={m.user_id}>
@@ -304,9 +350,17 @@ function NovaConta({
           {erro}
         </p>
       )}
-      <button type="submit" disabled={ocupado} className="btn btn-primary col-span-2">
-        Adicionar conta
-      </button>
+      {editar && <p className="col-span-2 text-xs text-muted">Mudar o saldo aqui só corrige o número da conta: não cria lançamento e não mexe nos relatórios do mês.</p>}
+      <div className="col-span-2 flex gap-3">
+        {onCancelar && (
+          <button type="button" onClick={onCancelar} disabled={ocupado} className="btn btn-quiet flex-1">
+            Cancelar
+          </button>
+        )}
+        <button type="submit" disabled={ocupado} className="btn btn-primary flex-1">
+          {rotulo}
+        </button>
+      </div>
     </form>
   );
 }

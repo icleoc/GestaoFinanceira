@@ -184,6 +184,9 @@ export function demoExcluirCategoria(id: Id) {
 export function demoCriarConta(c: Conta) {
   store!.contas.push({ ...c, id: seq++ });
 }
+export function demoAtualizarConta(id: Id, c: Partial<Conta>) {
+  store!.contas = store!.contas.map((x) => (String(x.id) === String(id) ? { ...x, ...c } : x));
+}
 export function demoExcluirConta(id: Id) {
   store!.contas = store!.contas.filter((c) => String(c.id) !== String(id));
 }
