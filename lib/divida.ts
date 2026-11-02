@@ -163,3 +163,13 @@ export function resumir(dividas: Divida[], hoje: string): ResumoDividas {
 export function descricaoDaParcela(nome: string, indice: number, total: number): string {
   return `${nome.trim()} (${indice}/${total})`;
 }
+
+/** Quantas parcelas já venceram antes de `hoje` (as de uma dívida que já estava andando antes do app). */
+export function parcelasVencidas(primeira: string, total: number, hoje: string): number {
+  let n = 0;
+  for (let k = 1; k <= total; k++) {
+    if (vencimento(primeira, k) < hoje) n++;
+    else break;
+  }
+  return n;
+}

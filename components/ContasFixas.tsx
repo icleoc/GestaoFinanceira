@@ -8,10 +8,12 @@ import { money } from "@/lib/format";
 interface Props {
   pendentes: ContaFixaPendente[];
   onLancar?: (p: ContaFixaPendente) => void;
+  /** Marca como paga neste mês sem lançar (já foi paga antes de usar o app). */
+  onBaixa?: (p: ContaFixaPendente) => void;
 }
 
 /** Aviso fixo no topo (sem pulsar nem cobrir a tela) com as contas fixas do mês ainda sem lançamento. */
-export default function ContasFixasPendentes({ pendentes, onLancar }: Props) {
+export default function ContasFixasPendentes({ pendentes, onLancar, onBaixa }: Props) {
   const [dispensado, setDispensado] = useState(false);
   if (pendentes.length === 0 || dispensado) return null;
 
@@ -30,16 +32,23 @@ export default function ContasFixasPendentes({ pendentes, onLancar }: Props) {
           <li key={p.fixa.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2.5">
             <div>
               <span className="font-medium">{p.fixa.nome}</span>
-              <span className="num ml-2 text-muted">{money(num(p.fixa.valor))}</span>
+              <span className="num ml-2 text-muted">{p.fixa.flutuante ? "cerca de " : ""}{money(num(p.fixa.valor))}</span>
               <p className="text-sm text-muted">
                 {p.atraso === 0 ? `vence hoje (dia ${p.fixa.dia_vencimento})` : `venceu dia ${p.fixa.dia_vencimento}, há ${p.atraso} ${p.atraso === 1 ? "dia" : "dias"}`}
               </p>
             </div>
-            {onLancar && (
-              <button onClick={() => onLancar(p)} className="btn btn-quiet px-3 py-1.5">
-                Lançar
-              </button>
-            )}
+            <span className="flex gap-2">
+              {onBaixa && (
+                <button onClick={() => onBaixa(p)} className="btn btn-quiet px-3 py-1.5" title="Já paguei antes de usar o app: marca como paga sem lançar">
+                  Já paguei
+                </button>
+              )}
+              {onLancar && (
+                <button onClick={() => onLancar(p)} className="btn btn-quiet px-3 py-1.5">
+                  Lançar
+                </button>
+              )}
+            </span>
           </li>
         ))}
       </ul>

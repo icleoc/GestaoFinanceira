@@ -190,8 +190,14 @@ export function demoAtualizarConta(id: Id, c: Partial<Conta>) {
 export function demoExcluirConta(id: Id) {
   store!.contas = store!.contas.filter((c) => String(c.id) !== String(id));
 }
-export function demoCriarFixa(f: { nome: string; valor: number; dia: number }) {
-  store!.fixas.push({ id: seq++, nome: f.nome, valor: f.valor, dia_vencimento: f.dia });
+export function demoCriarFixa(f: { nome: string; valor: number; dia: number; flutuante?: boolean; inicio?: string | null }) {
+  store!.fixas.push({ id: seq++, nome: f.nome, valor: f.valor, dia_vencimento: f.dia, flutuante: !!f.flutuante, inicio: f.inicio ?? null });
+}
+export function demoAtualizarFixa(id: Id, f: { nome: string; valor: number; dia: number; flutuante?: boolean; inicio?: string | null }) {
+  store!.fixas = store!.fixas.map((x) => (String(x.id) === String(id) ? { ...x, nome: f.nome, valor: f.valor, dia_vencimento: f.dia, flutuante: !!f.flutuante, inicio: f.inicio ?? null } : x));
+}
+export function demoBaixaFixa(id: Id, mes: string) {
+  store!.fixas = store!.fixas.map((x) => (String(x.id) === String(id) ? { ...x, baixa_mes: mes } : x));
 }
 export function demoExcluirFixa(id: Id) {
   store!.fixas = store!.fixas.filter((f) => String(f.id) !== String(id));
@@ -205,6 +211,9 @@ export function demoStatusPretensao(id: string, status: Pretensao["status"]) {
 }
 export function demoExcluirPretensao(id: string) {
   store!.pretensoes = store!.pretensoes.filter((x) => x.id !== id);
+}
+export function demoNome(nome: string) {
+  store!.membros = (store!.membros ?? []).map((m, i) => (i === 0 ? { ...m, nome } : m));
 }
 export function demoAviso(userId: string, a: Omit<Aviso, "user_id">) {
   const resto = (store!.avisos ?? []).filter((x) => x.user_id !== userId);

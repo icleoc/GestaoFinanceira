@@ -23,6 +23,8 @@ export interface Prefill {
   chave: number;
   nome: string;
   valor: number;
+  /** Conta de valor variável: pede para confirmar o valor deste mês. */
+  flutuante?: boolean;
 }
 
 interface Props {
@@ -74,6 +76,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, semM
   const [descAuto, setDescAuto] = useState(true);
   const [valor, setValor] = useState("");
   const [valorAuto, setValorAuto] = useState(false);
+  const [confirmarValor, setConfirmarValor] = useState(false);
   const [origemId, setOrigemId] = useState<string>("");
   const [destinoId, setDestinoId] = useState<string>("");
   const [dias, setDias] = useState(0);
@@ -242,8 +245,9 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, semM
     if (cat) setCategoriaId(String(cat.id));
     setDescricao(prefill.nome);
     setDescAuto(false);
-    setValor(String(prefill.valor));
+    setValor(String(prefill.valor).replace(".", ","));
     setValorAuto(false);
+    setConfirmarValor(!!prefill.flutuante);
     setErro("");
     raiz.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -298,6 +302,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, semM
       setDescAuto(true);
       setValor("");
       setValorAuto(false);
+      setConfirmarValor(false);
       setComTaxa(false);
       setTotal("");
       setParcelas(1);
@@ -415,6 +420,11 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, semM
               className="field num"
               required
             />
+            {confirmarValor && (
+              <p className="mt-1.5 rounded-lg bg-warn/10 px-3 py-2 text-sm font-medium text-warn" role="status">
+                Esta conta muda todo mês. Confira o valor de agora antes de lançar (o que está aí é só o valor base).
+              </p>
+            )}
           </div>
         </div>
 

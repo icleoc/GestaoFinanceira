@@ -357,6 +357,9 @@ export function contasFixasPendentes(
     if (!nome) continue;
     const venc = Math.min(Math.max(1, f.dia_vencimento), ultimoDia);
     if (dia < venc) continue;
+    // Começou depois deste vencimento (ex.: cadastrou no meio do mês) ou já deu baixa neste mês.
+    if (f.inicio && `${mes}-${String(venc).padStart(2, "0")}` < f.inicio) continue;
+    if (f.baixa_mes === mes) continue;
     const paga = transacoes.some(
       (t) =>
         num(t.valor) < 0 &&

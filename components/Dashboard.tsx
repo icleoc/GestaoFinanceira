@@ -14,7 +14,7 @@ import {
   type ContaFixaPendente,
 } from "@/lib/finance";
 import { gerarInsights, serieMensal, type Destino } from "@/lib/assistente";
-import { carregarDados, carregarSessao, sair, usarCarteira } from "@/lib/data";
+import { carregarDados, carregarSessao, darBaixaFixa, sair, usarCarteira } from "@/lib/data";
 import { emDemo, iniciarDemo } from "@/lib/demo";
 import Link from "next/link";
 import { money, monthLabel } from "@/lib/format";
@@ -34,17 +34,22 @@ import Planejar from "./Planejar";
 import Equipe from "./Equipe";
 import TrocarSenha from "./TrocarSenha";
 import FaceId from "./FaceId";
+import PerfilModal from "./PerfilModal";
+import Saudacao from "./Saudacao";
+import CalendarioVencimentos from "./CalendarioVencimentos";
+import { primeiroNome } from "@/lib/saudacao";
+import { proximosVencimentos } from "@/lib/vencimentos";
 import ResumoVoz from "./ResumoVoz";
 import Dividas, { ResumoDividas } from "./Dividas";
 import DividaForm from "./DividaForm";
 import { montarResumoFalado } from "@/lib/voz";
 import { situacaoDaPessoa } from "@/lib/limites";
 import NotaRapida from "./NotaRapida";
-import { biometriaDisponivel, rotuloBiometria } from "@/lib/passkey";
+import { aparelhoTemBiometria, dispensarConviteBiometria, biometriaDisponivel, rotuloBiometria } from "@/lib/passkey";
 import Modal from "./Modal";
 
 type Aba = "inicio" | "planejar" | "dividas" | "pessoas";
-type Janela = "extrato" | "gerenciar" | "lancar" | "senha" | "faceid" | "nota" | "divida" | null;
+type Janela = "extrato" | "gerenciar" | "lancar" | "senha" | "faceid" | "nota" | "divida" | "perfil" | null;
 
 export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const router = useRouter();
@@ -55,8 +60,9 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const [mes, setMes] = useState(monthOf(todayISO()));
   const [janela, setJanela] = useState<Janela>(null);
   const [bio, setBio] = useState(false);
+  const [conviteBio, setConviteBio] = useState(false);
   useEffect(() => {
-    if (!demo) void biometriaDisponivel().then(setBio);
+    if (!demo) void biometriaDisponivel().then((ok) => { setBio(ok); setConviteBio(ok && !aparelhoTemBiometria()); });
   }, [demo]);
   const [prefill, setPrefill] = useState<Prefill | null>(null);
   const [dividaEditando, setDividaEditando] = useState<Divida | undefined>(undefined);
@@ -145,8 +151,18 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const fechar = useCallback(() => setJanela(null), []);
 
   function lancarFixa(p: ContaFixaPendente) {
-    setPrefill({ chave: Date.now(), nome: p.fixa.nome, valor: Number(p.fixa.valor) || 0 });
+    setPrefill({ chave: Date.now(), nome: p.fixa.nome, valor: Number(p.fixa.valor) || 0, flutuante: !!p.fixa.flutuante });
     setJanela("lancar");
+  }
+
+  async function baixaFixa(p: ContaFixaPendente) {
+    try {
+      await darBaixaFixa(p.fixa.id, monthOf(hoje));
+      setAviso(`${p.fixa.nome}: marcada como paga neste mês.`);
+      recarregar();
+    } catch (e) {
+      setAviso(e instanceof Error ? e.message : "Não foi possível dar baixa.");
+    }
   }
 
   function irPara(d: Destino) {
@@ -215,7 +231,9 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
     { id: "dividas", nome: "Dívidas" },
     ...(podeEquipe ? ([{ id: "pessoas", nome: "Pessoas" }] as { id: Aba; nome: string }[]) : []),
   ];
-  const inicial = (sessao.email || "?").charAt(0).toUpperCase();
+  const meuNome = dados?.membros?.find((m) => m.user_id === sessao.userId)?.nome ?? null;
+  const nomeExibicao = primeiroNome(meuNome, sessao.email);
+  const inicial = (nomeExibicao || sessao.email || "?").charAt(0).toUpperCase();
 
   return (
     <div className="pb-28">
@@ -269,7 +287,8 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
                 {inicial}
               </summary>
               <div className="panel absolute right-0 z-40 mt-2 w-64 p-3 shadow-xl">
-                <p className="truncate text-sm font-medium">{sessao.email}</p>
+                <p className="truncate text-sm font-medium">{meuNome || sessao.email}</p>
+                {meuNome && <p className="truncate text-xs text-muted">{sessao.email}</p>}
                 <p className="text-xs text-muted">
                   {nomeDoPapel(sessao.papel)} em {sessao.carteiraNome}
                 </p>
@@ -284,6 +303,9 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
                       Entrar com {rotuloBiometria()}
                     </button>
                   )}
+                  <button onClick={() => setJanela("perfil")} className="btn btn-quiet justify-start">
+                    Meu perfil
+                  </button>
                   {!demo && (
                     <button onClick={() => setJanela("senha")} className="btn btn-quiet justify-start">
                       Trocar senha
@@ -382,13 +404,31 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
           />
         ) : (
           <div className="space-y-6">
-            <ContasFixasPendentes pendentes={resumo.pendentes} onLancar={podeLancar ? lancarFixa : undefined} />
+            {conviteBio && !demo && (
+              <section className="panel flex flex-wrap items-center justify-between gap-3 border-l-4 border-l-gold p-4" aria-label={`Ativar ${rotuloBiometria()}`}>
+                <div>
+                  <p className="font-semibold">Entre mais rápido neste aparelho</p>
+                  <p className="text-sm text-muted">Ative o {rotuloBiometria()} e, da próxima vez, é só tocar em “Entrar com {rotuloBiometria()}”, sem digitar senha.</p>
+                </div>
+                <span className="flex gap-2">
+                  <button onClick={() => { dispensarConviteBiometria(); setConviteBio(false); }} className="btn btn-quiet px-3 py-1.5">
+                    Agora não
+                  </button>
+                  <button onClick={() => { setConviteBio(false); setJanela("faceid"); }} className="btn btn-gold px-3 py-1.5">
+                    Ativar
+                  </button>
+                </span>
+              </section>
+            )}
+            <Saudacao nome={nomeExibicao} resumo={resumoDaSemana(proximosVencimentos({ fixas: dados.fixas, transacoes: dados.transacoes, dividas: dados.dividas }, hoje, 7))} />
+            <ContasFixasPendentes pendentes={resumo.pendentes} onLancar={podeLancar ? lancarFixa : undefined} onBaixa={podeLancar ? baixaFixa : undefined} />
             <Vencimentos dados={dados} sessao={sessao} hoje={hoje} onAviso={(m) => { setAviso(m); recarregar(); }} />
+            <CalendarioVencimentos dados={dados} hoje={hoje} />
             <ResumoDividas dados={dados} onAbrir={() => setAba("dividas")} />
             <ResumoVoz
               montarTexto={() =>
                 montarResumoFalado({
-                  nome: sessao.email.split("@")[0],
+                  nome: nomeExibicao,
                   kpis: resumo.kpis,
                   receitas: resumo.totais.receitas,
                   despesas: resumo.totais.despesas,
@@ -483,6 +523,18 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
         </Modal>
       )}
       {janela === "faceid" && <FaceId onClose={fechar} />}
+      {janela === "perfil" && (
+        <PerfilModal
+          nomeAtual={meuNome ?? ""}
+          email={sessao.email}
+          onClose={fechar}
+          onFeito={() => {
+            setJanela(null);
+            setAviso("Nome atualizado.");
+            recarregar();
+          }}
+        />
+      )}
       {janela === "senha" && (
         <TrocarSenha
           onClose={fechar}
@@ -503,4 +555,15 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
       )}
     </div>
   );
+}
+
+function resumoDaSemana(v: ReturnType<typeof proximosVencimentos>): string {
+  const hoje = v.filter((x) => x.dias === 0).length;
+  const atrasadas = v.filter((x) => x.dias < 0).length;
+  const semana = v.filter((x) => x.dias > 0).length;
+  const partes: string[] = [];
+  if (atrasadas) partes.push(atrasadas === 1 ? "1 conta atrasada" : `${atrasadas} contas atrasadas`);
+  if (hoje) partes.push(hoje === 1 ? "1 conta vence hoje" : `${hoje} contas vencem hoje`);
+  if (semana) partes.push(semana === 1 ? "1 conta nos próximos 7 dias" : `${semana} contas nos próximos 7 dias`);
+  return partes.length ? partes.join(" · ") : "Nenhuma conta vence nos próximos 7 dias.";
 }

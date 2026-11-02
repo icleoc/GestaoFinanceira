@@ -50,13 +50,14 @@ export function proximosVencimentos(dados: Entrada, hoje: string, janela = 45): 
     const nome = f.nome.trim();
     if (!nome) continue;
     const baixa = nome.toLowerCase();
-    const paga = dados.transacoes.some((t) => num(t.valor) < 0 && t.data.startsWith(mesAtual) && t.descricao.toLowerCase().includes(baixa));
+    const paga = f.baixa_mes === mesAtual || dados.transacoes.some((t) => num(t.valor) < 0 && t.data.startsWith(mesAtual) && t.descricao.toLowerCase().includes(baixa));
     for (let k = 0; k < 24; k++) {
       const base = addMonthsISO(`${hoje.slice(0, 7)}-01`, k);
       const [y, m] = parseISO(base);
       const dia = Math.min(Math.max(1, f.dia_vencimento), daysInMonth(y, m));
       const data = `${y}-${pad(m)}-${pad(dia)}`;
       if (k === 0 && paga) continue;
+      if (f.inicio && data < f.inicio) continue;
       if (data > limite) break;
       saida.push({ chave: chaveFixa(f), origem: "fixa", nome, valor: num(f.valor), data, dias: diasEntre(hoje, data) });
     }
@@ -92,3 +93,36 @@ export function quandoVence(dias: number): string {
 }
 
 export const DIAS_PADRAO = [7, 4, 1, 0];
+
+export interface VencimentoDoMes extends Vencimento {
+  /** paga: já lançada ou baixada; atrasada: venceu e não consta paga; aberta: ainda vai vencer. */
+  estado: "paga" | "atrasada" | "aberta";
+}
+
+/** Tudo o que vence num mês (AAAA-MM), inclusive o que já foi pago, para o calendário. */
+export function vencimentosDoMes(dados: Entrada, ym: string, hoje: string): VencimentoDoMes[] {
+  const [y, m] = parseISO(`${ym}-01`);
+  const saida: VencimentoDoMes[] = [];
+  const estadoDe = (paga: boolean, data: string): VencimentoDoMes["estado"] => (paga ? "paga" : data < hoje ? "atrasada" : "aberta");
+
+  for (const f of dados.fixas) {
+    const nome = f.nome.trim();
+    if (!nome) continue;
+    const dia = Math.min(Math.max(1, f.dia_vencimento), daysInMonth(y, m));
+    const data = `${y}-${pad(m)}-${pad(dia)}`;
+    if (f.inicio && data < f.inicio) continue;
+    const baixa = nome.toLowerCase();
+    const paga = f.baixa_mes === ym || dados.transacoes.some((t) => num(t.valor) < 0 && t.data.startsWith(ym) && t.descricao.toLowerCase().includes(baixa));
+    saida.push({ chave: chaveFixa(f), origem: "fixa", nome, valor: num(f.valor), data, dias: diasEntre(hoje, data), estado: estadoDe(paga, data) });
+  }
+
+  for (const d of dados.dividas ?? []) {
+    for (let k = 1; k <= d.parcelas; k++) {
+      const data = vencimento(d.primeira_parcela, k);
+      if (data.slice(0, 7) < ym) continue;
+      if (data.slice(0, 7) > ym) break;
+      saida.push({ chave: chaveDivida(d), origem: "divida", nome: d.nome, valor: num(d.valor_parcela), data, dias: diasEntre(hoje, data), indice: k, total: d.parcelas, estado: estadoDe(k <= d.parcelas_pagas, data) });
+    }
+  }
+  return saida.sort((a, b) => a.data.localeCompare(b.data) || a.nome.localeCompare(b.nome));
+}

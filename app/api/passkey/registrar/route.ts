@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       attestationType: "none",
       excludeCredentials: (existentes ?? []).map((p) => ({ id: p.id as string, transports: (p.transports as string[] | null) ?? undefined })),
       // Biometria do próprio aparelho (Face ID, Touch ID), com chave que permite entrar sem digitar e-mail.
-      authenticatorSelection: { residentKey: "required", userVerification: "required", authenticatorAttachment: "platform" },
+      authenticatorSelection: { residentKey: "required", userVerification: "required" },
     });
     const res = NextResponse.json(opcoes);
     if (!guardarDesafio(res, req, { challenge: opcoes.challenge, tipo: "reg", uid: user.id })) return erro(SEM_CHAVE_DE_SERVICO, 501);

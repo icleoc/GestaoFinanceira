@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Dados, Divida, Id, TipoDivida } from "@/lib/types";
-import { calcular, situacao, vencimento } from "@/lib/divida";
+import { calcular, parcelasVencidas, situacao, vencimento } from "@/lib/divida";
 import { criarDivida, atualizarDivida } from "@/lib/data";
 import { dateBR, money } from "@/lib/format";
 import { num, todayISO } from "@/lib/finance";
@@ -16,7 +16,7 @@ function lerNumero(t: string): number {
 const texto = (n: number | string | null | undefined) => (n == null || n === "" || Number(n) === 0 ? "" : String(n).replace(".", ","));
 
 function categoriaPadrao(dados: Dados, tipo: TipoDivida): string {
-  const raiz = tipo === "emprestimo" ? "emprest" : "financ";
+  const raiz = tipo === "emprestimo" ? "emprest" : tipo === "consorcio" ? "cons" : "financ";
   const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const c = dados.categorias.find((x) => x.tipo === "Despesa" && norm(x.nome).startsWith(raiz));
   return c ? String(c.id) : "";
@@ -31,18 +31,24 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
   const [parcelas, setParcelas] = useState(divida ? String(divida.parcelas) : "");
   const [valorParcela, setValorParcela] = useState(texto(divida?.valor_parcela));
   const [primeira, setPrimeira] = useState(divida?.primeira_parcela ?? todayISO());
+  const [pagasEdit, setPagasEdit] = useState(divida ? String(divida.parcelas_pagas) : "");
+  const [assumirPagas, setAssumirPagas] = useState(true);
   const [contaId, setContaId] = useState(divida?.conta_id != null ? String(divida.conta_id) : "");
   const [categoriaId, setCategoriaId] = useState(divida?.categoria_id != null ? String(divida.categoria_id) : categoriaPadrao(dados, divida?.tipo ?? "financiamento"));
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   const emprestimo = tipo === "emprestimo";
+  const consorcio = tipo === "consorcio";
+  const semEntrada = emprestimo || consorcio;
   const n = Math.trunc(lerNumero(parcelas));
   const calc = useMemo(
-    () => calcular({ valorBem: lerNumero(valorBem), entrada: emprestimo ? 0 : lerNumero(entrada), parcelas: n, valorParcela: lerNumero(valorParcela) }),
-    [valorBem, entrada, n, valorParcela, emprestimo],
+    () => calcular({ valorBem: lerNumero(valorBem), entrada: semEntrada ? 0 : lerNumero(entrada), parcelas: n, valorParcela: lerNumero(valorParcela) }),
+    [valorBem, entrada, n, valorParcela, semEntrada],
   );
-  const nPagas = Math.min(divida?.parcelas_pagas ?? 0, Math.max(0, n));
+  const vencidas = /^\d{4}-\d{2}-\d{2}$/.test(primeira) && n > 0 ? parcelasVencidas(primeira, n, todayISO()) : 0;
+  // Dívida nova que já estava andando: o que venceu antes de hoje é passado e conta como pago.
+  const nPagas = divida ? Math.min(Math.max(0, Math.trunc(lerNumero(pagasEdit))), Math.max(0, n)) : assumirPagas ? vencidas : 0;
   const contas = dados.contas.filter((c) => c.tipo !== "Investimento");
   const categoriasDespesa = dados.categorias.filter((c) => c.tipo === "Despesa");
   const idDe = <T extends { id: Id }>(lista: T[], v: string): Id | null => lista.find((x) => String(x.id) === v)?.id ?? null;
@@ -50,7 +56,7 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
   const previa =
     calc.ok && n > 0 && /^\d{4}-\d{2}-\d{2}$/.test(primeira)
       ? situacao(
-          { id: "x", tipo, nome, valor_bem: lerNumero(valorBem), entrada: emprestimo ? 0 : lerNumero(entrada), parcelas: n, valor_parcela: lerNumero(valorParcela), primeira_parcela: primeira, parcelas_pagas: nPagas },
+          { id: "x", tipo, nome, valor_bem: lerNumero(valorBem), entrada: semEntrada ? 0 : lerNumero(entrada), parcelas: n, valor_parcela: lerNumero(valorParcela), primeira_parcela: primeira, parcelas_pagas: nPagas },
           todayISO(),
         )
       : null;
@@ -67,14 +73,14 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
     if (!calc.ok) return setErro(calc.aviso ?? "Preencha o valor, as parcelas e o valor de cada parcela.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(primeira)) return setErro("Informe o vencimento da 1ª parcela.");
     if (n > 600) return setErro("Use até 600 parcelas.");
-    if (n < (divida?.parcelas_pagas ?? 0)) return setErro(`Já constam ${divida?.parcelas_pagas} parcelas pagas; o total não pode ser menor.`);
+    if (divida && Math.trunc(lerNumero(pagasEdit)) > n) return setErro("As parcelas pagas não podem passar do total.");
     setSalvando(true);
     try {
       const corpo = {
         tipo,
         nome: nome.trim(),
         valor_bem: lerNumero(valorBem),
-        entrada: emprestimo ? 0 : lerNumero(entrada),
+        entrada: semEntrada ? 0 : lerNumero(entrada),
         parcelas: n,
         valor_parcela: lerNumero(valorParcela),
         primeira_parcela: primeira,
@@ -84,7 +90,7 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
       };
       if (divida) await atualizarDivida(divida.id, corpo);
       else await criarDivida(corpo);
-      onSalvo(divida ? "Alterações salvas." : emprestimo ? "Empréstimo cadastrado." : "Financiamento cadastrado.");
+      onSalvo(divida ? "Alterações salvas." : emprestimo ? "Empréstimo cadastrado." : consorcio ? "Consórcio cadastrado." : "Financiamento cadastrado.");
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Não foi possível salvar.");
       setSalvando(false);
@@ -93,11 +99,12 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
 
   return (
     <form onSubmit={salvar} className="space-y-4 p-5" noValidate>
-      <div role="radiogroup" aria-label="Tipo" className="grid grid-cols-2 gap-1 rounded-xl bg-sunken p-1">
+      <div role="radiogroup" aria-label="Tipo" className="grid grid-cols-3 gap-1 rounded-xl bg-sunken p-1">
         {(
           [
             ["financiamento", "Financiamento de um bem"],
             ["emprestimo", "Empréstimo"],
+            ["consorcio", "Consórcio"],
           ] as const
         ).map(([id, rotulo]) => (
           <button
@@ -117,17 +124,17 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
         <label htmlFor="d-nome" className="label">
           Nome
         </label>
-        <input id="d-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder={emprestimo ? "Empréstimo do banco" : "Carro, casa, moto…"} className="field" maxLength={80} />
+        <input id="d-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder={emprestimo ? "Empréstimo do banco" : consorcio ? "Consórcio do imóvel" : "Carro, casa, moto…"} className="field" maxLength={80} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="d-valor" className="label">
-            {emprestimo ? "Valor emprestado (R$)" : "Valor do bem (R$)"}
+            {emprestimo ? "Valor emprestado (R$)" : consorcio ? "Valor da carta de crédito (R$)" : "Valor do bem (R$)"}
           </label>
           <input id="d-valor" inputMode="decimal" value={valorBem} onChange={(e) => setValorBem(e.target.value)} className="field num" placeholder="0,00" />
         </div>
-        {!emprestimo && (
+        {!semEntrada && (
           <div>
             <label htmlFor="d-entrada" className="label">
               Entrada (R$)
@@ -157,21 +164,21 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
           {calc.aviso && <p className="mb-2 text-sm font-medium text-neg">{calc.aviso}</p>}
           {calc.ok && (
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <dt className="text-muted">{emprestimo ? "Você recebeu" : "Financiado"}</dt>
+              <dt className="text-muted">{emprestimo ? "Você recebeu" : consorcio ? "Carta de crédito" : "Financiado"}</dt>
               <dd className="num text-right font-medium">{money(calc.financiado)}</dd>
               <dt className="text-muted">Soma das parcelas</dt>
               <dd className="num text-right font-medium">{money(calc.totalParcelas)}</dd>
-              <dt className="font-semibold">Juros que você paga</dt>
+              <dt className="font-semibold">{consorcio ? "Custo do consórcio (taxas)" : "Juros que você paga"}</dt>
               <dd className="num text-right font-display text-lg font-semibold text-neg">
                 {money(Math.max(0, calc.juros))} <span className="text-sm font-normal text-muted">({calc.jurosPct.toLocaleString("pt-BR")}%)</span>
               </dd>
-              {calc.taxaMensalPct > 0 && (
+              {!consorcio && calc.taxaMensalPct > 0 && (
                 <>
                   <dt className="text-muted">Taxa embutida</dt>
                   <dd className="num text-right font-medium">{calc.taxaMensalPct.toLocaleString("pt-BR")}% ao mês</dd>
                 </>
               )}
-              <dt className="font-semibold">Valor final{!emprestimo && lerNumero(entrada) > 0 ? " (com a entrada)" : ""}</dt>
+              <dt className="font-semibold">Valor final{!semEntrada && lerNumero(entrada) > 0 ? " (com a entrada)" : ""}</dt>
               <dd className="num text-right font-display text-lg font-semibold">{money(calc.totalPago)}</dd>
             </dl>
           )}
@@ -184,9 +191,23 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
         </label>
         <input id="d-primeira" type="date" value={primeira} onChange={(e) => setPrimeira(e.target.value)} className="field" />
       </div>
-      <p className="-mt-2 text-sm text-muted">
-        Já está em andamento? Coloque a data da 1ª parcela. As parcelas antigas você marca como pagas na hora de pagar, e elas não entram no extrato nem nos relatórios.
-      </p>
+      {divida ? (
+        <div>
+          <label htmlFor="d-pagas" className="label">
+            Parcelas já pagas
+          </label>
+          <input id="d-pagas" inputMode="numeric" value={pagasEdit} onChange={(e) => setPagasEdit(e.target.value.replace(/\D/g, ""))} className="field num" />
+          <p className="mt-1 text-sm text-muted">Corrija aqui se o app estiver contando parcelas pagas a mais ou a menos. Não cria lançamento.</p>
+        </div>
+      ) : vencidas > 0 ? (
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-sunken p-3 text-sm">
+          <input type="checkbox" checked={assumirPagas} onChange={(e) => setAssumirPagas(e.target.checked)} className="mt-0.5 size-4 accent-[rgb(var(--accent))]" />
+          <span>
+            <strong>Já venho pagando: as {vencidas} {vencidas === 1 ? "parcela que venceu" : "parcelas que venceram"} antes de hoje já foram pagas.</strong>
+            <span className="block text-muted">Passado é passado: elas não entram no extrato nem nos relatórios e não aparecem como atrasadas. Se alguma ficou sem pagar, desmarque.</span>
+          </span>
+        </label>
+      ) : null}
       {previa && previa.proxima && (
         <p className="rounded-xl bg-sunken p-3 text-sm">
           Próxima parcela: <strong>{previa.proxima.indice}/{previa.total}</strong>, vence em <strong>{dateBR(previa.proxima.data)}</strong>
@@ -230,7 +251,7 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
         </p>
       )}
       <button type="submit" disabled={salvando} className="btn btn-primary w-full py-3">
-        {salvando ? "Salvando…" : divida ? "Salvar alterações" : emprestimo ? "Cadastrar empréstimo" : "Cadastrar financiamento"}
+        {salvando ? "Salvando…" : divida ? "Salvar alterações" : emprestimo ? "Cadastrar empréstimo" : consorcio ? "Cadastrar consórcio" : "Cadastrar financiamento"}
       </button>
     </form>
   );

@@ -1,6 +1,6 @@
 // Face ID / biometria no navegador (WebAuthn). A parte do servidor está em /api/passkey/*.
 
-import { browserSupportsWebAuthn, platformAuthenticatorIsAvailable, startAuthentication, startRegistration } from "@simplewebauthn/browser";
+import { browserSupportsWebAuthn, startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { supabaseBrowser } from "./supabase/client";
 
 export interface Aparelho {
@@ -31,12 +31,38 @@ export function nomeDoAparelho(): string {
   return "Este aparelho";
 }
 
-/** True se este aparelho/navegador consegue usar Face ID, digital ou similar. */
+/**
+ * True se o navegador sabe usar chaves de acesso (Face ID, Windows Hello, digital, celular ou chave de segurança).
+ * Não exige biometria já configurada: o navegador mostra as opções que o aparelho tiver.
+ */
 export async function biometriaDisponivel(): Promise<boolean> {
   try {
-    return browserSupportsWebAuthn() && (await platformAuthenticatorIsAvailable());
+    return browserSupportsWebAuthn();
   } catch {
     return false;
+  }
+}
+
+/** Lembra que este aparelho já tem a chave cadastrada (para não insistir com o convite). */
+export function marcarAparelhoComBiometria() {
+  try {
+    localStorage.setItem("bio_neste_aparelho", "1");
+  } catch {
+    /* sem armazenamento local */
+  }
+}
+export function aparelhoTemBiometria(): boolean {
+  try {
+    return localStorage.getItem("bio_neste_aparelho") === "1" || localStorage.getItem("bio_dispensado") === "1";
+  } catch {
+    return true;
+  }
+}
+export function dispensarConviteBiometria() {
+  try {
+    localStorage.setItem("bio_dispensado", "1");
+  } catch {
+    /* sem armazenamento local */
   }
 }
 
@@ -61,6 +87,7 @@ export async function ativarBiometria(): Promise<void> {
     const optionsJSON = await chamar<Parameters<typeof startRegistration>[0]["optionsJSON"]>("/api/passkey/registrar", { etapa: "opcoes" });
     const resposta = await startRegistration({ optionsJSON });
     await chamar("/api/passkey/registrar", { etapa: "verificar", resposta, nome: nomeDoAparelho() });
+    marcarAparelhoComBiometria();
   } catch (e) {
     throw new Error(traduzir(e));
   }
@@ -74,6 +101,7 @@ export async function entrarComBiometria(): Promise<void> {
     const { token_hash } = await chamar<{ token_hash: string }>("/api/passkey/entrar", { etapa: "verificar", resposta });
     const { error } = await supabaseBrowser().auth.verifyOtp({ token_hash, type: "magiclink" });
     if (error) throw new Error("Não foi possível iniciar a sessão. Entre com a senha.");
+    marcarAparelhoComBiometria();
   } catch (e) {
     throw new Error(traduzir(e));
   }

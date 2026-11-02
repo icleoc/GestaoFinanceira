@@ -74,6 +74,12 @@ export interface DespesaFixa {
   nome: string;
   valor: number | string;
   dia_vencimento: number;
+  /** Valor muda todo mês (luz, água…): o valor cadastrado é só a base e é confirmado ao pagar. */
+  flutuante?: boolean;
+  /** Só conta a partir desta data (AAAA-MM-DD): vencimentos antes dela não são cobrados. */
+  inicio?: string | null;
+  /** Mês (AAAA-MM) em que foi marcada como paga sem lançamento. */
+  baixa_mes?: string | null;
 }
 
 export interface NovaTransacao {
@@ -105,7 +111,7 @@ export interface Pretensao {
   status: StatusPretensao;
 }
 
-export type TipoDivida = "financiamento" | "emprestimo";
+export type TipoDivida = "financiamento" | "emprestimo" | "consorcio";
 
 /** Financiamento de um bem ou empréstimo, com as parcelas calculadas a partir da data da primeira. */
 export interface Divida {

@@ -71,3 +71,59 @@ test("ics: texto com vírgula e ponto e vírgula é escapado", () => {
   assert.ok(ics.includes("Luz\\, água\; gás"));
 });
 console.log(`\n${total} testes de vencimentos passaram.`);
+
+// ---- ajustes de outubro: início, baixa, calendário do mês, saudação, parcelas passadas ----
+import { contasFixasPendentes } from "../lib/finance";
+import { vencimentosDoMes } from "../lib/vencimentos";
+import { parcelasVencidas } from "../lib/divida";
+import { primeiroNome, saudacao, periodoDe } from "../lib/saudacao";
+
+test("conta fixa cadastrada hoje não cobra o que venceu antes do cadastro", () => {
+  const f: DespesaFixa[] = [{ id: 1, nome: "Aluguel", valor: 1800, dia_vencimento: 5, inicio: "2026-10-30" }];
+  assert.equal(contasFixasPendentes(f, [], "2026-10-30").length, 0);
+  const sem: DespesaFixa[] = [{ id: 1, nome: "Aluguel", valor: 1800, dia_vencimento: 5 }];
+  assert.equal(contasFixasPendentes(sem, [], "2026-10-30").length, 1);
+});
+test("baixa do mês tira a conta das pendentes só neste mês", () => {
+  const f: DespesaFixa[] = [{ id: 1, nome: "Luz", valor: 100, dia_vencimento: 5, baixa_mes: "2026-10" }];
+  assert.equal(contasFixasPendentes(f, [], "2026-10-30").length, 0);
+  assert.equal(contasFixasPendentes(f, [], "2026-11-30").length, 1);
+});
+test("agenda também respeita início e baixa", () => {
+  const f: DespesaFixa[] = [{ id: 1, nome: "Luz", valor: 100, dia_vencimento: 5, inicio: "2026-10-30", baixa_mes: "2026-10" }];
+  const v = proximosVencimentos({ fixas: f, transacoes: [], dividas: [] }, "2026-10-30", 40);
+  assert.ok(!v.some((x) => x.data.startsWith("2026-10")));
+  assert.ok(v.some((x) => x.data === "2026-11-05"));
+});
+test("calendário do mês mostra pagas, atrasadas e a vencer", () => {
+  const f: DespesaFixa[] = [{ id: 1, nome: "Aluguel", valor: 1800, dia_vencimento: 5 }, { id: 2, nome: "Luz", valor: 100, dia_vencimento: 28 }];
+  const d: Divida = { id: "d1", tipo: "financiamento", nome: "Carro", valor_bem: 60000, entrada: 10000, parcelas: 48, valor_parcela: 1500, primeira_parcela: "2026-04-10", parcelas_pagas: 6 };
+  const m = vencimentosDoMes({ fixas: f, transacoes: [{ id: 1, data: "2026-10-06", descricao: "Aluguel", valor: -1800 } as unknown as Transacao], dividas: [d] }, "2026-10", "2026-10-20");
+  const por = (n: string) => m.find((x) => x.nome === n)!;
+  assert.equal(por("Aluguel").estado, "paga");
+  assert.equal(por("Carro").estado, "atrasada"); // 7ª parcela (out) ainda não paga
+  assert.equal(por("Carro").indice, 7);
+  assert.equal(por("Luz").estado, "aberta");
+});
+test("parcelas que venceram antes de hoje (financiamento de abril)", () => {
+  assert.equal(parcelasVencidas("2026-04-10", 48, "2026-10-30"), 7);
+  assert.equal(parcelasVencidas("2026-04-10", 48, "2026-10-10"), 6); // no dia, ainda não venceu
+  assert.equal(parcelasVencidas("2026-11-10", 48, "2026-10-30"), 0);
+  assert.equal(parcelasVencidas("2020-01-10", 12, "2026-10-30"), 12);
+});
+test("saudação muda com a hora e usa o nome", () => {
+  assert.equal(periodoDe(2), "madrugada");
+  assert.equal(periodoDe(9), "manha");
+  assert.equal(periodoDe(15), "tarde");
+  assert.equal(periodoDe(21), "noite");
+  const s = saudacao("Leonardo", new Date(2026, 9, 30, 2, 0));
+  assert.ok(s.includes("Leonardo"));
+  assert.ok(saudacao("Leonardo", new Date(2026, 9, 30, 9, 0)).startsWith("Bom dia") || saudacao("Leonardo", new Date(2026, 9, 30, 9, 0)).includes("dia"));
+  assert.ok(!saudacao("", new Date(2026, 9, 30, 9, 0)).includes("{n}"));
+});
+test("primeiro nome vem do nome real; sem nome, do e-mail", () => {
+  assert.equal(primeiroNome("leonardo rodrigues", "icleoc@gmail.com"), "Leonardo");
+  assert.equal(primeiroNome(null, "icleoc@gmail.com"), "Icleoc");
+  assert.equal(primeiroNome("  ", "maria.silva@x.com"), "Maria");
+});
+console.log(`\n${total} testes de vencimentos passaram (com ajustes).`);

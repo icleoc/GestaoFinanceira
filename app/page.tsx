@@ -51,12 +51,12 @@ const RECURSOS = [
     texto: "Bancos mais investimentos, menos a dívida dos cartões. Um número que não esconde a fatura.",
   },
   {
-    titulo: "Financiamentos e empréstimos",
+    titulo: "Financiamentos, empréstimos e consórcio",
     texto: "Informe o valor do bem, as parcelas e o valor delas: o app mostra quanto você paga de juros e o valor final. Dívida que já está andando entra com as parcelas pagas, sem mexer nos relatórios de hoje.",
   },
   {
     titulo: "Aviso de conta a vencer",
-    texto: "Alarme no calendário do celular 7, 4 e 1 dia antes e no dia do vencimento. Cada pessoa da família escolhe de quais contas quer ser avisada.",
+    texto: "Notificação no celular e alarme no calendário 7, 4 e 1 dia antes e no dia do vencimento. Cada pessoa da família escolhe de quais contas quer ser avisada.",
   },
   {
     titulo: "Edite qualquer lançamento",

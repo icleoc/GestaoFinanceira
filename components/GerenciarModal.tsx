@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { Conta, Dados, Id, TipoCategoria, TipoConta } from "@/lib/types";
+import type { Conta, Dados, DespesaFixa, Id, TipoCategoria, TipoConta } from "@/lib/types";
 import { num } from "@/lib/finance";
 import {
   atualizarConta,
   criarCategoria,
   criarConta,
+  atualizarFixa,
   criarFixa,
   excluirCategoria,
   excluirConta,
@@ -39,6 +40,9 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
   const [ocupado, setOcupado] = useState(false);
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [editando, setEditando] = useState<Id | null>(null);
+  const [editandoFixa, setEditandoFixa] = useState<Id | null>(null);
+  const [subConta, setSubConta] = useState<"contas" | "cartoes">("contas");
+  const contasDaAba = dados.contas.filter((c) => (subConta === "cartoes" ? c.tipo === "Crédito" : c.tipo !== "Crédito"));
 
   async function executar(acao: () => Promise<void>, mensagem: string) {
     setOcupado(true);
@@ -103,10 +107,41 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
 
         {aba === "contas" && (
           <>
-            <FormConta membros={dados.membros ?? []} ocupado={ocupado} rotulo="Adicionar conta" limpar onEnviar={(c) => executar(() => criarConta(c), "Conta criada.")} />
+            <div role="tablist" aria-label="Contas ou cartões" className="mb-4 inline-grid grid-cols-2 gap-1 rounded-xl bg-sunken p-1">
+              {(
+                [
+                  ["contas", "Contas"],
+                  ["cartoes", "Cartões"],
+                ] as const
+              ).map(([id, nome]) => (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={subConta === id}
+                  onClick={() => {
+                    setSubConta(id);
+                    setEditando(null);
+                    setConfirmando(null);
+                    setErro("");
+                  }}
+                  className={"rounded-lg px-5 py-1.5 text-sm font-medium " + (subConta === id ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink")}
+                >
+                  {nome}
+                </button>
+              ))}
+            </div>
+            <FormConta
+              key={subConta}
+              membros={dados.membros ?? []}
+              ocupado={ocupado}
+              rotulo={subConta === "cartoes" ? "Adicionar cartão" : "Adicionar conta"}
+              tipos={subConta === "cartoes" ? ["Crédito"] : ["Corrente", "Investimento"]}
+              limpar
+              onEnviar={(c) => executar(() => criarConta(c), subConta === "cartoes" ? "Cartão criado." : "Conta criada.")}
+            />
             <ul className="mt-5 divide-y divide-line rounded-xl border border-line">
-              {dados.contas.length === 0 && <li className="p-4 text-sm text-muted">Nenhuma conta ainda.</li>}
-              {dados.contas.map((c) =>
+              {contasDaAba.length === 0 && <li className="p-4 text-sm text-muted">{subConta === "cartoes" ? "Nenhum cartão ainda." : "Nenhuma conta ainda."}</li>}
+              {contasDaAba.map((c) =>
                 editando === c.id ? (
                   <li key={c.id} className="bg-sunken/50 p-4">
                     <FormConta
@@ -148,20 +183,46 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
 
         {aba === "fixas" && (
           <>
-            <NovaFixa ocupado={ocupado} onCriar={(f) => executar(() => criarFixa(f), "Conta fixa criada.")} />
+            <FormFixa ocupado={ocupado} rotulo="Adicionar conta fixa" limpar onEnviar={(f) => executar(() => criarFixa(f), "Conta fixa criada.")} />
             <ul className="mt-5 divide-y divide-line rounded-xl border border-line">
               {dados.fixas.length === 0 && <li className="p-4 text-sm text-muted">Nenhuma conta fixa ainda.</li>}
-              {dados.fixas.map((f) => (
-                <li key={f.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                  <div>
-                    <p className="font-medium">{f.nome}</p>
-                    <p className="num text-sm text-muted">
-                      {money(num(f.valor))} · vence dia {f.dia_vencimento}
-                    </p>
-                  </div>
-                  <Excluir chave={`f${f.id}`} acao={() => excluirFixa(f.id as Id)} mensagem="Conta fixa excluída." />
-                </li>
-              ))}
+              {dados.fixas.map((f) =>
+                editandoFixa === f.id ? (
+                  <li key={f.id} className="bg-sunken/50 p-4">
+                    <FormFixa
+                      ocupado={ocupado}
+                      fixa={f}
+                      rotulo="Salvar alterações"
+                      onCancelar={() => setEditandoFixa(null)}
+                      onEnviar={(v) =>
+                        executar(async () => {
+                          await atualizarFixa(f.id as Id, v);
+                          setEditandoFixa(null);
+                        }, "Conta fixa atualizada.")
+                      }
+                    />
+                  </li>
+                ) : (
+                  <li key={f.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                    <div>
+                      <p className="font-medium">
+                        {f.nome}
+                        {f.flutuante && <span className="ml-2 rounded-full bg-warn/15 px-2 py-0.5 text-xs font-semibold text-warn">valor variável</span>}
+                      </p>
+                      <p className="num text-sm text-muted">
+                        {f.flutuante ? "base " : ""}
+                        {money(num(f.valor))} · vence dia {f.dia_vencimento}
+                      </p>
+                    </div>
+                    <span className="flex items-center gap-2">
+                      <button type="button" className="btn btn-quiet px-3 py-1.5" onClick={() => { setEditandoFixa(f.id); setConfirmando(null); setErro(""); }}>
+                        Editar
+                      </button>
+                      <Excluir chave={`f${f.id}`} acao={() => excluirFixa(f.id as Id)} mensagem="Conta fixa excluída." />
+                    </span>
+                  </li>
+                ),
+              )}
             </ul>
           </>
         )}
@@ -204,10 +265,12 @@ function FormConta({
   conta,
   rotulo,
   limpar,
+  tipos,
   onCancelar,
   onEnviar,
 }: {
   ocupado: boolean;
+  tipos?: TipoConta[];
   membros: NonNullable<Dados["membros"]>;
   conta?: Conta;
   rotulo: string;
@@ -222,7 +285,7 @@ function FormConta({
   const [fechamento, setFechamento] = useState(conta?.dia_fechamento ? String(conta.dia_fechamento) : "");
   const [titular, setTitular] = useState(conta?.titular_id ?? "");
   const [nome, setNome] = useState(conta?.nome ?? "");
-  const [tipo, setTipo] = useState<TipoConta>(conta?.tipo ?? "Corrente");
+  const [tipo, setTipo] = useState<TipoConta>(conta?.tipo ?? tipos?.[0] ?? "Corrente");
   const [valor, setValor] = useState(conta ? texto(conta.tipo === "Crédito" ? conta.limite_total : conta.saldo_atual) : "");
   const [fatura, setFatura] = useState(conta?.tipo === "Crédito" ? texto(Math.abs(num(conta.saldo_atual))) : "");
   const [dia, setDia] = useState(conta?.dia_vencimento ? String(conta.dia_vencimento) : "");
@@ -275,9 +338,9 @@ function FormConta({
           Tipo
         </label>
         <select id={`${editar ? "e" : "n"}-tipo`} value={tipo} onChange={(e) => setTipo(e.target.value as TipoConta)} className="field">
-          <option value="Corrente">Conta corrente</option>
-          <option value="Crédito">Cartão de crédito</option>
-          <option value="Investimento">Investimento</option>
+          {(!tipos || tipos.includes("Corrente")) && <option value="Corrente">Conta corrente</option>}
+          {(!tipos || tipos.includes("Crédito")) && <option value="Crédito">Cartão de crédito</option>}
+          {(!tipos || tipos.includes("Investimento")) && <option value="Investimento">Investimento</option>}
         </select>
       </div>
       <div className={tipo === "Crédito" ? "col-span-1" : "col-span-2"}>
@@ -365,10 +428,29 @@ function FormConta({
   );
 }
 
-function NovaFixa({ ocupado, onCriar }: { ocupado: boolean; onCriar: (f: { nome: string; valor: number; dia: number }) => void }) {
-  const [nome, setNome] = useState("");
-  const [valor, setValor] = useState("");
-  const [dia, setDia] = useState("");
+/** Formulário de conta fixa: serve para criar e, com `fixa`, para editar. */
+function FormFixa({
+  ocupado,
+  fixa,
+  rotulo,
+  limpar,
+  onCancelar,
+  onEnviar,
+}: {
+  ocupado: boolean;
+  fixa?: DespesaFixa;
+  rotulo: string;
+  limpar?: boolean;
+  onCancelar?: () => void;
+  onEnviar: (f: Parameters<typeof criarFixa>[0]) => void;
+}) {
+  const editar = !!fixa;
+  const p = editar ? "xe" : "x";
+  const [nome, setNome] = useState(fixa?.nome ?? "");
+  const [valor, setValor] = useState(fixa ? String(num(fixa.valor)).replace(".", ",") : "");
+  const [dia, setDia] = useState(fixa ? String(fixa.dia_vencimento) : "");
+  const [flutuante, setFlutuante] = useState(!!fixa?.flutuante);
+  const [inicio, setInicio] = useState(fixa?.inicio ?? "");
   const [erro, setErro] = useState("");
 
   function enviar(e: React.FormEvent) {
@@ -379,41 +461,67 @@ function NovaFixa({ ocupado, onCriar }: { ocupado: boolean; onCriar: (f: { nome:
     if (!(v > 0)) return setErro("Informe um valor maior que zero.");
     if (!(d >= 1 && d <= 31)) return setErro("Informe o dia de vencimento (1 a 31).");
     setErro("");
-    onCriar({ nome: nome.trim(), valor: v, dia: d });
-    setNome("");
-    setValor("");
-    setDia("");
+    onEnviar({ nome: nome.trim(), valor: v, dia: d, flutuante, inicio: inicio || null });
+    if (limpar) {
+      setNome("");
+      setValor("");
+      setDia("");
+      setFlutuante(false);
+      setInicio("");
+    }
   }
 
   return (
     <form onSubmit={enviar} className="grid grid-cols-5 gap-3" noValidate>
       <div className="col-span-5 sm:col-span-3">
-        <label htmlFor="x-nome" className="label">
+        <label htmlFor={`${p}-nome`} className="label">
           Nome
         </label>
-        <input id="x-nome" value={nome} onChange={(e) => setNome(e.target.value)} className="field" placeholder="Ex.: Aluguel" />
-        <p className="mt-1 text-sm text-muted">Use o mesmo nome de uma categoria para preencher o valor ao lançar.</p>
+        <input id={`${p}-nome`} value={nome} onChange={(e) => setNome(e.target.value)} className="field" placeholder="Ex.: Aluguel" />
+        {!editar && <p className="mt-1 text-sm text-muted">Use o mesmo nome de uma categoria para preencher o valor ao lançar.</p>}
       </div>
       <div className="col-span-3 sm:col-span-1">
-        <label htmlFor="x-valor" className="label">
-          Valor (R$)
+        <label htmlFor={`${p}-valor`} className="label">
+          {flutuante ? "Valor base (R$)" : "Valor (R$)"}
         </label>
-        <input id="x-valor" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} className="field num" />
+        <input id={`${p}-valor`} inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} className="field num" />
       </div>
       <div className="col-span-2 sm:col-span-1">
-        <label htmlFor="x-dia" className="label">
+        <label htmlFor={`${p}-dia`} className="label">
           Dia
         </label>
-        <input id="x-dia" inputMode="numeric" value={dia} onChange={(e) => setDia(e.target.value)} className="field num" placeholder="5" />
+        <input id={`${p}-dia`} inputMode="numeric" value={dia} onChange={(e) => setDia(e.target.value)} className="field num" placeholder="5" />
       </div>
+      <label className="col-span-5 flex cursor-pointer items-start gap-2.5 text-sm">
+        <input type="checkbox" checked={flutuante} onChange={(e) => setFlutuante(e.target.checked)} className="mt-0.5 size-4 accent-[rgb(var(--accent))]" />
+        <span>
+          Valor variável (luz, água, cartão…)
+          <span className="block text-muted">O valor acima é só uma base. Ao pagar, o app pede para você confirmar o valor do mês.</span>
+        </span>
+      </label>
+      {editar && (
+        <div className="col-span-5 sm:col-span-2">
+          <label htmlFor={`${p}-inicio`} className="label">
+            Cobrar a partir de
+          </label>
+          <input id={`${p}-inicio`} type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} className="field" />
+        </div>
+      )}
       {erro && (
         <p role="alert" className="col-span-5 text-sm font-medium text-neg">
           {erro}
         </p>
       )}
-      <button type="submit" disabled={ocupado} className="btn btn-primary col-span-5">
-        Adicionar conta fixa
-      </button>
+      <div className="col-span-5 flex gap-3">
+        {onCancelar && (
+          <button type="button" onClick={onCancelar} disabled={ocupado} className="btn btn-quiet flex-1">
+            Cancelar
+          </button>
+        )}
+        <button type="submit" disabled={ocupado} className="btn btn-primary flex-1">
+          {rotulo}
+        </button>
+      </div>
     </form>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Aviso, Dados, Sessao } from "@/lib/types";
 import { DIAS_PADRAO, filtrarPorAviso, proximosVencimentos, quandoVence, type Vencimento } from "@/lib/vencimentos";
 import { salvarAviso, tokenAviso } from "@/lib/data";
+import { ativarPush, desativarPush, ehIphoneSemApp, enviarTeste, estadoPush, type EstadoPush } from "@/lib/push";
 import { dateBR, money } from "@/lib/format";
 import Modal from "./Modal";
 
@@ -217,6 +218,7 @@ function CartaoPessoa({ nome, eu, userId, atual, opcoes, onSalvo }: { nome: stri
       <button onClick={salvar} disabled={ocupado} className="btn btn-primary mt-4 px-4 py-2">
         {ocupado ? "Salvando…" : "Salvar"}
       </button>
+      {eu && atual?.ativo && <PushAparelho />}
       {eu && atual?.ativo && token && (
         <div className="mt-4 rounded-xl bg-sunken p-3 text-sm">
           <p className="font-semibold">Seu calendário de vencimentos</p>
@@ -239,6 +241,81 @@ function CartaoPessoa({ nome, eu, userId, atual, opcoes, onSalvo }: { nome: stri
             </button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Notificação no celular: o aparelho se inscreve e o servidor manda os avisos todo dia às 8h. */
+function PushAparelho() {
+  const [estado, setEstado] = useState<EstadoPush | "carregando">("carregando");
+  const [msg, setMsg] = useState("");
+  const [erro, setErro] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  useEffect(() => {
+    void estadoPush().then(setEstado);
+  }, []);
+
+  async function rodar(f: () => Promise<void>, ok: string) {
+    setErro("");
+    setMsg("");
+    setOcupado(true);
+    try {
+      await f();
+      setMsg(ok);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Algo deu errado.");
+    } finally {
+      setOcupado(false);
+      setEstado(await estadoPush());
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-xl bg-sunken p-3 text-sm">
+      <p className="font-semibold">Notificação no celular</p>
+      {estado === "carregando" ? null : estado === "indisponivel" ? (
+        <p className="mt-1 text-muted">
+          {ehIphoneSemApp()
+            ? "No iPhone, primeiro adicione o app à Tela de Início (botão Compartilhar, depois “Adicionar à Tela de Início”), abra por lá e volte aqui."
+            : "Este navegador não recebe notificações. Use o Chrome ou o Edge, ou o calendário abaixo."}
+        </p>
+      ) : estado === "sem-chave" ? (
+        <p className="mt-1 text-muted">O servidor ainda não foi configurado para notificações. Use o calendário abaixo enquanto isso.</p>
+      ) : estado === "negado" ? (
+        <p className="mt-1 text-muted">As notificações estão bloqueadas neste navegador. Libere nas configurações do site e volte aqui.</p>
+      ) : (
+        <>
+          <p className="mt-1 text-muted">
+            {estado === "ligado" ? "Ligada neste aparelho. Você recebe o aviso às 8h nos dias escolhidos acima." : "Receba o aviso direto na tela do celular, às 8h dos dias escolhidos acima."}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {estado === "desligado" ? (
+              <button disabled={ocupado} onClick={() => rodar(ativarPush, "Notificações ligadas neste aparelho.")} className="btn btn-gold px-3 py-1.5">
+                Ativar neste aparelho
+              </button>
+            ) : (
+              <>
+                <button disabled={ocupado} onClick={() => rodar(enviarTeste, "Teste enviado. Deve chegar em instantes.")} className="btn btn-quiet px-3 py-1.5">
+                  Enviar teste
+                </button>
+                <button disabled={ocupado} onClick={() => rodar(desativarPush, "Notificações desligadas neste aparelho.")} className="btn btn-quiet px-3 py-1.5 text-neg">
+                  Desligar
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
+      {msg && (
+        <p role="status" className="mt-2 font-medium text-accent">
+          {msg}
+        </p>
+      )}
+      {erro && (
+        <p role="alert" className="mt-2 font-medium text-neg">
+          {erro}
+        </p>
       )}
     </div>
   );

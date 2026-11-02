@@ -288,12 +288,41 @@ export async function excluirConta(id: Id): Promise<void> {
   if (error) throw falha("Não foi possível excluir a conta", error);
 }
 
-export async function criarFixa(f: { nome: string; valor: number; dia: number }): Promise<void> {
+export interface DadosFixa {
+  nome: string;
+  valor: number;
+  dia: number;
+  flutuante?: boolean;
+  /** AAAA-MM-DD: a partir de quando cobrar. Vazio = hoje. */
+  inicio?: string | null;
+}
+
+export async function criarFixa(f: DadosFixa): Promise<void> {
   if (demo.emDemo()) return demo.demoCriarFixa(f);
-  const { error } = await supabaseBrowser()
-    .from("despesas_fixas")
-    .insert({ nome: f.nome, valor: f.valor, dia_vencimento: f.dia, carteira_id: carteiraAtual });
+  const db = supabaseBrowser();
+  const base = { nome: f.nome, valor: f.valor, dia_vencimento: f.dia, carteira_id: carteiraAtual };
+  let { error } = await db.from("despesas_fixas").insert({ ...base, flutuante: !!f.flutuante, ...(f.inicio ? { inicio: f.inicio } : {}) });
+  // Banco ainda sem a migração 006: cria só com o essencial.
+  if (error && /flutuante|inicio|baixa_mes/.test(error.message)) ({ error } = await db.from("despesas_fixas").insert(base));
   if (error) throw falha("Não foi possível criar a conta fixa", error);
+}
+
+export async function atualizarFixa(id: Id, f: DadosFixa): Promise<void> {
+  if (demo.emDemo()) return demo.demoAtualizarFixa(id, f);
+  const db = supabaseBrowser();
+  const base = { nome: f.nome, valor: f.valor, dia_vencimento: f.dia };
+  let { error } = await db.from("despesas_fixas").update({ ...base, flutuante: !!f.flutuante, inicio: f.inicio || null }).eq("id", id);
+  if (error && /flutuante|inicio|baixa_mes/.test(error.message)) ({ error } = await db.from("despesas_fixas").update(base).eq("id", id));
+  if (error) throw falha("Não foi possível salvar a conta fixa", error);
+}
+
+/** Marca a conta fixa como paga neste mês sem criar lançamento (para o que já foi pago antes de usar o app). */
+export async function darBaixaFixa(id: Id, mes: string): Promise<void> {
+  if (demo.emDemo()) return demo.demoBaixaFixa(id, mes);
+  const { error } = await supabaseBrowser().from("despesas_fixas").update({ baixa_mes: mes }).eq("id", id);
+  if (error) {
+    throw /baixa_mes|schema cache/i.test(error.message) ? new Error("Esta função precisa da atualização 006 do banco.") : falha("Não foi possível dar baixa", error);
+  }
 }
 
 export async function excluirFixa(id: Id): Promise<void> {
@@ -400,6 +429,17 @@ export async function definirLimite(userId: string, valorMensal: number | null):
   }
 }
 
+/* ---------- perfil ---------- */
+
+/** Troca o nome de exibição da pessoa em todas as carteiras dela. */
+export async function atualizarMeuNome(nome: string): Promise<void> {
+  if (demo.emDemo()) return demo.demoNome(nome);
+  const { error } = await supabaseBrowser().rpc("atualizar_meu_nome", { p_nome: nome });
+  if (error) {
+    throw /atualizar_meu_nome|schema cache|does not exist/i.test(error.message) ? new Error("Esta função precisa da atualização 006 do banco.") : falha("Não foi possível salvar o nome", error);
+  }
+}
+
 /* ---------- avisos de vencimento ---------- */
 
 const SEM_005 = /relation .*avisos|does not exist|schema cache|function .*token_aviso/i;
@@ -407,9 +447,13 @@ const SEM_005 = /relation .*avisos|does not exist|schema cache|function .*token_
 /** Liga, desliga ou ajusta os avisos de uma pessoa: dias antes e quais contas (nulo = todas). */
 export async function salvarAviso(userId: string, a: Omit<Aviso, "user_id">): Promise<void> {
   if (demo.emDemo()) return demo.demoAviso(userId, a);
-  const { error } = await supabaseBrowser()
-    .from("avisos")
-    .upsert({ carteira_id: carteiraAtual, user_id: userId, ativo: a.ativo, dias: a.dias, contas: a.contas, atualizado_em: new Date().toISOString() }, { onConflict: "carteira_id,user_id" });
+  const db = supabaseBrowser();
+  const campos = { ativo: a.ativo, dias: a.dias, contas: a.contas, atualizado_em: new Date().toISOString() };
+  // Atualiza se já existe; senão cria. (Um "upsert" só funcionaria com permissão de troca em todas as colunas.)
+  let { data, error } = await db.from("avisos").update(campos).eq("carteira_id", carteiraAtual).eq("user_id", userId).select("id");
+  if (!error && (data?.length ?? 0) === 0) {
+    ({ error } = await db.from("avisos").insert({ carteira_id: carteiraAtual, user_id: userId, ...campos }));
+  }
   if (error) {
     throw SEM_005.test(error.message) ? new Error("Os avisos precisam da atualização 005 do banco.") : falha("Não foi possível salvar os avisos", error);
   }

@@ -2,8 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { gerarIcs } from "@/lib/calendario";
 import { filtrarPorAviso, proximosVencimentos, DIAS_PADRAO } from "@/lib/vencimentos";
-import { todayISO } from "@/lib/finance";
-import type { DespesaFixa, Divida, Transacao } from "@/lib/types";
+import { entradaDaCarteira, hojeEmBrasilia } from "@/lib/vencimentos-servidor";
 
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -23,20 +22,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
   const { data: membro } = await admin.from("membros").select("user_id").eq("carteira_id", aviso.carteira_id).eq("user_id", aviso.user_id).maybeSingle();
   if (!membro) return nao();
 
-  const hoje = todayISO(new Date(Date.now() - 3 * 3600 * 1000)); // horário de Brasília
-  const mes = hoje.slice(0, 7);
-  const [{ data: carteira }, { data: fixas }, { data: dividas }, { data: transacoes }] = await Promise.all([
+  const hoje = hojeEmBrasilia();
+  const [{ data: carteira }, entrada] = await Promise.all([
     admin.from("carteiras").select("nome").eq("id", aviso.carteira_id).maybeSingle(),
-    admin.from("despesas_fixas").select("*").eq("carteira_id", aviso.carteira_id),
-    admin.from("dividas").select("*").eq("carteira_id", aviso.carteira_id),
-    admin.from("transacoes").select("id, data, descricao, valor").eq("carteira_id", aviso.carteira_id).gte("data", `${mes}-01`).lt("valor", 0),
+    entradaDaCarteira(admin, aviso.carteira_id as string, hoje),
   ]);
 
-  const todos = proximosVencimentos(
-    { fixas: (fixas ?? []) as DespesaFixa[], dividas: (dividas ?? []) as Divida[], transacoes: (transacoes ?? []) as unknown as Transacao[] },
-    hoje,
-    365,
-  );
+  const todos = proximosVencimentos(entrada, hoje, 365);
   const itens = filtrarPorAviso(todos, { ativo: true, contas: aviso.contas as string[] | null });
   const ics = gerarIcs({
     calendario: `Vencimentos · ${carteira?.nome ?? "Jarvis Finance"}`,

@@ -94,6 +94,7 @@ export default function LoginPage() {
                 <button type="button" onClick={comBiometria} disabled={enviando} className="btn btn-gold w-full py-3.5 text-base">
                   Entrar com {rotuloBiometria()}
                 </button>
+                <p className="mt-2 text-center text-xs text-muted">Primeira vez neste aparelho? Entre com a senha e ative no menu da sua conta.</p>
                 <p className="my-5 text-center text-xs uppercase tracking-widest text-muted">ou com e-mail e senha</p>
               </>
             )}

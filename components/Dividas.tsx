@@ -150,7 +150,7 @@ function Cartao({ d, dados, hoje, podeGerenciar, podeLancar, onEditar, onMudou }
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-display truncate text-2xl">{d.nome}</h3>
-          <p className="text-sm text-muted">{d.tipo === "emprestimo" ? "Empréstimo" : "Financiamento"}</p>
+          <p className="text-sm text-muted">{d.tipo === "emprestimo" ? "Empréstimo" : d.tipo === "consorcio" ? "Consórcio" : "Financiamento"}</p>
         </div>
         <div className="text-right">
           <p className="num font-display text-2xl">
@@ -172,6 +172,14 @@ function Cartao({ d, dados, hoje, podeGerenciar, podeLancar, onEditar, onMudou }
             <strong>Próxima parcela: </strong>
           )}
           {s.proxima.indice}/{s.total} em {dateBR(s.proxima.data)}, <span className="num font-semibold">{money(num(d.valor_parcela))}</span>
+          {s.atrasadas > 0 && podeLancar && (
+            <button
+              onClick={() => { setLancar(false); setQtd(String(s.atrasadas)); setErro(""); setPagando(true); }}
+              className="mt-2 block text-sm font-semibold underline underline-offset-2"
+            >
+              Já estavam pagas? Marcar {s.atrasadas === 1 ? "como paga" : `as ${s.atrasadas} como pagas`}
+            </button>
+          )}
         </p>
       ) : (
         <p className="mt-4 rounded-xl bg-accent/10 p-3 text-sm font-semibold text-accent">Quitado. Todas as parcelas foram pagas.</p>
@@ -179,10 +187,10 @@ function Cartao({ d, dados, hoje, podeGerenciar, podeLancar, onEditar, onMudou }
 
       <div className="mt-3 divide-y divide-line">
         <Linha nome="Falta pagar" valor={money(s.faltaPagar)} />
-        {!s.quitada && <Linha nome="Para quitar hoje (sem juros futuros)" valor={money(s.saldoParaQuitar)} />}
-        <Linha nome={d.tipo === "emprestimo" ? "Valor emprestado" : "Valor do bem"} valor={money(num(d.valor_bem))} />
+        {!s.quitada && d.tipo !== "consorcio" && <Linha nome="Para quitar hoje (sem juros futuros)" valor={money(s.saldoParaQuitar)} />}
+        <Linha nome={d.tipo === "emprestimo" ? "Valor emprestado" : d.tipo === "consorcio" ? "Carta de crédito" : "Valor do bem"} valor={money(num(d.valor_bem))} />
         {num(d.entrada) > 0 && <Linha nome="Entrada" valor={money(num(d.entrada))} />}
-        <Linha nome="Juros do contrato" valor={money(Math.max(0, c.juros))} nota={c.taxaMensalPct > 0 ? `${c.jurosPct.toLocaleString("pt-BR")}% sobre o valor financiado · ${c.taxaMensalPct.toLocaleString("pt-BR")}% ao mês` : undefined} />
+        <Linha nome={d.tipo === "consorcio" ? "Custo do consórcio (taxas)" : "Juros do contrato"} valor={money(Math.max(0, c.juros))} nota={d.tipo !== "consorcio" && c.taxaMensalPct > 0 ? `${c.jurosPct.toLocaleString("pt-BR")}% sobre o valor financiado · ${c.taxaMensalPct.toLocaleString("pt-BR")}% ao mês` : undefined} />
         <Linha nome="Valor final" valor={money(c.totalPago)} destaque />
       </div>
 
