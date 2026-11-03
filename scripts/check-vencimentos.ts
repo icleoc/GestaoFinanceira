@@ -127,3 +127,16 @@ test("primeiro nome vem do nome real; sem nome, do e-mail", () => {
   assert.equal(primeiroNome("  ", "maria.silva@x.com"), "Maria");
 });
 console.log(`\n${total} testes de vencimentos passaram (com ajustes).`);
+
+import { acharNotaAnterior } from "../lib/nota";
+test("nota da mesma empresa reaproveita o lançamento anterior (por CNPJ ou por nome)", () => {
+  const ant = [
+    { descricao: "Padaria do Zé", categoria_id: 3, nota_dados: { empresa: "COMERCIO DE PAES LTDA", cnpj: "12.345.678/0001-90", data: null, total: 10, itens: [], categoria: null } },
+    { descricao: "Sem nota", categoria_id: 1, nota_dados: null },
+  ];
+  assert.equal(acharNotaAnterior(ant, { empresa: "Comércio de Pães Ltda.", cnpj: "12345678000190" })?.descricao, "Padaria do Zé");
+  assert.equal(acharNotaAnterior(ant, { empresa: "comercio de paes ltda", cnpj: null })?.descricao, "Padaria do Zé");
+  assert.equal(acharNotaAnterior(ant, { empresa: "Outra Loja", cnpj: "99999999000100" }), null);
+  assert.equal(acharNotaAnterior(ant, { empresa: null, cnpj: null }), null);
+});
+console.log(`\n${total} testes (com notas anteriores).`);

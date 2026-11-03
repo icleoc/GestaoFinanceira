@@ -101,3 +101,22 @@ export async function lerNotaNoServidor(foto: Blob, carteiraId: string, categori
   if (!r.ok || !json.dados) throw new Error(json.erro ?? "Não consegui ler a nota agora. Preencha à mão.");
   return json.dados;
 }
+
+const soDigitos = (t: string | null | undefined) => (t ?? "").replace(/\D/g, "");
+const chaveNome = (t: string | null | undefined) => (t ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+
+/**
+ * Procura um lançamento anterior feito por foto da mesma empresa (mesmo CNPJ, ou mesmo nome lido quando não há CNPJ).
+ * Serve para reaproveitar o nome e a categoria que a pessoa já escolheu, em vez de repetir a razão social.
+ */
+export function acharNotaAnterior<T extends { nota_dados?: DadosNota | null; descricao: string; categoria_id?: unknown }>(transacoes: T[], lido: Pick<DadosNota, "empresa" | "cnpj">): T | null {
+  const cnpj = soDigitos(lido.cnpj);
+  const nome = chaveNome(lido.empresa);
+  if (!cnpj && !nome) return null;
+  for (const t of transacoes) {
+    const d = t.nota_dados;
+    if (!d) continue;
+    if (cnpj.length >= 11 ? soDigitos(d.cnpj) === cnpj : nome !== "" && chaveNome(d.empresa) === nome) return t;
+  }
+  return null;
+}

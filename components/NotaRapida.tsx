@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Dados, DadosNota, Id } from "@/lib/types";
 import { montarLancamento, todayISO } from "@/lib/finance";
-import { carteiraDaSessao, criarCategoria, enviarNota, excluirTransacoes, inserirTransacoes, removerNotas } from "@/lib/data";
-import { camposLidos, lerNotaNoServidor } from "@/lib/nota";
+import { atualizarTransacoes, carteiraDaSessao, criarCategoria, enviarNota, excluirTransacoes, inserirTransacoes, mudarCategoria, removerNotas } from "@/lib/data";
+import { acharNotaAnterior, camposLidos, lerNotaNoServidor } from "@/lib/nota";
 import { sugerirCategoria } from "@/lib/categorizar";
 import { reduzirImagem } from "@/lib/imagem";
 import { dateBR, money } from "@/lib/format";
@@ -26,6 +26,11 @@ interface Resumo {
   ids: Id[];
   caminho: string | null;
   itens: DadosNota["itens"];
+  /** Razão social como saiu na nota (o nome do lançamento pode ser outro). */
+  lidoNaNota: string;
+  categoriaId: Id | null;
+  /** Reconhecida por uma nota anterior da mesma empresa. */
+  lembrada: boolean;
 }
 
 const CHAVE = "contaDasNotas";
@@ -86,12 +91,18 @@ export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; 
 
       // Categoria: primeiro as regras por tipo de estabelecimento (padaria, posto, farmácia...); se nenhuma
       // reconhecer, vale a sugestão da leitura. Se a carteira não tiver a categoria, ela é criada (quando a pessoa pode).
+      const anterior = acharNotaAnterior(dados.transacoes, lido);
       const regra = sugerirCategoria(lido.empresa, lido.itens, dados.categorias);
       let categoriaId: Id | null = null;
       let categoriaNome: string | null = null;
       let criada = false;
-      const nomeParaCriar = regra ? regra.criar : lido.categoria ? null : lido.categoriaNova ?? null;
-      if (regra?.existente) {
+      const catAnterior = anterior?.categoria_id != null ? dados.categorias.find((x) => x.tipo === "Despesa" && String(x.id) === String(anterior.categoria_id)) : undefined;
+      const nomeParaCriar = catAnterior ? null : regra ? regra.criar : lido.categoria ? null : lido.categoriaNova ?? null;
+      if (catAnterior) {
+        // A pessoa já escolheu a categoria desta empresa numa nota anterior: vale o que ela escolheu.
+        categoriaId = catAnterior.id;
+        categoriaNome = catAnterior.nome;
+      } else if (regra?.existente) {
         categoriaId = regra.existente.id;
         categoriaNome = regra.existente.nome;
       } else if (!regra && lido.categoria) {
@@ -113,7 +124,8 @@ export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; 
         categoriaNome = outros?.nome ?? null;
       }
 
-      const empresa = lido.empresa ?? "Compra";
+      const lidoNaNota = lido.empresa ?? "Compra";
+      const empresa = anterior?.descricao?.trim() || lidoNaNota;
       const data = lido.data ?? todayISO();
       const plano = montarLancamento({
         operacao: "despesa",
@@ -136,7 +148,7 @@ export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; 
       setFase({
         f: "pronto",
         url,
-        resumo: { empresa, total: lido.total, data, categoria: categoriaNome, categoriaCriada: criada, conta: conta.nome, ids, caminho, itens: lido.itens },
+        resumo: { empresa, total: lido.total, data, categoria: categoriaNome, categoriaCriada: criada, conta: conta.nome, ids, caminho, itens: lido.itens, lidoNaNota, categoriaId, lembrada: !!anterior },
       });
     } catch (e) {
       if (caminho) await removerNotas([caminho]).catch(() => undefined);
@@ -204,19 +216,13 @@ export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; 
         )}
 
         {fase.f === "pronto" && (
-          <div role="status" className="rounded-xl border border-accent/30 bg-accent/5 p-4">
-            <p className="font-semibold text-accent">Registrado</p>
-            <p className="mt-1 text-lg font-medium">{fase.resumo.empresa}</p>
-            <p className="num font-display text-2xl">{money(fase.resumo.total)}</p>
-            <p className="mt-1 text-sm text-muted">
-              {fase.resumo.categoria ? `${fase.resumo.categoria}${fase.resumo.categoriaCriada ? " (categoria nova)" : ""}` : "Sem categoria"} ·{" "}
-              {fase.resumo.conta} · {dateBR(fase.resumo.data)}
-            </p>
-            {fase.resumo.itens.length > 0 && <p className="mt-1 text-xs text-muted">{fase.resumo.itens.length} {fase.resumo.itens.length === 1 ? "item lido" : "itens lidos"} da nota</p>}
-            <button type="button" onClick={() => void desfazer(fase.resumo)} className="mt-3 text-sm font-semibold underline">
-              Desfazer
-            </button>
-          </div>
+          <Resultado
+            key={fase.resumo.ids.join(",")}
+            r={fase.resumo}
+            categorias={dados.categorias.filter((c) => c.tipo === "Despesa")}
+            onDesfazer={() => void desfazer(fase.resumo)}
+            onSalvo={(r) => setFase({ f: "pronto", url: fase.url, resumo: r })}
+          />
         )}
 
         <button type="button" onClick={() => entrada.current?.click()} disabled={ocupado || contas.length === 0} className="btn btn-gold w-full py-3.5 text-base">
@@ -225,5 +231,84 @@ export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; 
         <p className="text-center text-xs text-muted">O valor, a empresa e a categoria saem da própria nota. Confira o resultado e desfaça se algo estiver errado.</p>
       </div>
     </Modal>
+  );
+}
+
+/** Resultado da leitura: nome e categoria podem ser corrigidos na hora. O app lembra a escolha para a próxima nota da mesma empresa. */
+function Resultado({ r, categorias, onDesfazer, onSalvo }: { r: Resumo; categorias: Dados["categorias"]; onDesfazer: () => void; onSalvo: (r: Resumo) => void }) {
+  const [nome, setNome] = useState(r.empresa);
+  const [cat, setCat] = useState(r.categoriaId != null ? String(r.categoriaId) : "");
+  const [ocupado, setOcupado] = useState(false);
+  const [erro, setErro] = useState("");
+  const [salvo, setSalvo] = useState(false);
+  const mudou = nome.trim() !== r.empresa || cat !== (r.categoriaId != null ? String(r.categoriaId) : "");
+
+  async function salvar() {
+    setErro("");
+    const limpo = nome.trim();
+    if (!limpo) return setErro("Dê um nome ao lançamento.");
+    setOcupado(true);
+    try {
+      const nova = categorias.find((c) => String(c.id) === cat);
+      if (limpo !== r.empresa) await atualizarTransacoes(r.ids.map((id) => ({ id, data: r.data, descricao: limpo, valor: -r.total })));
+      if (cat !== (r.categoriaId != null ? String(r.categoriaId) : "")) await mudarCategoria(r.ids, nova?.id ?? null);
+      onSalvo({ ...r, empresa: limpo, categoria: nova?.nome ?? null, categoriaId: nova?.id ?? null, categoriaCriada: false });
+      setSalvo(true);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível salvar.");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  return (
+    <div role="status" className="rounded-xl border border-accent/30 bg-accent/5 p-4">
+      <p className="font-semibold text-accent">Registrado{r.lembrada ? " (empresa que você já usou antes)" : ""}</p>
+      <p className="num font-display text-2xl">{money(r.total)}</p>
+      <p className="text-sm text-muted">
+        {r.conta} · {dateBR(r.data)}
+        {r.itens.length > 0 ? ` · ${r.itens.length} ${r.itens.length === 1 ? "item lido" : "itens lidos"}` : ""}
+      </p>
+
+      <div className="mt-3 space-y-3">
+        <div>
+          <label htmlFor="nr-nome" className="label">
+            Nome do lançamento
+          </label>
+          <input id="nr-nome" value={nome} onChange={(e) => { setNome(e.target.value); setSalvo(false); }} className="field" maxLength={80} />
+          {r.lidoNaNota && r.lidoNaNota !== nome && <p className="mt-1 text-xs text-muted">Na nota: {r.lidoNaNota}</p>}
+        </div>
+        <div>
+          <label htmlFor="nr-cat" className="label">
+            Categoria
+          </label>
+          <select id="nr-cat" value={cat} onChange={(e) => { setCat(e.target.value); setSalvo(false); }} className="field">
+            <option value="">Sem categoria</option>
+            {categorias.map((c) => (
+              <option key={String(c.id)} value={String(c.id)}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+          {!cat && <p className="mt-1 text-xs font-medium text-warn">Não identifiquei a categoria. Escolha uma acima.</p>}
+          {r.categoriaCriada && cat === String(r.categoriaId) && <p className="mt-1 text-xs text-muted">Categoria nova criada a partir da nota.</p>}
+        </div>
+      </div>
+
+      {erro && (
+        <p role="alert" className="mt-2 text-sm font-medium text-neg">
+          {erro}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button type="button" onClick={() => void salvar()} disabled={ocupado || !mudou} className="btn btn-primary px-4 py-2">
+          {ocupado ? "Salvando…" : salvo ? "Salvo" : "Salvar alterações"}
+        </button>
+        <button type="button" onClick={onDesfazer} disabled={ocupado} className="text-sm font-semibold underline">
+          Desfazer lançamento
+        </button>
+      </div>
+      <p className="mt-2 text-xs text-muted">Na próxima nota desta empresa, o app usa este nome e esta categoria.</p>
+    </div>
   );
 }

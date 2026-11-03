@@ -399,6 +399,7 @@ function Edicao({
           Descrição
         </label>
         <input id="e-desc" value={descricao} onChange={(e) => setDescricao(e.target.value)} className="field" />
+        {t.nota_dados?.empresa && t.nota_dados.empresa !== descricao && <p className="mt-1 text-sm text-muted">Na nota: {t.nota_dados.empresa}</p>}
       </div>
       <div>
         <label htmlFor="e-valor" className="label">
