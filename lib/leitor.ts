@@ -71,6 +71,7 @@ const MODELOS_GEMINI = [process.env.GEMINI_MODEL, "gemini-3.6-flash", "gemini-3.
 async function lerComGemini(p: Pedido): Promise<Resultado> {
   const base = process.env.GEMINI_API_URL || "https://generativelanguage.googleapis.com/v1beta";
   let ultimo = "";
+  const falhasDeRede: string[] = [];
   for (const modelo of MODELOS_GEMINI) {
     let r: Response;
     try {
@@ -86,10 +87,15 @@ async function lerComGemini(p: Pedido): Promise<Resultado> {
             temperature: 0,
           },
         }),
-        signal: AbortSignal.timeout(25_000),
+        // Cada modelo tem 15 s; se um travar, o próximo ainda cabe dentro dos 60 s da rota.
+        signal: AbortSignal.timeout(15_000),
       });
-    } catch {
-      return { ok: false, msg: "Não consegui falar com o leitor de notas agora. Preencha à mão.", status: 502 };
+    } catch (e) {
+      const nome = (e as { name?: string })?.name ?? "erro";
+      const causa = ((e as { cause?: { code?: string } })?.cause?.code ?? "").toString();
+      console.error("nota: falha de rede com o Gemini", modelo, nome, causa, e instanceof Error ? e.message : "");
+      falhasDeRede.push(nome === "TimeoutError" || nome === "AbortError" ? "tempo esgotado" : causa || "sem conexão");
+      continue; // tenta o próximo modelo
     }
     if (r.status === 404) {
       ultimo = modelo; // modelo não existe para esta chave: tenta o próximo
@@ -98,10 +104,14 @@ async function lerComGemini(p: Pedido): Promise<Resultado> {
     if (!r.ok) {
       const corpo = (await r.json().catch(() => null)) as { error?: { message?: string; status?: string } } | null;
       const motivo = (corpo?.error?.message ?? "").slice(0, 160);
-      console.error("nota: Gemini respondeu", r.status, corpo?.error?.status, motivo);
+      console.error("nota: Gemini respondeu", modelo, r.status, corpo?.error?.status, motivo);
       if (r.status === 429) return { ok: false, msg: "O limite gratuito do leitor foi atingido por agora. Tente de novo em alguns minutos.", status: 503 };
       if (r.status === 400 && /api key/i.test(motivo)) return { ok: false, msg: "A chave do Gemini é inválida. Crie outra em aistudio.google.com/apikey e troque no Vercel.", status: 502 };
       if (r.status === 401 || r.status === 403) return { ok: false, msg: "A chave do Gemini foi recusada. Crie outra em aistudio.google.com/apikey e troque no Vercel.", status: 502 };
+      if (r.status >= 500) {
+        falhasDeRede.push(`erro ${r.status} do Google`);
+        continue;
+      }
       return { ok: false, msg: `O leitor recusou a nota (${r.status}). ${motivo}`.trim(), status: 502 };
     }
     const json = (await r.json().catch(() => null)) as { candidates?: { content?: { parts?: { text?: string }[] } }[] } | null;
@@ -111,6 +121,9 @@ async function lerComGemini(p: Pedido): Promise<Resultado> {
     } catch {
       return { ok: false, msg: "Não consegui ler esta nota. Tente outra foto com mais luz.", status: 422 };
     }
+  }
+  if (falhasDeRede.length > 0) {
+    return { ok: false, msg: `Não consegui falar com o leitor de notas agora (${[...new Set(falhasDeRede)].join(", ")}). Tente de novo; se persistir, preencha à mão.`, status: 502 };
   }
   return { ok: false, msg: `Nenhum modelo do Gemini está disponível para esta chave (testei ${ultimo || "vários"}). Defina GEMINI_MODEL no Vercel.`, status: 502 };
 }

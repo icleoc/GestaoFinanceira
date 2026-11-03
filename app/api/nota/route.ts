@@ -6,7 +6,7 @@ import { escolherProvedor, lerComIA } from "@/lib/leitor";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TIPOS = ["image/jpeg", "image/png", "image/webp"];
