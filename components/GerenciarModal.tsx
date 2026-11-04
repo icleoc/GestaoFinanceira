@@ -1,5 +1,6 @@
 "use client";
 
+import QuemRecebe from "./QuemRecebe";
 import { useState } from "react";
 import type { Conta, Dados, DespesaFixa, Id, TipoCategoria, TipoConta } from "@/lib/types";
 import { num } from "@/lib/finance";
@@ -183,7 +184,7 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
 
         {aba === "fixas" && (
           <>
-            <FormFixa ocupado={ocupado} rotulo="Adicionar conta fixa" limpar onEnviar={(f) => executar(() => criarFixa(f), "Conta fixa criada.")} />
+            <FormFixa ocupado={ocupado} membros={dados.membros ?? []} rotulo="Adicionar conta fixa" limpar onEnviar={(f) => executar(() => criarFixa(f), "Conta fixa criada.")} />
             <ul className="mt-5 divide-y divide-line rounded-xl border border-line">
               {dados.fixas.length === 0 && <li className="p-4 text-sm text-muted">Nenhuma conta fixa ainda.</li>}
               {dados.fixas.map((f) =>
@@ -191,6 +192,7 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
                   <li key={f.id} className="bg-sunken/50 p-4">
                     <FormFixa
                       ocupado={ocupado}
+                      membros={dados.membros ?? []}
                       fixa={f}
                       rotulo="Salvar alterações"
                       onCancelar={() => setEditandoFixa(null)}
@@ -431,6 +433,7 @@ function FormConta({
 /** Formulário de conta fixa: serve para criar e, com `fixa`, para editar. */
 function FormFixa({
   ocupado,
+  membros,
   fixa,
   rotulo,
   limpar,
@@ -438,6 +441,7 @@ function FormFixa({
   onEnviar,
 }: {
   ocupado: boolean;
+  membros: NonNullable<Dados["membros"]>;
   fixa?: DespesaFixa;
   rotulo: string;
   limpar?: boolean;
@@ -451,6 +455,7 @@ function FormFixa({
   const [dia, setDia] = useState(fixa ? String(fixa.dia_vencimento) : "");
   const [flutuante, setFlutuante] = useState(!!fixa?.flutuante);
   const [inicio, setInicio] = useState(fixa?.inicio ?? "");
+  const [avisar, setAvisar] = useState<string[] | null>(fixa?.avisar && fixa.avisar.length > 0 ? fixa.avisar : null);
   const [erro, setErro] = useState("");
 
   function enviar(e: React.FormEvent) {
@@ -461,13 +466,14 @@ function FormFixa({
     if (!(v > 0)) return setErro("Informe um valor maior que zero.");
     if (!(d >= 1 && d <= 31)) return setErro("Informe o dia de vencimento (1 a 31).");
     setErro("");
-    onEnviar({ nome: nome.trim(), valor: v, dia: d, flutuante, inicio: inicio || null });
+    onEnviar({ nome: nome.trim(), valor: v, dia: d, flutuante, inicio: inicio || null, avisar });
     if (limpar) {
       setNome("");
       setValor("");
       setDia("");
       setFlutuante(false);
       setInicio("");
+      setAvisar(null);
     }
   }
 
@@ -507,6 +513,9 @@ function FormFixa({
           <input id={`${p}-inicio`} type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} className="field" />
         </div>
       )}
+      <div className="col-span-5 empty:hidden">
+        <QuemRecebe membros={membros} valor={avisar} onChange={setAvisar} idBase={`${p}-av`} />
+      </div>
       {erro && (
         <p role="alert" className="col-span-5 text-sm font-medium text-neg">
           {erro}

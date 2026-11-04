@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Categoria, DadosNota, Dados, Id } from "@/lib/types";
 import CategoriaNova, { NOVA_CATEGORIA } from "./CategoriaNova";
+import type { PrefillParcelado } from "./DividaForm";
 import { montarLancamento, num, round2, sameId, todayISO, type Operacao } from "@/lib/finance";
 import { carteiraDaSessao, enviarNota, inserirTransacoes, removerNotas } from "@/lib/data";
 import { camposLidos, lerNotaNoServidor } from "@/lib/nota";
@@ -33,7 +34,7 @@ interface Props {
   prefill: Prefill | null;
   onSalvo: (mensagem: string) => void;
   /** Abre o cadastro de financiamento ou empréstimo (só para quem pode gerenciar). */
-  onDivida?: () => void;
+  onDivida?: (parcelado?: PrefillParcelado) => void;
   /** Avisa que uma categoria foi criada aqui (para recarregar os dados). */
   onCategoria?: () => void;
   /** Dentro de uma janela: sem caixa e sem título próprios. */
@@ -265,6 +266,20 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
   const liquido = estrangeira ? converter(digitado, taxa) : digitado;
   const cobrado = comTaxa ? lerValor(total) : liquido;
 
+  /** Compra parcelada em Pix ou boleto: vira um parcelamento com vencimentos e alertas. */
+  function parcelarSemCartao(forma: "pix" | "boleto") {
+    setErro("");
+    if (!descricao.trim()) return setErro("Informe a descrição da compra (por exemplo, Honorários do advogado).");
+    if (!(liquido > 0)) return setErro("Informe o valor total da compra.");
+    onDivida?.({
+      nome: descricao.trim(),
+      valor: liquido,
+      forma,
+      categoriaId: categoriasDoTipo.find((c) => String(c.id) === categoriaId)?.id ?? null,
+      contaId: contas.find((c) => String(c.id) === origemId && c.tipo !== "Crédito")?.id ?? null,
+    });
+  }
+
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setErro("");
@@ -362,7 +377,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
           </button>
         ))}
         {onDivida && (
-          <button type="button" onClick={onDivida} className="col-span-2 rounded-lg px-2 py-2 text-sm font-medium text-muted transition-colors hover:text-ink">
+          <button type="button" onClick={() => onDivida()} className="col-span-2 rounded-lg px-2 py-2 text-sm font-medium text-muted transition-colors hover:text-ink">
             Financiamento ou empréstimo
           </button>
         )}
@@ -578,6 +593,21 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
                 {parcelas}x de {money(round2(cobrado / parcelas))}
               </p>
             )}
+          </div>
+        )}
+
+        {operacao === "despesa" && onDivida && (
+          <div className="rounded-xl border border-dashed border-line p-3">
+            <p className="text-sm font-medium">Vai pagar em parcelas sem cartão?</p>
+            <p className="mt-0.5 text-sm text-muted">Pix parcelado ou boleto: você escolhe quantas parcelas e o app avisa cada vencimento.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => parcelarSemCartao("pix")} className="btn btn-quiet px-3 py-1.5">
+                Parcelar no Pix
+              </button>
+              <button type="button" onClick={() => parcelarSemCartao("boleto")} className="btn btn-quiet px-3 py-1.5">
+                Parcelar no boleto
+              </button>
+            </div>
           </div>
         )}
 

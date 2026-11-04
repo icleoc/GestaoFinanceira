@@ -12,6 +12,8 @@ import NotaViewer from "./NotaViewer";
 interface Props {
   dados: Dados;
   mesInicial: string;
+  /** Abre já filtrado nesta conta. */
+  contaInicial?: string;
   /** Pode corrigir e apagar lançamentos. */
   podeEditar: boolean;
   onClose: () => void;
@@ -20,9 +22,9 @@ interface Props {
 
 const POR_PAGINA = 100;
 
-export default function ExtratoModal({ dados, mesInicial, podeEditar, onClose, onMudou }: Props) {
+export default function ExtratoModal({ dados, mesInicial, contaInicial, podeEditar, onClose, onMudou }: Props) {
   const { contas, categorias, transacoes } = dados;
-  const [conta, setConta] = useState("todas");
+  const [conta, setConta] = useState(contaInicial ?? "todas");
   const [tipo, setTipo] = useState<"todos" | "despesa" | "receita">("todos");
   const [mes, setMes] = useState(mesInicial);
   const [busca, setBusca] = useState("");

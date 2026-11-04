@@ -17,6 +17,8 @@ export interface Vencimento {
   /** Para parcelas: número da parcela e total. */
   indice?: number;
   total?: number;
+  /** Quem recebe o alerta desta conta (nulo = todas as pessoas). */
+  avisar?: string[] | null;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -59,7 +61,7 @@ export function proximosVencimentos(dados: Entrada, hoje: string, janela = 45): 
       if (k === 0 && paga) continue;
       if (f.inicio && data < f.inicio) continue;
       if (data > limite) break;
-      saida.push({ chave: chaveFixa(f), origem: "fixa", nome, valor: num(f.valor), data, dias: diasEntre(hoje, data) });
+      saida.push({ chave: chaveFixa(f), origem: "fixa", nome, valor: num(f.valor), data, dias: diasEntre(hoje, data), avisar: f.avisar ?? null });
     }
   }
 
@@ -70,18 +72,25 @@ export function proximosVencimentos(dados: Entrada, hoje: string, janela = 45): 
       const data = vencimento(d.primeira_parcela, k);
       if (k > s.proxima.indice && data < hoje) continue; // atrasadas além da primeira ficam só na área Dívidas
       if (k > s.proxima.indice && data > limite) break;
-      saida.push({ chave: chaveDivida(d), origem: "divida", nome: d.nome, valor: num(d.valor_parcela), data, dias: diasEntre(hoje, data), indice: k, total: s.total });
+      saida.push({ chave: chaveDivida(d), origem: "divida", nome: d.nome, valor: num(d.valor_parcela), data, dias: diasEntre(hoje, data), indice: k, total: s.total, avisar: d.avisar ?? null });
     }
   }
 
   return saida.sort((a, b) => a.data.localeCompare(b.data) || a.nome.localeCompare(b.nome));
 }
 
-/** O que cada pessoa quer receber: nada se o aviso estiver desligado; todas as contas se nenhuma foi escolhida. */
-export function filtrarPorAviso(v: Vencimento[], aviso: Pick<Aviso, "ativo" | "contas"> | null | undefined): Vencimento[] {
+/**
+ * O que cada pessoa recebe: nada se o aviso estiver desligado. Cada conta pode limitar quem é avisado
+ * (campo avisar) e a pessoa ainda pode restringir a algumas contas (aviso.contas).
+ */
+export function filtrarPorAviso(v: Vencimento[], aviso: Pick<Aviso, "ativo" | "contas"> | null | undefined, userId?: string): Vencimento[] {
   if (!aviso || !aviso.ativo) return [];
   const escolhidas = aviso.contas;
-  return escolhidas ? v.filter((x) => escolhidas.includes(x.chave)) : v;
+  return v.filter((x) => {
+    if (escolhidas && !escolhidas.includes(x.chave)) return false;
+    if (userId && x.avisar && x.avisar.length > 0 && !x.avisar.includes(userId)) return false;
+    return true;
+  });
 }
 
 /** Quanto falta, em palavras. */
@@ -113,7 +122,7 @@ export function vencimentosDoMes(dados: Entrada, ym: string, hoje: string): Venc
     if (f.inicio && data < f.inicio) continue;
     const baixa = nome.toLowerCase();
     const paga = f.baixa_mes === ym || dados.transacoes.some((t) => num(t.valor) < 0 && t.data.startsWith(ym) && t.descricao.toLowerCase().includes(baixa));
-    saida.push({ chave: chaveFixa(f), origem: "fixa", nome, valor: num(f.valor), data, dias: diasEntre(hoje, data), estado: estadoDe(paga, data) });
+    saida.push({ chave: chaveFixa(f), origem: "fixa", nome, valor: num(f.valor), data, dias: diasEntre(hoje, data), estado: estadoDe(paga, data), avisar: f.avisar ?? null });
   }
 
   for (const d of dados.dividas ?? []) {
@@ -121,7 +130,7 @@ export function vencimentosDoMes(dados: Entrada, ym: string, hoje: string): Venc
       const data = vencimento(d.primeira_parcela, k);
       if (data.slice(0, 7) < ym) continue;
       if (data.slice(0, 7) > ym) break;
-      saida.push({ chave: chaveDivida(d), origem: "divida", nome: d.nome, valor: num(d.valor_parcela), data, dias: diasEntre(hoje, data), indice: k, total: d.parcelas, estado: estadoDe(k <= d.parcelas_pagas, data) });
+      saida.push({ chave: chaveDivida(d), origem: "divida", nome: d.nome, valor: num(d.valor_parcela), data, dias: diasEntre(hoje, data), indice: k, total: d.parcelas, estado: estadoDe(k <= d.parcelas_pagas, data), avisar: d.avisar ?? null });
     }
   }
   return saida.sort((a, b) => a.data.localeCompare(b.data) || a.nome.localeCompare(b.nome));

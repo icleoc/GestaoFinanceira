@@ -8,6 +8,17 @@ import Logo from "@/components/Logo";
 import Guilloche from "@/components/Guilloche";
 import { biometriaDisponivel, entrarComBiometria, rotuloBiometria } from "@/lib/passkey";
 
+/** Depois do login, volta para o convite que a pessoa estava aceitando. */
+function destino(): string {
+  try {
+    const next = new URLSearchParams(window.location.search).get("next") ?? "";
+    if (/^\/convite\/[0-9a-f-]{36}$/i.test(next)) return next;
+  } catch {
+    /* sem endereço: segue para o painel */
+  }
+  return "/app";
+}
+
 function traduzErro(msg: string): string {
   if (/invalid login credentials/i.test(msg)) return "E-mail ou senha incorretos.";
   if (/email not confirmed/i.test(msg)) return "Confirme o e-mail pelo link que o Supabase enviou.";
@@ -53,7 +64,7 @@ export default function LoginPage() {
       setEnviando(false);
       return;
     }
-    router.replace("/app");
+    router.replace(destino());
     router.refresh();
   }
 

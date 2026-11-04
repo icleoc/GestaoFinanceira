@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Dados, Divida, Sessao } from "@/lib/types";
+import type { Conta, Dados, Divida, Sessao } from "@/lib/types";
 import {
   calcularKpis,
   contasFixasPendentes,
@@ -27,6 +27,7 @@ import ContasFixasPendentes from "./ContasFixas";
 import Vencimentos from "./Vencimentos";
 import LancamentoForm, { type Prefill } from "./LancamentoForm";
 import ExtratoModal from "./ExtratoModal";
+import ContaModal from "./ContaModal";
 import GerenciarModal from "./GerenciarModal";
 import Assistente from "./Assistente";
 import Evolucao from "./Evolucao";
@@ -41,7 +42,7 @@ import { primeiroNome } from "@/lib/saudacao";
 import { proximosVencimentos } from "@/lib/vencimentos";
 import ResumoVoz from "./ResumoVoz";
 import Dividas, { ResumoDividas } from "./Dividas";
-import DividaForm from "./DividaForm";
+import DividaForm, { type PrefillParcelado } from "./DividaForm";
 import { montarResumoFalado } from "@/lib/voz";
 import { situacaoDaPessoa } from "@/lib/limites";
 import NotaRapida from "./NotaRapida";
@@ -66,6 +67,9 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
   }, [demo]);
   const [prefill, setPrefill] = useState<Prefill | null>(null);
   const [dividaEditando, setDividaEditando] = useState<Divida | undefined>(undefined);
+  const [contaAberta, setContaAberta] = useState<Conta | null>(null);
+  const [extratoConta, setExtratoConta] = useState<{ conta: string; mes: string } | null>(null);
+  const [dividaPrefill, setDividaPrefill] = useState<PrefillParcelado | null>(null);
   const [aviso, setAviso] = useState("");
 
   const recarregar = useCallback(async () => {
@@ -148,7 +152,10 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const podePlanejar = pode(permissoes, "planejar");
   const podeEquipe = pode(permissoes, "equipe");
 
-  const fechar = useCallback(() => setJanela(null), []);
+  const fechar = useCallback(() => {
+    setJanela(null);
+    setExtratoConta(null);
+  }, []);
 
   function lancarFixa(p: ContaFixaPendente) {
     setPrefill({ chave: Date.now(), nome: p.fixa.nome, valor: Number(p.fixa.valor) || 0, flutuante: !!p.fixa.flutuante });
@@ -394,10 +401,12 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
             podeLancar={podeLancar}
             onNova={() => {
               setDividaEditando(undefined);
+              setDividaPrefill(null);
               setJanela("divida");
             }}
             onEditar={(d) => {
               setDividaEditando(d);
+              setDividaPrefill(null);
               setJanela("divida");
             }}
             onMudou={depoisDeMudar}
@@ -445,8 +454,8 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
 
             <div className="grid gap-6 lg:grid-cols-12">
               <div className="space-y-6 lg:col-span-7">
-                <Bancos contas={dados.contas} />
-                <Cartoes contas={dados.contas} membros={dados.membros} />
+                <Bancos contas={dados.contas} onAbrir={setContaAberta} />
+                <Cartoes contas={dados.contas} membros={dados.membros} onAbrir={setContaAberta} />
                 <Investimentos contas={dados.contas} />
               </div>
               <div className="space-y-6 lg:col-span-5">
@@ -494,8 +503,9 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
             onCategoria={() => void recarregar()}
             onDivida={
               podeGerenciar
-                ? () => {
+                ? (p) => {
                     setDividaEditando(undefined);
+                    setDividaPrefill(p ?? null);
                     setJanela("divida");
                   }
                 : undefined
@@ -505,17 +515,30 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
         </Modal>
       )}
       {janela === "nota" && dados && <NotaRapida dados={dados} onClose={fechar} onMudou={depoisDeMudar} />}
+      {contaAberta && dados && janela === null && (
+        <ContaModal
+          dados={dados}
+          conta={dados.contas.find((c) => String(c.id) === String(contaAberta.id)) ?? contaAberta}
+          onClose={() => setContaAberta(null)}
+          onExtrato={(conta, m) => {
+            setContaAberta(null);
+            setExtratoConta({ conta, mes: m });
+            setJanela("extrato");
+          }}
+        />
+      )}
       {janela === "extrato" && dados && (
-        <ExtratoModal dados={dados} mesInicial={mes} podeEditar={podeEditar} onClose={fechar} onMudou={depoisDeMudar} />
+        <ExtratoModal dados={dados} mesInicial={extratoConta?.mes ?? mes} contaInicial={extratoConta?.conta} podeEditar={podeEditar} onClose={fechar} onMudou={depoisDeMudar} />
       )}
       {janela === "gerenciar" && dados && podeGerenciar && (
         <GerenciarModal dados={dados} onClose={fechar} onMudou={depoisDeMudar} />
       )}
       {janela === "divida" && dados && (
-        <Modal titulo={dividaEditando ? "Editar financiamento ou empréstimo" : "Novo financiamento ou empréstimo"} onClose={fechar} largura="md">
+        <Modal titulo={dividaEditando ? "Editar parcelamento" : dividaPrefill ? "Compra parcelada" : "Novo financiamento ou empréstimo"} onClose={fechar} largura="md">
           <DividaForm
             dados={dados}
             divida={dividaEditando}
+            prefill={dividaPrefill}
             onSalvo={(m) => {
               setAba("dividas");
               depoisDeMudar(m);

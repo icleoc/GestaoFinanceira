@@ -261,6 +261,10 @@ export function demoLerNota(hoje: string): DadosNota {
   return { ...n, data: hoje, itens: n.itens.map((i) => ({ ...i })) };
 }
 
+export function demoAvisar(origem: "fixa" | "divida", id: string, avisar: string[] | null) {
+  if (origem === "divida") store!.dividas = (store!.dividas ?? []).map((x) => (String(x.id) === id ? { ...x, avisar } : x));
+  else store!.fixas = store!.fixas.map((x) => (String(x.id) === id ? { ...x, avisar } : x));
+}
 export function demoCriarDivida(d: Omit<Divida, "id">) {
   store!.dividas = [...(store!.dividas ?? []), { ...d, id: `dv${seq++}` }];
 }

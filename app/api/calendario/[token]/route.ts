@@ -29,7 +29,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ token: str
   ]);
 
   const todos = proximosVencimentos(entrada, hoje, 365);
-  const itens = filtrarPorAviso(todos, { ativo: true, contas: aviso.contas as string[] | null });
+  const itens = filtrarPorAviso(todos, { ativo: true, contas: aviso.contas as string[] | null }, aviso.user_id as string);
   const ics = gerarIcs({
     calendario: `Vencimentos · ${carteira?.nome ?? "Jarvis Finance"}`,
     itens,

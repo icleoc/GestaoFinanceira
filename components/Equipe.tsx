@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Dados, Membro, Permissao, Sessao } from "@/lib/types";
-import { convidarPessoa, definirLimite, listarMembros, mudarPermissoes, removerPessoa } from "@/lib/data";
+import type { Convite } from "@/lib/data";
+import { cancelarConvite, convidarPessoa, criarConvite, definirLimite, listarConvites, listarMembros, mudarPermissoes, removerPessoa } from "@/lib/data";
 import { gastoPorPessoa, situacaoDoLimite } from "@/lib/limites";
 import { monthOf, num, todayISO } from "@/lib/finance";
 import { money } from "@/lib/format";
@@ -177,7 +178,24 @@ export default function Equipe({
     carregar();
   }, [carregar]);
 
-  // convite
+  const carregarConvites = useCallback(async () => {
+    try {
+      setConvites(await listarConvites());
+    } catch {
+      setConvites([]);
+    }
+  }, []);
+  useEffect(() => {
+    void carregarConvites();
+  }, [carregarConvites]);
+
+  // convite por link
+  const [modo, setModo] = useState<"link" | "direto">("link");
+  const [convites, setConvites] = useState<Convite[]>([]);
+  const [linkNovo, setLinkNovo] = useState<{ url: string; nome: string } | null>(null);
+  const [copiadoLink, setCopiadoLink] = useState("");
+
+  // criar acesso direto
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -212,6 +230,51 @@ export default function Equipe({
       setOcupado(false);
     }
   }
+
+  const urlDoConvite = (token: string) => `${typeof window === "undefined" ? "" : window.location.origin}/convite/${token}`;
+
+  async function gerarConvite(e: React.FormEvent) {
+    e.preventDefault();
+    setErro("");
+    setLinkNovo(null);
+    setOcupado(true);
+    try {
+      const { token } = await criarConvite({ nome, email, permissoes: perms });
+      setLinkNovo({ url: urlDoConvite(token), nome: nome.trim() });
+      setNome("");
+      setEmail("");
+      onAviso("Convite criado.");
+      await carregarConvites();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível criar o convite.");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function cancelar(token: string) {
+    setErro("");
+    try {
+      await cancelarConvite(token);
+      onAviso("Convite cancelado.");
+      await carregarConvites();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível cancelar.");
+    }
+  }
+
+  async function copiarLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiadoLink(url);
+      setTimeout(() => setCopiadoLink(""), 2000);
+    } catch {
+      /* sem permissão para copiar: a pessoa copia na mão */
+    }
+  }
+
+  const textoConvite = (url: string, quem: string) =>
+    `${quem ? `Oi, ${quem}! ` : ""}Te convidei para a nossa carteira no Jarvis Finance. Abra o link, escolha seu nome e senha e já entra: ${url}`;
 
   async function salvarEdicao(userId: string) {
     setErro("");
@@ -349,7 +412,93 @@ export default function Equipe({
           <h3 id="titulo-convite" className="font-display text-lg font-semibold">
             Adicionar pessoa
           </h3>
-          <p className="mt-1 text-sm text-muted">Crie o acesso de um familiar ou colaborador e escolha o que ele pode fazer.</p>
+          <div role="radiogroup" aria-label="Como adicionar" className="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-sunken p-1">
+            {(
+              [
+                ["link", "Convidar por link"],
+                ["direto", "Criar acesso agora"],
+              ] as const
+            ).map(([id, rotulo]) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={modo === id}
+                onClick={() => setModo(id)}
+                className={"rounded-lg px-2 py-2 text-sm font-medium transition-colors " + (modo === id ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink")}
+              >
+                {rotulo}
+              </button>
+            ))}
+          </div>
+          {modo === "link" ? (
+            <>
+              <p className="mt-3 text-sm text-muted">Escolha o acesso e gere um link. A pessoa abre, preenche o próprio nome e senha e já entra com o acesso que você definiu.</p>
+              <form onSubmit={gerarConvite} className="mt-4 space-y-4" noValidate>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="cv-nome" className="label">
+                      Nome (opcional)
+                    </label>
+                    <input id="cv-nome" value={nome} onChange={(e) => setNome(e.target.value)} className="field" />
+                  </div>
+                  <div>
+                    <label htmlFor="cv-email" className="label">
+                      E-mail (opcional)
+                    </label>
+                    <input id="cv-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="field" autoComplete="off" />
+                  </div>
+                </div>
+                <p className="-mt-2 text-xs text-muted">Se você informar o e-mail, só ele consegue usar o convite. O link vale 7 dias e uma vez só.</p>
+                <EscolhaDePermissoes valor={perms} onChange={setPerms} permitidas={permitidas} idBase="conv" />
+                <button type="submit" disabled={ocupado} className="btn btn-primary w-full py-3">
+                  {ocupado ? "Gerando…" : "Gerar link de convite"}
+                </button>
+              </form>
+              {linkNovo && (
+                <div className="pop-in mt-4 rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm" role="status">
+                  <p className="font-semibold">Link pronto. Envie para a pessoa:</p>
+                  <p className="num mt-2 break-all text-xs">{linkNovo.url}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button onClick={() => void copiarLink(linkNovo.url)} className="btn btn-quiet px-3 py-1.5">
+                      {copiadoLink === linkNovo.url ? "Copiado" : "Copiar link"}
+                    </button>
+                    <a href={`https://wa.me/?text=${encodeURIComponent(textoConvite(linkNovo.url, linkNovo.nome))}`} target="_blank" rel="noreferrer" className="btn btn-quiet px-3 py-1.5">
+                      WhatsApp
+                    </a>
+                    <a href={`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent("Convite para o Jarvis Finance")}&body=${encodeURIComponent(textoConvite(linkNovo.url, linkNovo.nome))}`} className="btn btn-quiet px-3 py-1.5">
+                      E-mail
+                    </a>
+                  </div>
+                </div>
+              )}
+              {convites.length > 0 && (
+                <div className="mt-5">
+                  <p className="label">Convites abertos</p>
+                  <ul className="divide-y divide-line rounded-xl border border-line">
+                    {convites.map((c) => (
+                      <li key={c.token} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{c.nome || c.email || "Sem nome"}</p>
+                          <p className="text-xs text-muted">{c.permissoes.map((p) => ROTULO_PERMISSAO[p].nome).join(" · ")}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => void copiarLink(urlDoConvite(c.token))} className="btn btn-quiet px-2.5 py-1">
+                            {copiadoLink === urlDoConvite(c.token) ? "Copiado" : "Copiar link"}
+                          </button>
+                          <button onClick={() => void cancelar(c.token)} className="btn btn-quiet px-2.5 py-1 text-neg">
+                            Cancelar
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+          <p className="mt-3 text-sm text-muted">Crie o acesso por você, com uma senha provisória, e passe os dados para a pessoa.</p>
           <form onSubmit={convidar} className="mt-4 space-y-4" noValidate>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
@@ -396,6 +545,8 @@ export default function Equipe({
               </button>
               <p className="mt-2 text-xs text-muted">Esta senha não aparece de novo. Peça para a pessoa trocá-la ao entrar.</p>
             </div>
+          )}
+            </>
           )}
         </section>
       </div>

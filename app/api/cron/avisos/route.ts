@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       cache.set(a.carteira_id as string, entrada);
     }
     const dias = (a.dias as number[] | null)?.length ? (a.dias as number[]) : DIAS_PADRAO;
-    const meus = filtrarPorAviso(proximosVencimentos(entrada, hoje, Math.max(...dias)), { ativo: true, contas: a.contas as string[] | null }).filter((v) => dias.includes(v.dias));
+    const meus = filtrarPorAviso(proximosVencimentos(entrada, hoje, Math.max(...dias)), { ativo: true, contas: a.contas as string[] | null }, a.user_id as string).filter((v) => dias.includes(v.dias));
     if (meus.length === 0) continue;
     pessoas++;
     const linhas = meus.map((v) => `${v.indice ? `${v.nome} ${v.indice}/${v.total}` : v.nome} ${quandoVence(v.dias)} (${money(v.valor)})`);

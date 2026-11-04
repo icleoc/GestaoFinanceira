@@ -3,6 +3,16 @@ import { agruparInvestimentos, num, usoCartao } from "@/lib/finance";
 import { money } from "@/lib/format";
 import { Linha } from "./Razao";
 
+/** Linha que abre os detalhes da conta. */
+function Abrivel({ conta, onAbrir, children, className = "" }: { conta: Conta; onAbrir?: (c: Conta) => void; children: React.ReactNode; className?: string }) {
+  if (!onAbrir) return <div className={className}>{children}</div>;
+  return (
+    <button type="button" onClick={() => onAbrir(conta)} className={`block w-full rounded-xl text-left transition-colors hover:bg-sunken/60 focus-visible:bg-sunken/60 ${className}`} aria-label={`Ver detalhes de ${conta.nome}`}>
+      {children}
+    </button>
+  );
+}
+
 function Painel({
   titulo,
   total,
@@ -25,7 +35,7 @@ function Painel({
   );
 }
 
-export function Bancos({ contas }: { contas: Conta[] }) {
+export function Bancos({ contas, onAbrir }: { contas: Conta[]; onAbrir?: (c: Conta) => void }) {
   const lista = contas.filter((c) => c.tipo === "Corrente");
   const soma = lista.reduce((s, c) => s + num(c.saldo_atual), 0);
   return (
@@ -38,7 +48,11 @@ export function Bancos({ contas }: { contas: Conta[] }) {
         <div className="mt-2 divide-y divide-transparent">
           {lista.map((c) => {
             const s = num(c.saldo_atual);
-            return <Linha key={c.id} nome={c.nome} valor={<span className={s < 0 ? "text-neg" : ""}>{money(s)}</span>} />;
+            return (
+              <Abrivel key={c.id} conta={c} onAbrir={onAbrir}>
+                <Linha nome={c.nome} valor={<span className={s < 0 ? "text-neg" : ""}>{money(s)}</span>} />
+              </Abrivel>
+            );
           })}
         </div>
       )}
@@ -46,7 +60,7 @@ export function Bancos({ contas }: { contas: Conta[] }) {
   );
 }
 
-export function Cartoes({ contas, membros = [] }: { contas: Conta[]; membros?: { user_id: string; nome: string | null; email: string | null }[] }) {
+export function Cartoes({ contas, membros = [], onAbrir }: { contas: Conta[]; membros?: { user_id: string; nome: string | null; email: string | null }[]; onAbrir?: (c: Conta) => void }) {
   const lista = contas.filter((c) => c.tipo === "Crédito");
   const fatura = lista.reduce((s, c) => s + usoCartao(c).usado, 0);
   return (
@@ -62,6 +76,7 @@ export function Cartoes({ contas, membros = [] }: { contas: Conta[]; membros?: {
             const alto = u.pct > 80;
             return (
               <li key={c.id}>
+                <Abrivel conta={c} onAbrir={onAbrir} className="-m-2 p-2">
                 <div className="flex items-baseline justify-between gap-4">
                   <span className="font-semibold">
                     {c.nome}
@@ -100,6 +115,8 @@ export function Cartoes({ contas, membros = [] }: { contas: Conta[]; membros?: {
                     Disponível <b className="font-semibold text-accent">{money(u.disponivel)}</b> de {money(u.limite)}
                   </span>
                 </p>
+                {onAbrir && <p className="mt-1.5 text-xs font-medium text-accent">Ver lançamentos e detalhes ›</p>}
+                </Abrivel>
               </li>
             );
           })}

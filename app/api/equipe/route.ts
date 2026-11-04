@@ -1,53 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { supabaseServidor } from "@/lib/supabase/server";
 import { SEM_CHAVE_DE_SERVICO, supabaseAdmin } from "@/lib/supabase/admin";
 import { papelDe, permissoesValidas, TODAS_PERMISSOES } from "@/lib/permissoes";
 import type { Permissao } from "@/lib/types";
+import { acharUsuarioPorEmail, autorizar, erro, limitar, UUID } from "@/lib/equipe-servidor";
 
 export const dynamic = "force-dynamic";
-
-const erro = (mensagem: string, status: number) => NextResponse.json({ erro: mensagem }, { status });
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-interface Quem {
-  userId: string;
-  papel: string;
-  permissoes: Permissao[];
-}
-
-/** Confere que quem pede está logado, é da carteira e pode gerenciar pessoas. */
-async function autorizar(carteiraId: unknown): Promise<{ quem: Quem } | { resposta: NextResponse }> {
-  if (typeof carteiraId !== "string" || !UUID.test(carteiraId)) return { resposta: erro("Carteira inválida.", 400) };
-  const db = await supabaseServidor();
-  const { data } = await db.auth.getUser();
-  if (!data.user) return { resposta: erro("Entre para continuar.", 401) };
-  const { data: linha } = await db
-    .from("membros")
-    .select("papel, permissoes")
-    .eq("carteira_id", carteiraId)
-    .eq("user_id", data.user.id)
-    .maybeSingle();
-  if (!linha || !(linha.permissoes as Permissao[]).includes("equipe")) {
-    return { resposta: erro("Você não pode gerenciar pessoas nesta carteira.", 403) };
-  }
-  return { quem: { userId: data.user.id, papel: linha.papel, permissoes: linha.permissoes as Permissao[] } };
-}
-
-/** Só dá para conceder o que você mesmo tem. */
-function limitar(pedidas: Permissao[], quem: Quem): Permissao[] {
-  return pedidas.filter((p) => quem.permissoes.includes(p));
-}
-
-async function acharUsuarioPorEmail(admin: NonNullable<ReturnType<typeof supabaseAdmin>>, email: string) {
-  for (let pagina = 1; pagina <= 20; pagina++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page: pagina, perPage: 200 });
-    if (error) return null;
-    const achado = data.users.find((u) => u.email?.toLowerCase() === email);
-    if (achado) return achado;
-    if (data.users.length < 200) return null;
-  }
-  return null;
-}
 
 export async function POST(req: NextRequest) {
   const corpo = (await req.json().catch(() => null)) as Record<string, unknown> | null;

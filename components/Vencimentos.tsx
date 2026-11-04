@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Aviso, Dados, Sessao } from "@/lib/types";
 import { DIAS_PADRAO, filtrarPorAviso, proximosVencimentos, quandoVence, type Vencimento } from "@/lib/vencimentos";
-import { salvarAviso, tokenAviso } from "@/lib/data";
+import { definirAvisar, salvarAviso, tokenAviso } from "@/lib/data";
+import QuemRecebe from "./QuemRecebe";
 import { ativarPush, desativarPush, ehIphoneSemApp, enviarTeste, estadoPush, type EstadoPush } from "@/lib/push";
 import { dateBR, money } from "@/lib/format";
 import Modal from "./Modal";
@@ -21,11 +22,13 @@ function corDe(dias: number) {
 export default function Vencimentos({ dados, sessao, hoje, onAviso }: { dados: Dados; sessao: Sessao; hoje: string; onAviso: (m: string) => void }) {
   const [aberto, setAberto] = useState(false);
   const [todas, setTodas] = useState(false);
+  const [quemAvisa, setQuemAvisa] = useState<Vencimento | null>(null);
   const todos = useMemo(() => proximosVencimentos({ fixas: dados.fixas, transacoes: dados.transacoes, dividas: dados.dividas }, hoje, 30), [dados, hoje]);
   const meu = (dados.avisos ?? []).find((a) => a.user_id === sessao.userId);
-  const meus = meu ? filtrarPorAviso(todos, meu) : todos;
+  const meus = meu ? filtrarPorAviso(todos, meu, sessao.userId) : todos;
   const lista = todas ? meus : meus.slice(0, 6);
   const podeEquipe = sessao.permissoes.includes("equipe");
+  const podeGerenciar = sessao.permissoes.includes("gerenciar");
   if (todos.length === 0 && !podeEquipe && !meu) return null;
 
   return (
@@ -55,8 +58,18 @@ export default function Vencimentos({ dados, sessao, hoje, onAviso }: { dados: D
                   {v.indice ? <span className="ml-1.5 text-sm font-normal text-muted">parcela {v.indice}/{v.total}</span> : null}
                 </p>
                 <p className="text-sm text-muted">
-                  {dateBR(v.data)} · {v.origem === "divida" ? "financiamento/empréstimo" : "conta fixa"}
+                  {dateBR(v.data)} · {v.origem === "divida" ? "parcelamento" : "conta fixa"}
                 </p>
+                {(dados.membros ?? []).length > 1 && (
+                  <p className="text-xs text-muted">
+                    Alerta: {v.avisar && v.avisar.length > 0 ? (dados.membros ?? []).filter((m) => v.avisar!.includes(m.user_id)).map((m) => m.nome || m.email).join(", ") || "ninguém" : "todas as pessoas"}
+                    {podeGerenciar && (
+                      <button onClick={() => setQuemAvisa(v)} className="ml-2 font-medium text-accent underline underline-offset-2">
+                        mudar
+                      </button>
+                    )}
+                  </p>
+                )}
               </div>
               <div className="shrink-0 text-right">
                 <p className="num font-medium">{money(v.valor)}</p>
@@ -71,8 +84,55 @@ export default function Vencimentos({ dados, sessao, hoje, onAviso }: { dados: D
           {todas ? "Mostrar menos" : `Ver todas (${meus.length})`}
         </button>
       )}
+      {quemAvisa && (
+        <QuemAvisaModal
+          conta={quemAvisa}
+          membros={dados.membros ?? []}
+          onClose={() => setQuemAvisa(null)}
+          onSalvo={(m) => {
+            setQuemAvisa(null);
+            onAviso(m);
+          }}
+        />
+      )}
       {aberto && <AvisosModal dados={dados} sessao={sessao} onClose={() => setAberto(false)} onMudou={onAviso} />}
     </section>
+  );
+}
+
+/** Escolhe quem recebe o alerta de uma conta que já existe. */
+function QuemAvisaModal({ conta, membros, onClose, onSalvo }: { conta: Vencimento; membros: NonNullable<Dados["membros"]>; onClose: () => void; onSalvo: (m: string) => void }) {
+  const [avisar, setAvisar] = useState<string[] | null>(conta.avisar && conta.avisar.length > 0 ? conta.avisar : null);
+  const [ocupado, setOcupado] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function salvar() {
+    setErro("");
+    setOcupado(true);
+    try {
+      await definirAvisar(conta.chave, avisar);
+      onSalvo(`Alerta de ${conta.nome} atualizado.`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível salvar.");
+      setOcupado(false);
+    }
+  }
+
+  return (
+    <Modal titulo={`Quem recebe o alerta: ${conta.nome}`} onClose={onClose} largura="md">
+      <div className="space-y-4 p-5">
+        <QuemRecebe membros={membros} valor={avisar} onChange={setAvisar} idBase="qa" />
+        <p className="text-sm text-muted">Cada pessoa continua recebendo nos dias que escolheu em “Configurar avisos”.</p>
+        {erro && (
+          <p role="alert" className="text-sm font-medium text-neg">
+            {erro}
+          </p>
+        )}
+        <button onClick={() => void salvar()} disabled={ocupado} className="btn btn-primary w-full py-3">
+          {ocupado ? "Salvando…" : "Salvar"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 

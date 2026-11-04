@@ -19,6 +19,7 @@ import type {
   Sessao,
   StatusPretensao,
   TipoDivida,
+  FormaParcelado,
   TipoCategoria,
   TipoConta,
   Transacao,
@@ -295,15 +296,18 @@ export interface DadosFixa {
   flutuante?: boolean;
   /** AAAA-MM-DD: a partir de quando cobrar. Vazio = hoje. */
   inicio?: string | null;
+  /** Quem recebe o alerta. Vazio = todas as pessoas. */
+  avisar?: string[] | null;
 }
 
 export async function criarFixa(f: DadosFixa): Promise<void> {
   if (demo.emDemo()) return demo.demoCriarFixa(f);
   const db = supabaseBrowser();
   const base = { nome: f.nome, valor: f.valor, dia_vencimento: f.dia, carteira_id: carteiraAtual };
-  let { error } = await db.from("despesas_fixas").insert({ ...base, flutuante: !!f.flutuante, ...(f.inicio ? { inicio: f.inicio } : {}) });
-  // Banco ainda sem a migração 006: cria só com o essencial.
-  if (error && /flutuante|inicio|baixa_mes/.test(error.message)) ({ error } = await db.from("despesas_fixas").insert(base));
+  const avisar = f.avisar && f.avisar.length > 0 ? f.avisar : null;
+  let { error } = await db.from("despesas_fixas").insert({ ...base, flutuante: !!f.flutuante, avisar, ...(f.inicio ? { inicio: f.inicio } : {}) });
+  // Banco ainda sem as migrações 006/007: cria só com o essencial.
+  if (error && /flutuante|inicio|baixa_mes|avisar/.test(error.message)) ({ error } = await db.from("despesas_fixas").insert(base));
   if (error) throw falha("Não foi possível criar a conta fixa", error);
 }
 
@@ -311,9 +315,21 @@ export async function atualizarFixa(id: Id, f: DadosFixa): Promise<void> {
   if (demo.emDemo()) return demo.demoAtualizarFixa(id, f);
   const db = supabaseBrowser();
   const base = { nome: f.nome, valor: f.valor, dia_vencimento: f.dia };
-  let { error } = await db.from("despesas_fixas").update({ ...base, flutuante: !!f.flutuante, inicio: f.inicio || null }).eq("id", id);
-  if (error && /flutuante|inicio|baixa_mes/.test(error.message)) ({ error } = await db.from("despesas_fixas").update(base).eq("id", id));
+  const avisar = f.avisar && f.avisar.length > 0 ? f.avisar : null;
+  let { error } = await db.from("despesas_fixas").update({ ...base, flutuante: !!f.flutuante, inicio: f.inicio || null, avisar }).eq("id", id);
+  if (error && /flutuante|inicio|baixa_mes|avisar/.test(error.message)) ({ error } = await db.from("despesas_fixas").update(base).eq("id", id));
   if (error) throw falha("Não foi possível salvar a conta fixa", error);
+}
+
+/** Escolhe quem recebe o alerta de uma conta já criada. Lista vazia ou nula = todas as pessoas. */
+export async function definirAvisar(chave: string, avisar: string[] | null): Promise<void> {
+  const [origem, id] = [chave.slice(0, chave.indexOf(":")), chave.slice(chave.indexOf(":") + 1)];
+  const valor = avisar && avisar.length > 0 ? avisar : null;
+  if (demo.emDemo()) return demo.demoAvisar(origem === "divida" ? "divida" : "fixa", id, valor);
+  const tabela = origem === "divida" ? "dividas" : "despesas_fixas";
+  const { data, error } = await supabaseBrowser().from(tabela).update({ avisar: valor }).eq("id", id).select("id");
+  if (error) throw falha("Não foi possível salvar quem recebe o alerta", error);
+  if (!data || data.length === 0) throw new Error("Você não tem permissão para mudar esta conta.");
 }
 
 /** Marca a conta fixa como paga neste mês sem criar lançamento (para o que já foi pago antes de usar o app). */
@@ -507,6 +523,49 @@ export function removerPessoa(userId: string) {
   return chamarEquipe("DELETE", { userId });
 }
 
+export interface Convite {
+  token: string;
+  nome: string | null;
+  email: string | null;
+  permissoes: Permissao[];
+  criado_em: string;
+  expira_em: string;
+}
+
+const TOKEN_DEMO = "00000000-0000-4000-8000-000000000000";
+
+/** Gera o link de convite: a pessoa escolhe nome e senha e entra com o acesso definido aqui. */
+export async function criarConvite(p: { nome: string; email: string; permissoes: Permissao[] }): Promise<{ token: string }> {
+  if (demo.emDemo()) return { token: TOKEN_DEMO };
+  const r = await fetch("/api/equipe/convite", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...p, carteiraId: carteiraAtual }),
+  });
+  const json = (await r.json().catch(() => ({}))) as { erro?: string; token?: string };
+  if (!r.ok || !json.token) throw new Error(json.erro ?? "Não foi possível criar o convite.");
+  return { token: json.token };
+}
+
+export async function listarConvites(): Promise<Convite[]> {
+  if (demo.emDemo()) return [];
+  const r = await fetch(`/api/equipe/convite?carteiraId=${encodeURIComponent(String(carteiraAtual))}`);
+  const json = (await r.json().catch(() => ({}))) as { erro?: string; convites?: Convite[] };
+  if (!r.ok) throw new Error(json.erro ?? "Não foi possível listar os convites.");
+  return json.convites ?? [];
+}
+
+export async function cancelarConvite(token: string): Promise<void> {
+  if (demo.emDemo()) return;
+  const r = await fetch("/api/equipe/convite", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, carteiraId: carteiraAtual }),
+  });
+  const json = (await r.json().catch(() => ({}))) as { erro?: string };
+  if (!r.ok) throw new Error(json.erro ?? "Não foi possível cancelar o convite.");
+}
+
 export async function sair(): Promise<void> {
   if (demo.emDemo()) return;
   await supabaseBrowser().auth.signOut();
@@ -526,6 +585,8 @@ export interface NovaDivida {
   parcelas_pagas: number;
   conta_id: Id | null;
   categoria_id: Id | null;
+  forma?: FormaParcelado | null;
+  avisar?: string[] | null;
 }
 
 export async function criarDivida(d: NovaDivida): Promise<void> {

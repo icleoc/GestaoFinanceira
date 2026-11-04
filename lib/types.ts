@@ -80,6 +80,8 @@ export interface DespesaFixa {
   inicio?: string | null;
   /** Mês (AAAA-MM) em que foi marcada como paga sem lançamento. */
   baixa_mes?: string | null;
+  /** Quem recebe o alerta de vencimento (ids das pessoas). Vazio/nulo = todas da carteira. */
+  avisar?: string[] | null;
 }
 
 export interface NovaTransacao {
@@ -111,7 +113,8 @@ export interface Pretensao {
   status: StatusPretensao;
 }
 
-export type TipoDivida = "financiamento" | "emprestimo" | "consorcio";
+export type TipoDivida = "financiamento" | "emprestimo" | "consorcio" | "parcelado";
+export type FormaParcelado = "pix" | "boleto";
 
 /** Financiamento de um bem ou empréstimo, com as parcelas calculadas a partir da data da primeira. */
 export interface Divida {
@@ -129,6 +132,10 @@ export interface Divida {
   parcelas_pagas: number;
   conta_id?: Id | null;
   categoria_id?: Id | null;
+  /** Compra parcelada: como será paga (Pix parcelado ou boleto). */
+  forma?: FormaParcelado | null;
+  /** Quem recebe o alerta de vencimento. Vazio/nulo = todas as pessoas. */
+  avisar?: string[] | null;
 }
 
 /** Limite de gasto por mês de uma pessoa da carteira. */

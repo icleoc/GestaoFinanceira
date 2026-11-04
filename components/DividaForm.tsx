@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Dados, Divida, Id, TipoDivida } from "@/lib/types";
+import type { Dados, Divida, FormaParcelado, Id, TipoDivida } from "@/lib/types";
+import QuemRecebe from "./QuemRecebe";
 import { calcular, parcelasVencidas, situacao, vencimento } from "@/lib/divida";
 import { criarDivida, atualizarDivida } from "@/lib/data";
 import { dateBR, money } from "@/lib/format";
-import { num, todayISO } from "@/lib/finance";
+import { num, round2, todayISO } from "@/lib/finance";
 
 function lerNumero(t: string): number {
   const s = t.trim();
@@ -15,7 +16,17 @@ function lerNumero(t: string): number {
 
 const texto = (n: number | string | null | undefined) => (n == null || n === "" || Number(n) === 0 ? "" : String(n).replace(".", ","));
 
+/** Dados que vêm do formulário de lançamento quando a compra é parcelada em Pix ou boleto. */
+export interface PrefillParcelado {
+  nome: string;
+  valor: number;
+  forma: FormaParcelado;
+  categoriaId: Id | null;
+  contaId: Id | null;
+}
+
 function categoriaPadrao(dados: Dados, tipo: TipoDivida): string {
+  if (tipo === "parcelado") return "";
   const raiz = tipo === "emprestimo" ? "emprest" : tipo === "consorcio" ? "cons" : "financ";
   const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const c = dados.categorias.find((x) => x.tipo === "Despesa" && norm(x.nome).startsWith(raiz));
@@ -23,28 +34,33 @@ function categoriaPadrao(dados: Dados, tipo: TipoDivida): string {
 }
 
 /** Cadastro de financiamento ou empréstimo: mostra os juros e o valor final enquanto a pessoa preenche. */
-export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; divida?: Divida; onSalvo: (mensagem: string) => void }) {
-  const [tipo, setTipo] = useState<TipoDivida>(divida?.tipo ?? "financiamento");
-  const [nome, setNome] = useState(divida?.nome ?? "");
-  const [valorBem, setValorBem] = useState(texto(divida?.valor_bem));
+export default function DividaForm({ dados, divida, prefill, onSalvo }: { dados: Dados; divida?: Divida; prefill?: PrefillParcelado | null; onSalvo: (mensagem: string) => void }) {
+  const [tipo, setTipo] = useState<TipoDivida>(divida?.tipo ?? (prefill ? "parcelado" : "financiamento"));
+  const [forma, setForma] = useState<FormaParcelado>(divida?.forma ?? prefill?.forma ?? "pix");
+  const [avisar, setAvisar] = useState<string[] | null>(divida?.avisar && divida.avisar.length > 0 ? divida.avisar : null);
+  const [nome, setNome] = useState(divida?.nome ?? prefill?.nome ?? "");
+  const [valorBem, setValorBem] = useState(texto(divida?.valor_bem ?? prefill?.valor));
   const [entrada, setEntrada] = useState(texto(divida?.entrada));
   const [parcelas, setParcelas] = useState(divida ? String(divida.parcelas) : "");
   const [valorParcela, setValorParcela] = useState(texto(divida?.valor_parcela));
   const [primeira, setPrimeira] = useState(divida?.primeira_parcela ?? todayISO());
   const [pagasEdit, setPagasEdit] = useState(divida ? String(divida.parcelas_pagas) : "");
   const [assumirPagas, setAssumirPagas] = useState(true);
-  const [contaId, setContaId] = useState(divida?.conta_id != null ? String(divida.conta_id) : "");
-  const [categoriaId, setCategoriaId] = useState(divida?.categoria_id != null ? String(divida.categoria_id) : categoriaPadrao(dados, divida?.tipo ?? "financiamento"));
+  const [contaId, setContaId] = useState(divida?.conta_id != null ? String(divida.conta_id) : prefill?.contaId != null ? String(prefill.contaId) : "");
+  const [categoriaId, setCategoriaId] = useState(divida?.categoria_id != null ? String(divida.categoria_id) : prefill?.categoriaId != null ? String(prefill.categoriaId) : categoriaPadrao(dados, divida?.tipo ?? (prefill ? "parcelado" : "financiamento")));
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   const emprestimo = tipo === "emprestimo";
   const consorcio = tipo === "consorcio";
-  const semEntrada = emprestimo || consorcio;
+  const parcelado = tipo === "parcelado";
+  const semEntrada = emprestimo || consorcio || parcelado;
   const n = Math.trunc(lerNumero(parcelas));
+  // Compra parcelada: o valor de cada parcela sai do total, sem juros.
+  const vParcela = parcelado ? (n > 0 ? round2(lerNumero(valorBem) / n) : 0) : lerNumero(valorParcela);
   const calc = useMemo(
-    () => calcular({ valorBem: lerNumero(valorBem), entrada: semEntrada ? 0 : lerNumero(entrada), parcelas: n, valorParcela: lerNumero(valorParcela) }),
-    [valorBem, entrada, n, valorParcela, semEntrada],
+    () => calcular({ valorBem: lerNumero(valorBem), entrada: semEntrada ? 0 : lerNumero(entrada), parcelas: n, valorParcela: vParcela }),
+    [valorBem, entrada, n, vParcela, semEntrada],
   );
   const vencidas = /^\d{4}-\d{2}-\d{2}$/.test(primeira) && n > 0 ? parcelasVencidas(primeira, n, todayISO()) : 0;
   // Dívida nova que já estava andando: o que venceu antes de hoje é passado e conta como pago.
@@ -56,7 +72,7 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
   const previa =
     calc.ok && n > 0 && /^\d{4}-\d{2}-\d{2}$/.test(primeira)
       ? situacao(
-          { id: "x", tipo, nome, valor_bem: lerNumero(valorBem), entrada: semEntrada ? 0 : lerNumero(entrada), parcelas: n, valor_parcela: lerNumero(valorParcela), primeira_parcela: primeira, parcelas_pagas: nPagas },
+          { id: "x", tipo, nome, valor_bem: lerNumero(valorBem), entrada: semEntrada ? 0 : lerNumero(entrada), parcelas: n, valor_parcela: vParcela, primeira_parcela: primeira, parcelas_pagas: nPagas },
           todayISO(),
         )
       : null;
@@ -70,7 +86,7 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
     e.preventDefault();
     setErro("");
     if (!nome.trim()) return setErro("Dê um nome, por exemplo: Carro ou Empréstimo do banco.");
-    if (!calc.ok) return setErro(calc.aviso ?? "Preencha o valor, as parcelas e o valor de cada parcela.");
+    if (!calc.ok) return setErro(calc.aviso ?? (parcelado ? "Preencha o valor total e o número de parcelas." : "Preencha o valor, as parcelas e o valor de cada parcela."));
     if (!/^\d{4}-\d{2}-\d{2}$/.test(primeira)) return setErro("Informe o vencimento da 1ª parcela.");
     if (n > 600) return setErro("Use até 600 parcelas.");
     if (divida && Math.trunc(lerNumero(pagasEdit)) > n) return setErro("As parcelas pagas não podem passar do total.");
@@ -82,15 +98,17 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
         valor_bem: lerNumero(valorBem),
         entrada: semEntrada ? 0 : lerNumero(entrada),
         parcelas: n,
-        valor_parcela: lerNumero(valorParcela),
+        valor_parcela: vParcela,
         primeira_parcela: primeira,
         parcelas_pagas: nPagas,
         conta_id: idDe(contas, contaId),
         categoria_id: idDe(categoriasDespesa, categoriaId),
+        forma: parcelado ? forma : null,
+        avisar,
       };
       if (divida) await atualizarDivida(divida.id, corpo);
       else await criarDivida(corpo);
-      onSalvo(divida ? "Alterações salvas." : emprestimo ? "Empréstimo cadastrado." : consorcio ? "Consórcio cadastrado." : "Financiamento cadastrado.");
+      onSalvo(divida ? "Alterações salvas." : parcelado ? "Compra parcelada cadastrada." : emprestimo ? "Empréstimo cadastrado." : consorcio ? "Consórcio cadastrado." : "Financiamento cadastrado.");
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Não foi possível salvar.");
       setSalvando(false);
@@ -99,12 +117,13 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
 
   return (
     <form onSubmit={salvar} className="space-y-4 p-5" noValidate>
-      <div role="radiogroup" aria-label="Tipo" className="grid grid-cols-3 gap-1 rounded-xl bg-sunken p-1">
+      <div role="radiogroup" aria-label="Tipo" className="grid grid-cols-2 gap-1 rounded-xl bg-sunken p-1 sm:grid-cols-4">
         {(
           [
             ["financiamento", "Financiamento de um bem"],
             ["emprestimo", "Empréstimo"],
             ["consorcio", "Consórcio"],
+            ["parcelado", "Compra parcelada"],
           ] as const
         ).map(([id, rotulo]) => (
           <button
@@ -124,13 +143,13 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
         <label htmlFor="d-nome" className="label">
           Nome
         </label>
-        <input id="d-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder={emprestimo ? "Empréstimo do banco" : consorcio ? "Consórcio do imóvel" : "Carro, casa, moto…"} className="field" maxLength={80} />
+        <input id="d-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder={parcelado ? "Honorários do advogado" : emprestimo ? "Empréstimo do banco" : consorcio ? "Consórcio do imóvel" : "Carro, casa, moto…"} className="field" maxLength={80} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="d-valor" className="label">
-            {emprestimo ? "Valor emprestado (R$)" : consorcio ? "Valor da carta de crédito (R$)" : "Valor do bem (R$)"}
+            {parcelado ? "Valor total da compra (R$)" : emprestimo ? "Valor emprestado (R$)" : consorcio ? "Valor da carta de crédito (R$)" : "Valor do bem (R$)"}
           </label>
           <input id="d-valor" inputMode="decimal" value={valorBem} onChange={(e) => setValorBem(e.target.value)} className="field num" placeholder="0,00" />
         </div>
@@ -151,15 +170,48 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
           </label>
           <input id="d-parcelas" inputMode="numeric" value={parcelas} onChange={(e) => setParcelas(e.target.value.replace(/\D/g, ""))} className="field num" placeholder="48" />
         </div>
-        <div>
-          <label htmlFor="d-parcela" className="label">
-            Valor de cada parcela (R$)
-          </label>
-          <input id="d-parcela" inputMode="decimal" value={valorParcela} onChange={(e) => setValorParcela(e.target.value)} className="field num" placeholder="0,00" />
-        </div>
+        {parcelado ? (
+          <div>
+            <p className="label">Cada parcela</p>
+            <p className="num rounded-xl bg-sunken px-3 py-2.5 font-medium">{vParcela > 0 ? money(vParcela) : "—"}</p>
+          </div>
+        ) : (
+          <div>
+            <label htmlFor="d-parcela" className="label">
+              Valor de cada parcela (R$)
+            </label>
+            <input id="d-parcela" inputMode="decimal" value={valorParcela} onChange={(e) => setValorParcela(e.target.value)} className="field num" placeholder="0,00" />
+          </div>
+        )}
       </div>
 
-      {(calc.ok || calc.aviso) && (
+      {parcelado && (
+        <div>
+          <p className="label">Como vai pagar</p>
+          <div role="radiogroup" aria-label="Forma de pagamento" className="grid grid-cols-2 gap-1 rounded-xl bg-sunken p-1">
+            {(
+              [
+                ["pix", "Pix parcelado"],
+                ["boleto", "Boleto bancário"],
+              ] as const
+            ).map(([id, rotulo]) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={forma === id}
+                onClick={() => setForma(id)}
+                className={"rounded-lg px-2 py-2 text-sm font-medium transition-colors " + (forma === id ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink")}
+              >
+                {rotulo}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-sm text-muted">Cada parcela aparece em Contas a vencer e no calendário. Ao pagar, o app lança no extrato.</p>
+        </div>
+      )}
+
+      {!parcelado && (calc.ok || calc.aviso) && (
         <div className="rounded-xl border border-gold/40 bg-gold/5 p-4" role="status" aria-live="polite">
           {calc.aviso && <p className="mb-2 text-sm font-medium text-neg">{calc.aviso}</p>}
           {calc.ok && (
@@ -245,13 +297,15 @@ export default function DividaForm({ dados, divida, onSalvo }: { dados: Dados; d
         </div>
       </div>
 
+      <QuemRecebe membros={dados.membros ?? []} valor={avisar} onChange={setAvisar} idBase="d-av" />
+
       {erro && (
         <p role="alert" className="text-sm font-medium text-neg">
           {erro}
         </p>
       )}
       <button type="submit" disabled={salvando} className="btn btn-primary w-full py-3">
-        {salvando ? "Salvando…" : divida ? "Salvar alterações" : emprestimo ? "Cadastrar empréstimo" : consorcio ? "Cadastrar consórcio" : "Cadastrar financiamento"}
+        {salvando ? "Salvando…" : divida ? "Salvar alterações" : parcelado ? "Cadastrar compra parcelada" : emprestimo ? "Cadastrar empréstimo" : consorcio ? "Cadastrar consórcio" : "Cadastrar financiamento"}
       </button>
     </form>
   );

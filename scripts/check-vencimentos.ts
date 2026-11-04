@@ -47,6 +47,10 @@ test("filtro por pessoa: desligado = nada; contas escolhidas = só elas; nulo = 
   assert.equal(filtrarPorAviso(v, null).length, 0);
   assert.equal(filtrarPorAviso(v, { ativo: false, contas: null }).length, 0);
   assert.equal(filtrarPorAviso(v, { ativo: true, contas: null }).length, v.length);
+  const comAvisar = v.map((x, i) => (i === 0 ? { ...x, avisar: ["ana"] } : x));
+  assert.equal(filtrarPorAviso(comAvisar, { ativo: true, contas: null }, "ana").length, v.length, "quem está na lista recebe");
+  assert.equal(filtrarPorAviso(comAvisar, { ativo: true, contas: null }, "leo").length, v.length - 1, "quem não está na lista não recebe");
+  assert.equal(filtrarPorAviso(comAvisar.map((x) => ({ ...x, avisar: [] })), { ativo: true, contas: null }, "leo").length, v.length, "lista vazia = todas as pessoas");
   const so = filtrarPorAviso(v, { ativo: true, contas: ["fixa:1"] });
   assert.ok(so.length > 0 && so.every((x) => x.chave === "fixa:1"));
 });
