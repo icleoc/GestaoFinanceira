@@ -491,6 +491,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
             dados={dados}
             prefill={prefill}
             onSalvo={depoisDeMudar}
+            onCategoria={() => void recarregar()}
             onDivida={
               podeGerenciar
                 ? () => {

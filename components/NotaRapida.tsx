@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Dados, DadosNota, Id } from "@/lib/types";
 import { montarLancamento, todayISO } from "@/lib/finance";
+import CategoriaNova, { NOVA_CATEGORIA } from "./CategoriaNova";
 import { atualizarTransacoes, carteiraDaSessao, criarCategoria, enviarNota, excluirTransacoes, inserirTransacoes, mudarCategoria, removerNotas } from "@/lib/data";
 import { acharNotaAnterior, camposLidos, lerNotaNoServidor } from "@/lib/nota";
 import { sugerirCategoria } from "@/lib/categorizar";
@@ -31,6 +32,9 @@ interface Resumo {
   categoriaId: Id | null;
   /** Reconhecida por uma nota anterior da mesma empresa. */
   lembrada: boolean;
+  parcelas: number;
+  /** Data e valor de cada lançamento (várias linhas quando parcelado no cartão). */
+  linhas: { data: string; valor: number }[];
 }
 
 const CHAVE = "contaDasNotas";
@@ -42,6 +46,7 @@ const CHAVE = "contaDasNotas";
 export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; onClose: () => void; onMudou: (msg: string) => void }) {
   const contas = useMemo(() => dados.contas.filter((c) => c.tipo !== "Investimento"), [dados.contas]);
   const [contaId, setContaId] = useState("");
+  const [parcelas, setParcelas] = useState(1);
   const [fase, setFase] = useState<Fase>({ f: "inicio" });
   const entrada = useRef<HTMLInputElement>(null);
   const jaRegistrou = useRef(false);
@@ -132,7 +137,7 @@ export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; 
         data,
         descricao: empresa,
         valor: lido.total,
-        parcelas: 1,
+        parcelas: conta.tipo === "Crédito" ? parcelas : 1,
         origemId: conta.id,
         destinoId: null,
         categoriaId,
@@ -148,7 +153,7 @@ export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; 
       setFase({
         f: "pronto",
         url,
-        resumo: { empresa, total: lido.total, data, categoria: categoriaNome, categoriaCriada: criada, conta: conta.nome, ids, caminho, itens: lido.itens, lidoNaNota, categoriaId, lembrada: !!anterior },
+        resumo: { empresa, total: lido.total, data, categoria: categoriaNome, categoriaCriada: criada, conta: conta.nome, ids, caminho, itens: lido.itens, lidoNaNota, categoriaId, lembrada: !!anterior, parcelas: plano.linhas.length > 1 ? plano.linhas.length : 1, linhas: plano.linhas.map((l) => ({ data: l.data, valor: l.valor })) },
       });
     } catch (e) {
       if (caminho) await removerNotas([caminho]).catch(() => undefined);
@@ -201,6 +206,21 @@ export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; 
           </div>
         )}
 
+        {contas.find((c) => String(c.id) === contaId)?.tipo === "Crédito" && fase.f !== "pronto" && (
+          <div>
+            <label htmlFor="nr-parc" className="label">
+              Parcelamento no cartão
+            </label>
+            <select id="nr-parc" value={parcelas} onChange={(e) => setParcelas(Number(e.target.value))} className="field" disabled={ocupado}>
+              {Array.from({ length: 48 }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  {n === 1 ? "À vista" : n + "x"}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {fase.f === "lendo" && (
           <div className="flex items-center gap-3 rounded-xl bg-sunken p-3" role="status">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -241,6 +261,9 @@ function Resultado({ r, categorias, onDesfazer, onSalvo }: { r: Resumo; categori
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState("");
   const [salvo, setSalvo] = useState(false);
+  const [criadas, setCriadas] = useState<Dados["categorias"]>([]);
+  const [criando, setCriando] = useState(false);
+  const todas = [...categorias, ...criadas.filter((c) => !categorias.some((b) => String(b.id) === String(c.id)))];
   const mudou = nome.trim() !== r.empresa || cat !== (r.categoriaId != null ? String(r.categoriaId) : "");
 
   async function salvar() {
@@ -249,8 +272,8 @@ function Resultado({ r, categorias, onDesfazer, onSalvo }: { r: Resumo; categori
     if (!limpo) return setErro("Dê um nome ao lançamento.");
     setOcupado(true);
     try {
-      const nova = categorias.find((c) => String(c.id) === cat);
-      if (limpo !== r.empresa) await atualizarTransacoes(r.ids.map((id) => ({ id, data: r.data, descricao: limpo, valor: -r.total })));
+      const nova = todas.find((c) => String(c.id) === cat);
+      if (limpo !== r.empresa) await atualizarTransacoes(r.ids.map((id, i) => ({ id, data: r.linhas[i]?.data ?? r.data, descricao: r.parcelas > 1 ? `${limpo} (${i + 1}/${r.parcelas})` : limpo, valor: r.linhas[i]?.valor ?? -r.total })));
       if (cat !== (r.categoriaId != null ? String(r.categoriaId) : "")) await mudarCategoria(r.ids, nova?.id ?? null);
       onSalvo({ ...r, empresa: limpo, categoria: nova?.nome ?? null, categoriaId: nova?.id ?? null, categoriaCriada: false });
       setSalvo(true);
@@ -282,14 +305,38 @@ function Resultado({ r, categorias, onDesfazer, onSalvo }: { r: Resumo; categori
           <label htmlFor="nr-cat" className="label">
             Categoria
           </label>
-          <select id="nr-cat" value={cat} onChange={(e) => { setCat(e.target.value); setSalvo(false); }} className="field">
+          <select
+            id="nr-cat"
+            value={criando ? NOVA_CATEGORIA : cat}
+            onChange={(e) => {
+              if (e.target.value === NOVA_CATEGORIA) return setCriando(true);
+              setCriando(false);
+              setCat(e.target.value);
+              setSalvo(false);
+            }}
+            className="field"
+          >
             <option value="">Sem categoria</option>
-            {categorias.map((c) => (
+            {todas.map((c) => (
               <option key={String(c.id)} value={String(c.id)}>
                 {c.nome}
               </option>
             ))}
+            <option value={NOVA_CATEGORIA}>＋ Nova categoria…</option>
           </select>
+          {criando && (
+            <CategoriaNova
+              tipo="Despesa"
+              existentes={todas}
+              onCancelar={() => setCriando(false)}
+              onCriada={(c) => {
+                setCriadas((l) => [...l, c]);
+                setCat(String(c.id));
+                setCriando(false);
+                setSalvo(false);
+              }}
+            />
+          )}
           {!cat && <p className="mt-1 text-xs font-medium text-warn">Não identifiquei a categoria. Escolha uma acima.</p>}
           {r.categoriaCriada && cat === String(r.categoriaId) && <p className="mt-1 text-xs text-muted">Categoria nova criada a partir da nota.</p>}
         </div>

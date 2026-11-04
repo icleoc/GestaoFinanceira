@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { DadosNota, Dados, Id } from "@/lib/types";
+import type { Categoria, DadosNota, Dados, Id } from "@/lib/types";
+import CategoriaNova, { NOVA_CATEGORIA } from "./CategoriaNova";
 import { montarLancamento, num, round2, sameId, todayISO, type Operacao } from "@/lib/finance";
 import { carteiraDaSessao, enviarNota, inserirTransacoes, removerNotas } from "@/lib/data";
 import { camposLidos, lerNotaNoServidor } from "@/lib/nota";
@@ -33,6 +34,8 @@ interface Props {
   onSalvo: (mensagem: string) => void;
   /** Abre o cadastro de financiamento ou empréstimo (só para quem pode gerenciar). */
   onDivida?: () => void;
+  /** Avisa que uma categoria foi criada aqui (para recarregar os dados). */
+  onCategoria?: () => void;
   /** Dentro de uma janela: sem caixa e sem título próprios. */
   semMoldura?: boolean;
 }
@@ -65,7 +68,7 @@ function lerValor(texto: string): number {
   return num(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s);
 }
 
-export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, semMoldura = false }: Props) {
+export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCategoria, semMoldura = false }: Props) {
   const { contas, categorias, fixas } = dados;
   const raiz = useRef<HTMLElement>(null);
 
@@ -103,10 +106,13 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, semM
   atual.current = { descAuto, valor, operacao };
   const ehTransf = operacao === "transferencia" || operacao === "investimento";
   const tipoCategoria = operacao === "receita" ? "Receita" : "Despesa";
-  const categoriasDoTipo = useMemo(
-    () => categorias.filter((c) => c.tipo === tipoCategoria),
-    [categorias, tipoCategoria],
-  );
+  const [criadas, setCriadas] = useState<Categoria[]>([]);
+  const [criandoCat, setCriandoCat] = useState(false);
+  const categoriasDoTipo = useMemo(() => {
+    const base = categorias.filter((c) => c.tipo === tipoCategoria);
+    const extras = criadas.filter((c) => c.tipo === tipoCategoria && !base.some((b) => String(b.id) === String(c.id)));
+    return [...base, ...extras];
+  }, [categorias, criadas, tipoCategoria]);
 
   const contasOrigem = useMemo(
     () => (operacao === "receita" ? contas.filter((c) => c.tipo !== "Crédito") : contas),
@@ -375,17 +381,46 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, semM
               <label htmlFor="f-cat" className="label">
                 Categoria
               </label>
-              <select id="f-cat" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="field">
-                {categoriasDoTipo.length === 0 && <option value="">Crie uma em Gerenciar</option>}
+              <select
+                id="f-cat"
+                value={criandoCat ? NOVA_CATEGORIA : categoriaId}
+                onChange={(e) => {
+                  if (e.target.value === NOVA_CATEGORIA) setCriandoCat(true);
+                  else {
+                    setCriandoCat(false);
+                    setCategoriaId(e.target.value);
+                  }
+                }}
+                className="field"
+              >
+                {categoriasDoTipo.length === 0 && !criandoCat && <option value="">Sem categoria</option>}
                 {categoriasDoTipo.map((c) => (
                   <option key={c.id} value={String(c.id)}>
                     {c.nome}
                   </option>
                 ))}
+                <option value={NOVA_CATEGORIA}>＋ Nova categoria…</option>
               </select>
+              {categoriasDoTipo.length === 0 && !criandoCat && (
+                <p className="mt-1 text-xs text-muted">Não há categorias ainda. Escolha “Nova categoria” para criar.</p>
+              )}
             </div>
           )}
         </div>
+
+        {!ehTransf && criandoCat && (
+          <CategoriaNova
+            tipo={tipoCategoria}
+            existentes={categorias}
+            onCancelar={() => setCriandoCat(false)}
+            onCriada={(c) => {
+              setCriadas((l) => [...l, c]);
+              setCategoriaId(String(c.id));
+              setCriandoCat(false);
+              onCategoria?.();
+            }}
+          />
+        )}
 
         <div className="grid grid-cols-5 gap-3">
           <div className="col-span-3">
@@ -532,7 +567,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, semM
               Parcelamento
             </label>
             <select id="f-parc" value={parcelas} onChange={(e) => setParcelas(Number(e.target.value))} className="field">
-              {Array.from({ length: 24 }, (_, i) => i + 1).map((n) => (
+              {Array.from({ length: 48 }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n}>
                   {n === 1 ? "À vista" : n + "x"}
                 </option>
