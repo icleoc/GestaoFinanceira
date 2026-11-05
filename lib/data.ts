@@ -25,6 +25,8 @@ import type {
   Transacao,
 } from "./types";
 import type { AtualizacaoTransacao } from "./finance";
+import { round2, todayISO } from "./finance";
+import { buscarCotacao, custoAposAjuste, taxaDemo } from "./cambio";
 
 /** Transforma o erro do Supabase em mensagem que a pessoa entende. */
 function falha(contexto: string, error: { message: string; code?: string }): Error {
@@ -203,6 +205,13 @@ export async function excluirTransacoes(ids: Id[]): Promise<void> {
   if (error) throw falha("Não foi possível excluir", error);
 }
 
+/** Cotação de hoje em reais de uma moeda (na demonstração, a cotação fixa). */
+async function taxaDeHoje(moeda: string): Promise<number> {
+  if (moeda === "BRL") return 1;
+  if (demo.emDemo()) return taxaDemo(moeda);
+  return (await buscarCotacao(moeda, todayISO())).taxa;
+}
+
 export async function criarConta(c: {
   nome: string;
   tipo: TipoConta;
@@ -212,13 +221,20 @@ export async function criarConta(c: {
   finalCartao?: string | null;
   diaFechamento?: number | null;
   titularId?: string | null;
+  /** Moeda do saldo (BRL por padrão). */
+  moeda?: string;
 }): Promise<void> {
+  const moeda = c.tipo === "Crédito" ? "BRL" : c.moeda || "BRL";
+  // Conta em moeda estrangeira: o saldo inicial custou a cotação de hoje (a variação começa em zero).
+  const custo = moeda === "BRL" ? 0 : round2(c.valor * (await taxaDeHoje(moeda)));
   if (demo.emDemo()) {
     const credito = c.tipo === "Crédito";
     return demo.demoCriarConta({
       id: 0,
       nome: c.nome,
       tipo: c.tipo,
+      moeda,
+      custo_brl: custo,
       saldo_atual: credito ? 0 : c.valor,
       limite_total: credito ? c.valor : 0,
       dia_vencimento: credito ? c.diaVencimento : null,
@@ -237,10 +253,16 @@ export async function criarConta(c: {
     dia_vencimento: credito ? c.diaVencimento : null,
     carteira_id: carteiraAtual,
   };
+  const estrangeira = moeda === "BRL" ? {} : { moeda, custo_brl: custo };
   const cartao = credito
     ? { bandeira: c.bandeira || null, final_cartao: c.finalCartao || null, dia_fechamento: c.diaFechamento ?? null, titular_id: c.titularId || null }
     : {};
   const db = supabaseBrowser();
+  if (moeda !== "BRL") {
+    const { error: e } = await db.from("contas").insert({ ...base, ...estrangeira });
+    if (e) throw falha("Não foi possível criar a conta", e);
+    return;
+  }
   let { error } = await db.from("contas").insert({ ...base, ...cartao });
   // Banco ainda sem a migração 003: cria o cartão só com o essencial.
   if (error && /bandeira|final_cartao|dia_fechamento|titular_id/.test(error.message)) {
@@ -263,12 +285,25 @@ export async function atualizarConta(
     finalCartao?: string | null;
     diaFechamento?: number | null;
     titularId?: string | null;
+    /** Moeda do saldo. Só muda se a conta ainda não tem lançamentos (a tela decide). */
+    moeda?: string;
+    /** Como a conta estava antes da edição (para recalcular o custo em reais). */
+    antes?: { moeda: string; saldo: number; custo: number };
   },
 ): Promise<void> {
   const credito = c.tipo === "Crédito";
+  const moeda = credito ? "BRL" : c.moeda || c.antes?.moeda || "BRL";
+  let custo = 0;
+  if (moeda !== "BRL") {
+    const t = await taxaDeHoje(moeda);
+    const mesmaMoeda = c.antes && c.antes.moeda === moeda;
+    custo = mesmaMoeda ? custoAposAjuste(c.antes!.saldo, c.antes!.custo, c.valor, t) : round2(c.valor * t);
+  }
   const base = {
     nome: c.nome,
     tipo: c.tipo,
+    moeda,
+    custo_brl: custo,
     saldo_atual: credito ? -Math.abs(c.fatura ?? 0) : c.valor,
     limite_total: credito ? c.valor : 0,
     dia_vencimento: credito ? c.diaVencimento : null,

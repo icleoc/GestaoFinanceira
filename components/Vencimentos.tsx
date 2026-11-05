@@ -19,7 +19,7 @@ function corDe(dias: number) {
 }
 
 /** Contas a vencer (fixas e parcelas de financiamento) e a configuração de quem é avisado e de quê. */
-export default function Vencimentos({ dados, sessao, hoje, onAviso }: { dados: Dados; sessao: Sessao; hoje: string; onAviso: (m: string) => void }) {
+export default function Vencimentos({ dados, sessao, hoje, onAviso, onPagar }: { dados: Dados; sessao: Sessao; hoje: string; onAviso: (m: string) => void; onPagar?: (v: Vencimento) => void }) {
   const [aberto, setAberto] = useState(false);
   const [todas, setTodas] = useState(false);
   const [quemAvisa, setQuemAvisa] = useState<Vencimento | null>(null);
@@ -74,6 +74,11 @@ export default function Vencimentos({ dados, sessao, hoje, onAviso }: { dados: D
               <div className="shrink-0 text-right">
                 <p className="num font-medium">{money(v.valor)}</p>
                 <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${corDe(v.dias)}`}>{quandoVence(v.dias)}</span>
+                {onPagar && (
+                  <button onClick={() => onPagar(v)} className="mt-1 block w-full text-right text-xs font-semibold text-accent underline underline-offset-2">
+                    Já paguei
+                  </button>
+                )}
               </div>
             </li>
           ))}

@@ -1,6 +1,7 @@
 import type { Conta } from "@/lib/types";
 import { agruparInvestimentos, num, usoCartao } from "@/lib/finance";
 import { money } from "@/lib/format";
+import { contaEstrangeira, formatarEstrangeira, moedaDaConta, somaEmReais, variacaoCambial, type Taxas } from "@/lib/cambio";
 import { Linha } from "./Razao";
 
 /** Linha que abre os detalhes da conta. */
@@ -35,9 +36,32 @@ function Painel({
   );
 }
 
-export function Bancos({ contas, onAbrir }: { contas: Conta[]; onAbrir?: (c: Conta) => void }) {
+/** Nota sob uma conta em moeda estrangeira: equivalente em reais e ganho ou perda com o câmbio. */
+export function NotaCambial({ conta, taxas }: { conta: Conta; taxas: Taxas }) {
+  const v = variacaoCambial(conta, taxas);
+  if (!contaEstrangeira(conta)) return null;
+  if (!v) return <>Sem cotação agora: em reais, vale o custo de {money(num(conta.custo_brl))}.</>;
+  return (
+    <>
+      ≈ {money(v.atual)} hoje · custou {money(v.custo)} ·{" "}
+      <span className={v.variacao >= 0 ? "font-medium text-accent" : "font-medium text-neg"}>
+        {v.variacao >= 0 ? "+" : "−"}
+        {money(Math.abs(v.variacao))} de variação cambial ({v.variacao >= 0 ? "+" : "−"}
+        {Math.abs(v.pct).toLocaleString("pt-BR")}%)
+      </span>
+    </>
+  );
+}
+
+function SaldoDaConta({ conta }: { conta: Conta }) {
+  const s = num(conta.saldo_atual);
+  const texto = contaEstrangeira(conta) ? formatarEstrangeira(s, moedaDaConta(conta)) : money(s);
+  return <span className={s < 0 ? "text-neg" : ""}>{texto}</span>;
+}
+
+export function Bancos({ contas, taxas = {}, onAbrir }: { contas: Conta[]; taxas?: Taxas; onAbrir?: (c: Conta) => void }) {
   const lista = contas.filter((c) => c.tipo === "Corrente");
-  const soma = lista.reduce((s, c) => s + num(c.saldo_atual), 0);
+  const soma = somaEmReais(lista, taxas);
   return (
     <Painel
       titulo="Contas correntes"
@@ -47,10 +71,9 @@ export function Bancos({ contas, onAbrir }: { contas: Conta[]; onAbrir?: (c: Con
       {lista.length > 0 && (
         <div className="mt-2 divide-y divide-transparent">
           {lista.map((c) => {
-            const s = num(c.saldo_atual);
             return (
               <Abrivel key={c.id} conta={c} onAbrir={onAbrir}>
-                <Linha nome={c.nome} valor={<span className={s < 0 ? "text-neg" : ""}>{money(s)}</span>} />
+                <Linha nome={c.nome} valor={<SaldoDaConta conta={c} />} nota={contaEstrangeira(c) ? <NotaCambial conta={c} taxas={taxas} /> : undefined} />
               </Abrivel>
             );
           })}
@@ -126,10 +149,10 @@ export function Cartoes({ contas, membros = [], onAbrir }: { contas: Conta[]; me
   );
 }
 
-export function Investimentos({ contas }: { contas: Conta[] }) {
+export function Investimentos({ contas, taxas = {} }: { contas: Conta[]; taxas?: Taxas }) {
   const { grupos, avulsos } = agruparInvestimentos(contas);
   const vazio = grupos.length === 0 && avulsos.length === 0;
-  const soma = contas.filter((c) => c.tipo === "Investimento").reduce((s, c) => s + num(c.saldo_atual), 0);
+  const soma = somaEmReais(contas.filter((c) => c.tipo === "Investimento"), taxas);
   return (
     <Painel
       titulo="Investimentos"
@@ -146,14 +169,14 @@ export function Investimentos({ contas }: { contas: Conta[] }) {
                   <div key={conta.id} className="razao py-1">
                     <span className="min-w-0 truncate">{rotulo}</span>
                     <span className="razao-pontos" aria-hidden />
-                    <span className="num shrink-0 font-medium text-ink">{money(num(conta.saldo_atual))}</span>
+                    <span className="num shrink-0 font-medium text-ink"><SaldoDaConta conta={conta} /></span>
                   </div>
                 ))}
               </div>
             </div>
           ))}
           {avulsos.map((c) => (
-            <Linha key={c.id} nome={c.nome} valor={money(num(c.saldo_atual))} destaque />
+            <Linha key={c.id} nome={c.nome} valor={<SaldoDaConta conta={c} />} nota={contaEstrangeira(c) ? <NotaCambial conta={c} taxas={taxas} /> : undefined} destaque />
           ))}
         </div>
       )}

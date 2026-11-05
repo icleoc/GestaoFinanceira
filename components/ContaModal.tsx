@@ -4,16 +4,20 @@ import { useMemo, useState } from "react";
 import type { Conta, Dados } from "@/lib/types";
 import { addMonthsISO, monthOf, num, todayISO, usoCartao } from "@/lib/finance";
 import { dateBR, money, monthLabel } from "@/lib/format";
+import { contaEstrangeira, formatarEstrangeira, moedaDaConta, type Taxas } from "@/lib/cambio";
+import { NotaCambial } from "./Contas";
 import Modal from "./Modal";
 
 /** Detalhes de uma conta ou cartão: situação, lançamentos do mês, o que ainda vai cair e gastos por categoria. */
 export default function ContaModal({
   dados,
+  taxas = {},
   conta,
   onClose,
   onExtrato,
 }: {
   dados: Dados;
+  taxas?: Taxas;
   conta: Conta;
   onClose: () => void;
   /** Abre o extrato completo (editar e apagar) já filtrado nesta conta. */
@@ -53,6 +57,10 @@ export default function ContaModal({
   const trocar = (n: number) => setMes((m) => monthOf(addMonthsISO(`${m}-01`, n)));
   const u = ehCartao ? usoCartao(conta) : null;
   const saldo = num(conta.saldo_atual);
+  const estrangeira = contaEstrangeira(conta);
+  const moeda = moedaDaConta(conta);
+  const fmt = (t: { valor: number | string; valor_conta?: number | string | null }) =>
+    estrangeira && t.valor_conta != null ? formatarEstrangeira(num(t.valor_conta), moeda) : money(num(t.valor));
 
   return (
     <Modal titulo={conta.nome} onClose={onClose} largura="lg">
@@ -88,7 +96,14 @@ export default function ContaModal({
               </p>
             </>
           ) : (
-            <p className={"num mt-2 font-display text-3xl " + (saldo < 0 ? "text-neg" : "")}>{money(saldo)}</p>
+            <>
+              <p className={"num mt-2 font-display text-3xl " + (saldo < 0 ? "text-neg" : "")}>{estrangeira ? formatarEstrangeira(saldo, moeda) : money(saldo)}</p>
+              {estrangeira && (
+                <p className="num mt-1 text-sm text-muted">
+                  <NotaCambial conta={conta} taxas={taxas} />
+                </p>
+              )}
+            </>
           )}
         </div>
 
@@ -147,7 +162,10 @@ export default function ContaModal({
                       {t.data > hoje ? " · agendada" : ""}
                     </p>
                   </div>
-                  <span className={"num shrink-0 font-medium " + (num(t.valor) < 0 ? "" : "text-accent")}>{money(num(t.valor))}</span>
+                  <span className="shrink-0 text-right">
+                    <span className={"num block font-medium " + (num(t.valor) < 0 ? "" : "text-accent")}>{fmt(t)}</span>
+                    {estrangeira && t.valor_conta != null && <span className="num block text-xs text-muted">{money(num(t.valor))}</span>}
+                  </span>
                 </li>
               ))}
             </ul>

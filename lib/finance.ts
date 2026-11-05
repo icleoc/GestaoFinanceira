@@ -248,12 +248,14 @@ export interface Kpis {
   patrimonio: number;
 }
 
-export function calcularKpis(contas: Conta[]): Kpis {
+export function calcularKpis(contas: Conta[], taxas: Record<string, number> = {}): Kpis {
   let bancos = 0;
   let credito = 0;
   let investimentos = 0;
   for (const c of contas) {
-    const s = num(c.saldo_atual);
+    // Conta em moeda estrangeira entra pelo valor em reais (cotação atual; sem ela, o custo).
+    const t = c.moeda && c.moeda !== "BRL" ? taxas[c.moeda] : 0;
+    const s = c.moeda && c.moeda !== "BRL" ? (t > 0 ? round2(num(c.saldo_atual) * t) : num(c.custo_brl)) : num(c.saldo_atual);
     if (c.tipo === "Corrente") bancos += s;
     else if (c.tipo === "Crédito") credito += s;
     else if (c.tipo === "Investimento") investimentos += s;

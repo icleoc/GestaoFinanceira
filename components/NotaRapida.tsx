@@ -44,7 +44,7 @@ const CHAVE = "contaDasNotas";
  * O sistema lê a nota, escolhe a categoria pelo tipo de estabelecimento e já registra.
  */
 export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; onClose: () => void; onMudou: (msg: string) => void }) {
-  const contas = useMemo(() => dados.contas.filter((c) => c.tipo !== "Investimento"), [dados.contas]);
+  const contas = useMemo(() => dados.contas.filter((c) => c.tipo !== "Investimento" && (!c.moeda || c.moeda === "BRL")), [dados.contas]);
   const [contaId, setContaId] = useState("");
   const [parcelas, setParcelas] = useState(1);
   const [fase, setFase] = useState<Fase>({ f: "inicio" });

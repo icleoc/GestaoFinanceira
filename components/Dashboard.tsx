@@ -28,6 +28,9 @@ import Vencimentos from "./Vencimentos";
 import LancamentoForm, { type Prefill } from "./LancamentoForm";
 import ExtratoModal from "./ExtratoModal";
 import ContaModal from "./ContaModal";
+import CotacaoCard from "./CotacaoCard";
+import PagamentoModal, { type AlvoPagamento } from "./PagamentoModal";
+import { useCotacoes } from "@/lib/cotacoes";
 import GerenciarModal from "./GerenciarModal";
 import Assistente from "./Assistente";
 import Evolucao from "./Evolucao";
@@ -39,7 +42,7 @@ import PerfilModal from "./PerfilModal";
 import Saudacao from "./Saudacao";
 import CalendarioVencimentos from "./CalendarioVencimentos";
 import { primeiroNome } from "@/lib/saudacao";
-import { proximosVencimentos } from "@/lib/vencimentos";
+import { proximosVencimentos, type Vencimento } from "@/lib/vencimentos";
 import ResumoVoz from "./ResumoVoz";
 import Dividas, { ResumoDividas } from "./Dividas";
 import DividaForm, { type PrefillParcelado } from "./DividaForm";
@@ -67,6 +70,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
   }, [demo]);
   const [prefill, setPrefill] = useState<Prefill | null>(null);
   const [dividaEditando, setDividaEditando] = useState<Divida | undefined>(undefined);
+  const [pagando, setPagando] = useState<AlvoPagamento | null>(null);
   const [contaAberta, setContaAberta] = useState<Conta | null>(null);
   const [extratoConta, setExtratoConta] = useState<{ conta: string; mes: string } | null>(null);
   const [dividaPrefill, setDividaPrefill] = useState<PrefillParcelado | null>(null);
@@ -117,11 +121,14 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
   );
 
   const hoje = todayISO();
+  // Cotações do dia: dólar e euro sempre (card) e as moedas das contas em moeda estrangeira.
+  const moedasDasContas = (dados?.contas ?? []).map((c) => c.moeda).filter((m): m is string => !!m && m !== "BRL");
+  const { cotacoes, taxas } = useCotacoes([...new Set(["USD", "EUR", ...moedasDasContas])], demo);
   const resumo = useMemo(() => {
     if (!dados) return null;
     const meses = mesesDisponiveis(dados.transacoes, hoje);
     return {
-      kpis: calcularKpis(dados.contas),
+      kpis: calcularKpis(dados.contas, taxas),
       meses: meses.includes(mes) ? meses : [mes, ...meses],
       gastos: gastosPorCategoria(dados.transacoes, dados.categorias, mes),
       totais: totaisDoMes(dados.transacoes, dados.categorias, mes),
@@ -129,7 +136,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
       insights: gerarInsights(dados, hoje),
       serie: serieMensal(dados.transacoes, dados.categorias, monthOf(hoje), 6),
     };
-  }, [dados, hoje, mes]);
+  }, [dados, hoje, mes, taxas]);
 
   // Limite de gasto da própria pessoa neste mês (só existe se alguém definiu um).
   const meuLimite = useMemo(
@@ -160,6 +167,19 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
   function lancarFixa(p: ContaFixaPendente) {
     setPrefill({ chave: Date.now(), nome: p.fixa.nome, valor: Number(p.fixa.valor) || 0, flutuante: !!p.fixa.flutuante });
     setJanela("lancar");
+  }
+
+  /** "Já paguei" vindo da lista de contas a vencer: acha a conta fixa ou a parcela e abre a pergunta de como foi pago. */
+  function pagarVencimento(v: Vencimento) {
+    if (!dados) return;
+    const id = v.chave.slice(v.chave.indexOf(":") + 1);
+    if (v.origem === "fixa") {
+      const fixa = dados.fixas.find((f) => String(f.id) === id);
+      if (fixa) setPagando({ tipo: "fixa", fixa });
+    } else {
+      const divida = (dados.dividas ?? []).find((d) => String(d.id) === id);
+      if (divida && v.indice && v.total) setPagando({ tipo: "divida", divida, indice: v.indice, total: v.total, vencimento: v.data });
+    }
   }
 
   async function baixaFixa(p: ContaFixaPendente) {
@@ -430,8 +450,8 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
               </section>
             )}
             <Saudacao nome={nomeExibicao} resumo={resumoDaSemana(proximosVencimentos({ fixas: dados.fixas, transacoes: dados.transacoes, dividas: dados.dividas }, hoje, 7))} />
-            <ContasFixasPendentes pendentes={resumo.pendentes} onLancar={podeLancar ? lancarFixa : undefined} onBaixa={podeLancar ? baixaFixa : undefined} />
-            <Vencimentos dados={dados} sessao={sessao} hoje={hoje} onAviso={(m) => { setAviso(m); recarregar(); }} />
+            <ContasFixasPendentes pendentes={resumo.pendentes} onLancar={podeLancar ? lancarFixa : undefined} onBaixa={podeLancar ? (p) => setPagando({ tipo: "fixa", fixa: p.fixa }) : undefined} />
+            <Vencimentos dados={dados} sessao={sessao} hoje={hoje} onAviso={(m) => { setAviso(m); recarregar(); }} onPagar={podeLancar ? pagarVencimento : undefined} />
             <CalendarioVencimentos dados={dados} hoje={hoje} />
             <ResumoDividas dados={dados} onAbrir={() => setAba("dividas")} />
             <ResumoVoz
@@ -454,11 +474,12 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
 
             <div className="grid gap-6 lg:grid-cols-12">
               <div className="space-y-6 lg:col-span-7">
-                <Bancos contas={dados.contas} onAbrir={setContaAberta} />
+                <Bancos contas={dados.contas} taxas={taxas} onAbrir={setContaAberta} />
                 <Cartoes contas={dados.contas} membros={dados.membros} onAbrir={setContaAberta} />
-                <Investimentos contas={dados.contas} />
+                <Investimentos contas={dados.contas} taxas={taxas} />
               </div>
               <div className="space-y-6 lg:col-span-5">
+                <CotacaoCard cotacoes={cotacoes} carregando={Object.keys(cotacoes).length === 0} />
                 <GastosDoMes mes={mes} gastos={resumo.gastos} receitas={resumo.totais.receitas} despesas={resumo.totais.despesas} />
                 <Evolucao serie={resumo.serie} mesAtual={mes} />
               </div>
@@ -514,10 +535,31 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
           />
         </Modal>
       )}
+      {pagando && dados && (
+        <PagamentoModal
+          dados={dados}
+          alvo={pagando}
+          onClose={() => setPagando(null)}
+          onFeito={(m) => {
+            setPagando(null);
+            depoisDeMudar(m);
+          }}
+          onSoMarcar={
+            pagando.tipo === "fixa"
+              ? () => {
+                  const f = pagando.fixa;
+                  setPagando(null);
+                  void baixaFixa({ fixa: f, atraso: 0 } as ContaFixaPendente);
+                }
+              : undefined
+          }
+        />
+      )}
       {janela === "nota" && dados && <NotaRapida dados={dados} onClose={fechar} onMudou={depoisDeMudar} />}
       {contaAberta && dados && janela === null && (
         <ContaModal
           dados={dados}
+          taxas={taxas}
           conta={dados.contas.find((c) => String(c.id) === String(contaAberta.id)) ?? contaAberta}
           onClose={() => setContaAberta(null)}
           onExtrato={(conta, m) => {

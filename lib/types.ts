@@ -20,6 +20,10 @@ export interface Conta {
   dia_fechamento?: number | null;
   /** Pessoa da carteira dona do cartão. */
   titular_id?: string | null;
+  /** Moeda em que o saldo da conta está guardado (BRL quando não informada). */
+  moeda?: string | null;
+  /** Conta em moeda estrangeira: quanto custou, em reais, o saldo atual. */
+  custo_brl?: number | string | null;
 }
 
 export interface Categoria {
@@ -58,6 +62,8 @@ export interface Transacao {
   moeda?: string | null;
   valor_original?: number | string | null;
   taxa_cambio?: number | string | null;
+  /** Valor na moeda da conta (com sinal) quando a conta é em moeda estrangeira. */
+  valor_conta?: number | string | null;
   /** Data no formato AAAA-MM-DD. */
   data: string;
   descricao: string;
@@ -95,6 +101,8 @@ export interface NovaTransacao {
   moeda?: string;
   valor_original?: number | null;
   taxa_cambio?: number | null;
+  /** Valor na moeda da conta (com sinal), quando a conta é em moeda estrangeira. */
+  valor_conta?: number | null;
 }
 
 export type FormaCompra = "avista" | "parcelado" | "financiado";

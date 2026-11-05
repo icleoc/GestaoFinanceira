@@ -53,6 +53,7 @@ export function iniciarDemo(hoje: string) {
     { id: 4, nome: "Cartão da Ana", tipo: "Crédito", saldo_atual: -960.4, limite_total: 5000, dia_vencimento: 15, dia_fechamento: 8, bandeira: "Mastercard", final_cartao: "7733", titular_id: ANA },
     { id: 5, nome: "Corretora - Renda fixa", tipo: "Investimento", saldo_atual: 38500, limite_total: 0, dia_vencimento: null },
     { id: 6, nome: "Tesouro Direto", tipo: "Investimento", saldo_atual: 15200, limite_total: 0, dia_vencimento: null },
+    { id: 7, nome: "Revolut (dólar)", tipo: "Corrente", saldo_atual: 1800, limite_total: 0, dia_vencimento: null, moeda: "USD", custo_brl: 9450 },
   ];
   const nomes = ["Mercado", "Alimentação", "Combustível", "Transporte", "Saúde", "Moradia", "Energia", "Internet", "Assinaturas", "Lazer", "Educação", "Compras", "Outros"];
   const categorias: Categoria[] = [
@@ -139,6 +140,22 @@ export const demoMembros = (): Membro[] => membros.map((m) => ({ ...m }));
 
 export const AVISO_DEMO = "Isto é uma demonstração: nada é salvo de verdade. Crie sua conta para usar com seus dados.";
 
+/** Aplica um lançamento no saldo (ou desfaz, com sinal -1), igual ao banco: conta em moeda estrangeira usa o valor na moeda dela. */
+function aplicar(c: Conta | undefined, valor: number, valorConta: number | null | undefined, sinal: 1 | -1) {
+  if (!c) return;
+  if (!c.moeda || c.moeda === "BRL") {
+    c.saldo_atual = Number(c.saldo_atual ?? 0) + sinal * valor;
+    return;
+  }
+  const s = Number(c.saldo_atual ?? 0);
+  let k = Number(c.custo_brl ?? 0);
+  const d = sinal * (valorConta ?? valor);
+  if (d >= 0) k += Math.abs(valor);
+  else k = s > 0 ? k * Math.max(0, (s + d) / s) : 0;
+  c.saldo_atual = s + d;
+  c.custo_brl = Math.round(k * 100) / 100;
+}
+
 export function demoInserir(linhas: NovaTransacao[]): Id[] {
   const ids: Id[] = [];
   for (const l of linhas) {
@@ -147,14 +164,14 @@ export function demoInserir(linhas: NovaTransacao[]): Id[] {
     store!.transacoes.unshift(novo);
     // O saldo da conta acompanha o lançamento, como no banco de verdade.
     const c = store!.contas.find((x) => x.id === l.conta_origem_id);
-    if (c) c.saldo_atual = Number(c.saldo_atual ?? 0) + Number(l.valor);
+    aplicar(c, Number(l.valor), l.valor_conta, 1);
   }
   return ids;
 }
 export function demoExcluir(ids: Id[]) {
   for (const t of store!.transacoes.filter((x) => ids.some((i) => String(i) === String(x.id)))) {
     const c = store!.contas.find((x) => x.id === t.conta_origem_id);
-    if (c) c.saldo_atual = Number(c.saldo_atual ?? 0) - Number(t.valor);
+    aplicar(c, Number(t.valor), (t as { valor_conta?: number | null }).valor_conta, -1);
   }
   store!.transacoes = store!.transacoes.filter((x) => !ids.some((i) => String(i) === String(x.id)));
 }
@@ -163,10 +180,10 @@ export function demoAtualizar(itens: { id: Id; data: string; descricao: string; 
     const t = store!.transacoes.find((x) => String(x.id) === String(it.id));
     if (!t) continue;
     const antiga = store!.contas.find((x) => x.id === t.conta_origem_id);
-    if (antiga) antiga.saldo_atual = Number(antiga.saldo_atual ?? 0) - Number(t.valor);
+    aplicar(antiga, Number(t.valor), (t as { valor_conta?: number | null }).valor_conta, -1);
     const destino = it.conta_origem_id !== undefined ? it.conta_origem_id : t.conta_origem_id;
     const nova = store!.contas.find((x) => x.id === destino);
-    if (nova) nova.saldo_atual = Number(nova.saldo_atual ?? 0) + it.valor;
+    aplicar(nova, it.valor, (t as { valor_conta?: number | null }).valor_conta, 1);
     Object.assign(t, { data: it.data, descricao: it.descricao, valor: it.valor, conta_origem_id: destino ?? null });
   }
 }

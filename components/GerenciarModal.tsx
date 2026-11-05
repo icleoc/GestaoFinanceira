@@ -15,6 +15,7 @@ import {
   excluirFixa,
 } from "@/lib/data";
 import { money } from "@/lib/format";
+import { MOEDAS, simboloDe, formatarEstrangeira } from "@/lib/cambio";
 import Modal from "./Modal";
 
 interface Props {
@@ -149,6 +150,7 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
                       membros={dados.membros ?? []}
                       ocupado={ocupado}
                       conta={c}
+                      moedaTravada={dados.transacoes.some((t) => String(t.conta_origem_id) === String(c.id))}
                       rotulo="Salvar alterações"
                       onCancelar={() => setEditando(null)}
                       onEnviar={(v) =>
@@ -165,7 +167,7 @@ export default function GerenciarModal({ dados, onClose, onMudou }: Props) {
                       <p className="font-medium">{c.nome}</p>
                       <p className="num text-sm text-muted">
                         {c.tipo}
-                        {c.tipo === "Crédito" ? ` · limite ${money(num(c.limite_total))}` : ` · ${money(num(c.saldo_atual))}`}
+                        {c.tipo === "Crédito" ? ` · limite ${money(num(c.limite_total))}` : c.moeda && c.moeda !== "BRL" ? ` · ${formatarEstrangeira(num(c.saldo_atual), c.moeda)}` : ` · ${money(num(c.saldo_atual))}`}
                         {c.tipo === "Crédito" && c.final_cartao ? ` · final ${c.final_cartao}` : ""}
                       </p>
                     </div>
@@ -268,11 +270,14 @@ function FormConta({
   rotulo,
   limpar,
   tipos,
+  moedaTravada,
   onCancelar,
   onEnviar,
 }: {
   ocupado: boolean;
   tipos?: TipoConta[];
+  /** Conta que já tem lançamentos: a moeda não pode mais mudar. */
+  moedaTravada?: boolean;
   membros: NonNullable<Dados["membros"]>;
   conta?: Conta;
   rotulo: string;
@@ -291,9 +296,11 @@ function FormConta({
   const [valor, setValor] = useState(conta ? texto(conta.tipo === "Crédito" ? conta.limite_total : conta.saldo_atual) : "");
   const [fatura, setFatura] = useState(conta?.tipo === "Crédito" ? texto(Math.abs(num(conta.saldo_atual))) : "");
   const [dia, setDia] = useState(conta?.dia_vencimento ? String(conta.dia_vencimento) : "");
+  const [moeda, setMoeda] = useState(conta?.moeda || "BRL");
   const [erro, setErro] = useState("");
 
-  const rotuloValor = tipo === "Crédito" ? "Limite do cartão (R$)" : tipo === "Investimento" ? "Valor investido (R$)" : "Saldo atual (R$)";
+  const simbolo = tipo === "Crédito" ? "R$" : simboloDe(moeda);
+  const rotuloValor = tipo === "Crédito" ? "Limite do cartão (R$)" : tipo === "Investimento" ? `Valor investido (${simbolo})` : `Saldo atual (${simbolo})`;
 
   function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -314,6 +321,8 @@ function FormConta({
       finalCartao: tipo === "Crédito" ? finalCartao || null : null,
       diaFechamento: tipo === "Crédito" ? f : null,
       titularId: tipo === "Crédito" ? titular || null : null,
+      moeda: tipo === "Crédito" ? "BRL" : moeda,
+      antes: conta ? { moeda: conta.moeda || "BRL", saldo: num(conta.saldo_atual), custo: num(conta.custo_brl) } : undefined,
     });
     if (limpar) {
       setNome("");
@@ -324,6 +333,7 @@ function FormConta({
       setFinalCartao("");
       setFechamento("");
       setTitular("");
+      setMoeda("BRL");
     }
   }
 
@@ -345,6 +355,27 @@ function FormConta({
           {(!tipos || tipos.includes("Investimento")) && <option value="Investimento">Investimento</option>}
         </select>
       </div>
+      {tipo !== "Crédito" && (
+        <div className="col-span-2">
+          <label htmlFor={`${editar ? "e" : "n"}-moeda`} className="label">
+            Moeda do saldo
+          </label>
+          <select id={`${editar ? "e" : "n"}-moeda`} value={moeda} onChange={(e) => setMoeda(e.target.value)} className="field" disabled={moedaTravada}>
+            {MOEDAS.map((m) => (
+              <option key={m.codigo} value={m.codigo}>
+                {m.simbolo} {m.nome} ({m.codigo})
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-muted">
+            {moedaTravada
+              ? "A moeda não muda depois que a conta tem lançamentos."
+              : moeda === "BRL"
+                ? "Para conta em dólar, euro etc. (Revolut, OKX…), escolha a moeda e informe o saldo nela. O app mostra o saldo na moeda e a variação cambial em reais."
+                : `Informe o saldo em ${moeda}. O custo em reais usa a cotação de hoje, e a variação cambial aparece daqui para a frente.`}
+          </p>
+        </div>
+      )}
       <div className={tipo === "Crédito" ? "col-span-1" : "col-span-2"}>
         <label htmlFor={`${editar ? "e" : "n"}-valor`} className="label">
           {rotuloValor}

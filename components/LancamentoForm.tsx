@@ -9,10 +9,12 @@ import { carteiraDaSessao, enviarNota, inserirTransacoes, removerNotas } from "@
 import { camposLidos, lerNotaNoServidor } from "@/lib/nota";
 import { sugerirCategoria } from "@/lib/categorizar";
 import { dateBR, money } from "@/lib/format";
+import { useCotacaoDaData } from "@/lib/cotacoes";
 import {
   MOEDAS,
-  buscarCotacao,
+  contaEstrangeira,
   converter,
+  moedaDaConta,
   ehMoedaValida,
   formatarEstrangeira,
   formatarTaxa,
@@ -92,9 +94,9 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
 
   // Moeda (câmbio automático nas receitas).
   const [moeda, setMoeda] = useState("BRL");
-  const [taxaTexto, setTaxaTexto] = useState("");
-  const [cotacao, setCotacao] = useState<{ estado: "parado" | "buscando" | "ok" | "erro"; dia?: string; msg?: string }>({ estado: "parado" });
-  const taxaManual = useRef(false);
+  // Valor que chegou na conta de destino, quando ela é em moeda estrangeira.
+  const [recebidoTexto, setRecebidoTexto] = useState("");
+  const recebidoManual = useRef(false);
 
   // Foto da nota.
   const [foto, setFoto] = useState<Blob | null>(null);
@@ -127,37 +129,32 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
   useEffect(() => {
     try {
       const guardada = localStorage.getItem("moedaReceita");
-      if (guardada && ehMoedaValida(guardada)) setMoeda(guardada);
+      if (guardada && ehMoedaValida(guardada) && operacao === "receita") setMoeda(guardada);
     } catch {
       /* sem armazenamento local */
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const estrangeira = operacao === "receita" && moeda !== "BRL";
+  // Conta em moeda estrangeira (OKX, Revolut…): o valor é digitado na moeda dela.
+  const moedaConta = origem ? moedaDaConta(origem) : "BRL";
+  const contaEstr = !!origem && contaEstrangeira(origem);
+  const moedaEscolhivel = !contaEstr && (operacao === "receita" || operacao === "despesa");
+  const moedaUsada = contaEstr ? moedaConta : moedaEscolhivel ? moeda : "BRL";
+  const estrangeira = moedaUsada !== "BRL";
 
-  // Cotação do dia do lançamento, sempre que a moeda ou a data mudam.
-  useEffect(() => {
-    if (!estrangeira) {
-      setCotacao({ estado: "parado" });
-      return;
-    }
-    let cancelado = false;
-    taxaManual.current = false;
-    setCotacao({ estado: "buscando" });
-    buscarCotacao(moeda, data)
-      .then((c) => {
-        if (cancelado) return;
-        setTaxaTexto(String(c.taxa).replace(".", ","));
-        setCotacao({ estado: "ok", dia: c.dataCotacao });
-      })
-      .catch((e: unknown) => {
-        if (cancelado) return;
-        setCotacao({ estado: "erro", msg: e instanceof Error ? e.message : "Cotação indisponível." });
-      });
-    return () => {
-      cancelado = true;
-    };
-  }, [estrangeira, moeda, data]);
+  // Destino em moeda estrangeira (transferência ou investimento).
+  const destino = contas.find((c) => String(c.id) === destinoId);
+  const moedaDestino = ehTransf && destino ? moedaDaConta(destino) : "BRL";
+  const destinoEstr = moedaDestino !== "BRL";
+  const mesmaMoedaNosDois = contaEstr && destinoEstr && moedaConta === moedaDestino;
+  const moedasIncompativeis = contaEstr && destinoEstr && moedaConta !== moedaDestino;
+  const precisaCotacaoDestino = destinoEstr && !mesmaMoedaNosDois;
+
+  // Cotação de fechamento do dia escolhido (se paguei ontem, vale a de ontem).
+  const principal = useCotacaoDaData(moedaUsada, data, estrangeira);
+  const destinoQ = useCotacaoDaData(moedaDestino, data, precisaCotacaoDestino);
+  const { taxaTexto, setTaxaTexto, cotacao } = principal;
 
   // Prévia e limpeza da foto.
   useEffect(() => {
@@ -262,9 +259,17 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
 
   const digitado = lerValor(valor);
   const taxa = lerTaxa(taxaTexto);
+  const taxaDestino = lerTaxa(destinoQ.taxaTexto);
   // Em moeda estrangeira, o valor digitado é convertido para reais com a cotação do dia.
   const liquido = estrangeira ? converter(digitado, taxa) : digitado;
   const cobrado = comTaxa ? lerValor(total) : liquido;
+
+  // Quanto chega no destino em moeda estrangeira: mesma moeda = o digitado; saindo de reais, o convertido pela cotação do dia.
+  useEffect(() => {
+    if (!precisaCotacaoDestino || recebidoManual.current) return;
+    setRecebidoTexto(liquido > 0 && taxaDestino > 0 ? String(round2(liquido / taxaDestino)).replace(".", ",") : "");
+  }, [precisaCotacaoDestino, liquido, taxaDestino]);
+  const recebido = mesmaMoedaNosDois ? digitado : lerValor(recebidoTexto);
 
   /** Compra parcelada em Pix ou boleto: vira um parcelamento com vencimentos e alertas. */
   function parcelarSemCartao(forma: "pix" | "boleto") {
@@ -299,7 +304,17 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
       totalCobrado: lerValor(total),
     });
     if (estrangeira && !(taxa > 0)) return setErro("Informe a cotação para converter em reais.");
+    if (moedasIncompativeis) return setErro("Para mover dinheiro entre duas moedas estrangeiras, passe pelo real: faça duas movimentações.");
+    if (destinoEstr && !(recebido > 0)) return setErro(`Informe quanto chegou na conta de destino em ${moedaDestino}.`);
     if (!r.ok) return setErro(r.erro);
+    // Conta em moeda estrangeira: cada lado guarda também o valor na moeda da conta (o banco usa isso no saldo).
+    const linhas = r.linhas.map((l) => {
+      if (contaEstr && origem && sameId(l.conta_origem_id, origem.id) && !l.descricao.startsWith("Recebido:") && !l.descricao.startsWith("Taxa:")) {
+        return { ...l, valor_conta: l.valor < 0 ? -digitado : digitado };
+      }
+      if (destinoEstr && l.descricao.startsWith("Recebido:")) return { ...l, valor_conta: recebido };
+      return l;
+    });
 
     setEnviando(true);
     let caminhoNota: string | null = null;
@@ -308,17 +323,17 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
       const extras = {
         ...(caminhoNota ? { nota_path: caminhoNota } : {}),
         ...(caminhoNota && leitura.estado === "ok" && leitura.dados ? { nota_dados: leitura.dados } : {}),
-        ...(estrangeira ? { moeda, valor_original: digitado, taxa_cambio: taxa } : {}),
+        ...(estrangeira ? { moeda: moedaUsada, valor_original: digitado, taxa_cambio: taxa } : {}),
       };
-      await inserirTransacoes(r.linhas.map((l) => ({ ...l, ...extras })));
-      if (estrangeira) {
+      await inserirTransacoes(linhas.map((l) => ({ ...l, ...extras })));
+      if (estrangeira && moedaEscolhivel && operacao === "receita") {
         try {
           localStorage.setItem("moedaReceita", moeda);
         } catch {
           /* ignora */
         }
       }
-      const n = r.linhas.filter((l) => !l.descricao.startsWith("Taxa:") && !l.descricao.startsWith("Recebido:")).length;
+      const n = linhas.filter((l) => !l.descricao.startsWith("Taxa:") && !l.descricao.startsWith("Recebido:")).length;
       setDescricao("");
       setDescAuto(true);
       setValor("");
@@ -327,6 +342,8 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
       setComTaxa(false);
       setTotal("");
       setParcelas(1);
+      setRecebidoTexto("");
+      recebidoManual.current = false;
       setFoto(null);
       setLeitura({ estado: "parado" });
       onSalvo(n > 1 ? `Registrado em ${n} parcelas.` : "Lançamento registrado.");
@@ -343,6 +360,13 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
 
   function trocarOperacao(op: Operacao) {
     setOperacao(op);
+    // Receita lembra a última moeda; despesa começa em reais.
+    try {
+      const guardada = localStorage.getItem("moedaReceita");
+      setMoeda(op === "receita" && guardada && ehMoedaValida(guardada) ? guardada : "BRL");
+    } catch {
+      setMoeda("BRL");
+    }
     setErro("");
     setDescAuto(true);
     if (op === "transferencia" || op === "investimento") {
@@ -350,9 +374,11 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
     }
   }
 
-  const diaCotacao = cotacao.dia ?? data;
-  const aviso = cotacao.dia && cotacao.dia !== data ? " (último dia útil)" : "";
-  const textoCotacao = "Cotação de " + dateBR(diaCotacao) + aviso + ". Se o seu banco usou outra, corrija acima.";
+  const textoDaCotacao = (q: { dia?: string }) => {
+    const dia = q.dia ?? data;
+    const aviso = q.dia && q.dia !== data ? " (último dia útil)" : "";
+    return "Cotação de fechamento de " + dateBR(dia) + aviso + ". Se a sua conta usou outra, corrija acima.";
+  };
 
   const botao =
     operacao === "receita" ? "Registrar receita" : ehTransf ? "Registrar movimentação" : "Registrar despesa";
@@ -456,7 +482,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
           </div>
           <div className="col-span-2">
             <label htmlFor="f-valor" className="label">
-              Valor ({simboloDe(estrangeira ? moeda : "BRL")})
+              Valor ({simboloDe(moedaUsada)})
             </label>
             <input
               id="f-valor"
@@ -478,50 +504,40 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
           </div>
         </div>
 
-        {operacao === "receita" && (
+        {(moedaEscolhivel || contaEstr) && (
           <div className="rounded-xl bg-sunken p-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <label htmlFor="f-moeda" className="text-sm font-medium">
-                Em que moeda você recebeu?
-              </label>
-              <select
-                id="f-moeda"
-                value={moeda}
-                onChange={(e) => setMoeda(e.target.value)}
-                className="field w-auto py-1.5 pr-8 text-sm"
-              >
-                {MOEDAS.map((m) => (
-                  <option key={m.codigo} value={m.codigo}>
-                    {m.simbolo} {m.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {contaEstr ? (
+              <p className="text-sm">
+                Esta conta é em <b>{moedaConta}</b>: digite o valor em {MOEDAS.find((m) => m.codigo === moedaConta)?.nome.toLowerCase()}. O app converte para reais com a cotação do dia da data escolhida.
+              </p>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3">
+                <label htmlFor="f-moeda" className="text-sm font-medium">
+                  {operacao === "receita" ? "Em que moeda você recebeu?" : "Em que moeda foi pago?"}
+                </label>
+                <select id="f-moeda" value={moeda} onChange={(e) => setMoeda(e.target.value)} className="field w-auto py-1.5 pr-8 text-sm">
+                  {MOEDAS.map((m) => (
+                    <option key={m.codigo} value={m.codigo}>
+                      {m.simbolo} {m.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {estrangeira && (
               <div className="mt-3" aria-live="polite">
                 <label htmlFor="f-taxa" className="label">
-                  Cotação ({moeda} → R$)
+                  Cotação ({moedaUsada} → R$)
                 </label>
-                <input
-                  id="f-taxa"
-                  inputMode="decimal"
-                  value={taxaTexto}
-                  onChange={(e) => {
-                    setTaxaTexto(e.target.value);
-                    taxaManual.current = true;
-                  }}
-                  placeholder="0,0000"
-                  className="field num"
-                />
+                <input id="f-taxa" inputMode="decimal" value={taxaTexto} onChange={(e) => setTaxaTexto(e.target.value)} placeholder="0,0000" className="field num" />
                 <p className="mt-1.5 text-sm text-muted">
-                  {cotacao.estado === "buscando" && "Buscando a cotação do dia…"}
+                  {cotacao.estado === "buscando" && "Buscando a cotação de fechamento…"}
                   {cotacao.estado === "erro" && <span className="text-neg">{cotacao.msg}</span>}
-                  {cotacao.estado === "ok" && textoCotacao}
+                  {cotacao.estado === "ok" && textoDaCotacao(cotacao)}
                 </p>
                 {digitado > 0 && taxa > 0 && (
                   <p className="num mt-2 rounded-lg bg-surface px-3 py-2 text-sm">
-                    {formatarEstrangeira(digitado, moeda)} × {formatarTaxa(taxa)} ={" "}
-                    <b className="font-semibold">{money(liquido)}</b>
+                    {formatarEstrangeira(digitado, moedaUsada)} × {formatarTaxa(taxa)} = <b className="font-semibold">{money(liquido)}</b>
                   </p>
                 )}
               </div>
@@ -538,6 +554,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
               {contasOrigem.map((c) => (
                 <option key={c.id} value={String(c.id)}>
                   {c.nome}
+                  {contaEstrangeira(c) ? ` (${moedaDaConta(c)})` : ""}
                 </option>
               ))}
             </select>
@@ -554,12 +571,48 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
                   .map((c) => (
                     <option key={c.id} value={String(c.id)}>
                       {c.nome}
+                      {contaEstrangeira(c) ? ` (${moedaDaConta(c)})` : ""}
                     </option>
                   ))}
               </select>
             </div>
           )}
         </div>
+
+        {precisaCotacaoDestino && (
+          <div className="rounded-xl bg-sunken p-3" aria-live="polite">
+            <p className="text-sm">
+              O destino é em <b>{moedaDestino}</b>. O app calcula quanto chega com a cotação de fechamento do dia escolhido; corrija se o seu banco usou outra.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="f-taxa-dest" className="label">
+                  Cotação ({moedaDestino} → R$)
+                </label>
+                <input id="f-taxa-dest" inputMode="decimal" value={destinoQ.taxaTexto} onChange={(e) => { destinoQ.setTaxaTexto(e.target.value); recebidoManual.current = false; }} className="field num" placeholder="0,0000" />
+              </div>
+              <div>
+                <label htmlFor="f-recebido" className="label">
+                  Chegou ({simboloDe(moedaDestino)})
+                </label>
+                <input id="f-recebido" inputMode="decimal" value={recebidoTexto} onChange={(e) => { setRecebidoTexto(e.target.value); recebidoManual.current = true; }} className="field num" placeholder="0,00" />
+              </div>
+            </div>
+            <p className="mt-1.5 text-sm text-muted">
+              {destinoQ.cotacao.estado === "buscando" && "Buscando a cotação de fechamento…"}
+              {destinoQ.cotacao.estado === "erro" && <span className="text-neg">{destinoQ.cotacao.msg}</span>}
+              {destinoQ.cotacao.estado === "ok" && textoDaCotacao(destinoQ.cotacao)}
+            </p>
+          </div>
+        )}
+        {mesmaMoedaNosDois && digitado > 0 && (
+          <p className="num rounded-xl bg-sunken px-3 py-2 text-sm">Chegam {formatarEstrangeira(digitado, moedaDestino)} na conta de destino.</p>
+        )}
+        {moedasIncompativeis && (
+          <p role="alert" className="text-sm font-medium text-neg">
+            Origem em {moedaConta} e destino em {moedaDestino}: passe pelo real, em duas movimentações.
+          </p>
+        )}
 
         {operacao === "investimento" && (
           <div>

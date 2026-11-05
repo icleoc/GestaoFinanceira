@@ -65,7 +65,7 @@ export default function DividaForm({ dados, divida, prefill, onSalvo }: { dados:
   const vencidas = /^\d{4}-\d{2}-\d{2}$/.test(primeira) && n > 0 ? parcelasVencidas(primeira, n, todayISO()) : 0;
   // Dívida nova que já estava andando: o que venceu antes de hoje é passado e conta como pago.
   const nPagas = divida ? Math.min(Math.max(0, Math.trunc(lerNumero(pagasEdit))), Math.max(0, n)) : assumirPagas ? vencidas : 0;
-  const contas = dados.contas.filter((c) => c.tipo !== "Investimento");
+  const contas = dados.contas.filter((c) => c.tipo !== "Investimento" && (!c.moeda || c.moeda === "BRL"));
   const categoriasDespesa = dados.categorias.filter((c) => c.tipo === "Despesa");
   const idDe = <T extends { id: Id }>(lista: T[], v: string): Id | null => lista.find((x) => String(x.id) === v)?.id ?? null;
 

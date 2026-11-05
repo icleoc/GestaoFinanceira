@@ -106,7 +106,7 @@ function Cartao({ d, dados, hoje, podeGerenciar, podeLancar, onEditar, onMudou }
   const [apagando, setApagando] = useState(false);
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
-  const contas = dados.contas.filter((x) => x.tipo !== "Investimento");
+  const contas = dados.contas.filter((x) => x.tipo !== "Investimento" && (!x.moeda || x.moeda === "BRL"));
   const [lancar, setLancar] = useState(true);
   const [contaId, setContaId] = useState(d.conta_id != null ? String(d.conta_id) : contas[0] ? String(contas[0].id) : "");
   const [data, setData] = useState(hoje);
