@@ -13,7 +13,8 @@ import {
   totaisDoMes,
   type ContaFixaPendente,
 } from "@/lib/finance";
-import { gerarInsights, serieMensal, type Destino } from "@/lib/assistente";
+import { gerarInsights, serieMensal, type Destino, type FiltroExtrato } from "@/lib/assistente";
+import { rolarParaSecao } from "@/lib/rolar";
 import { carregarDados, carregarSessao, darBaixaFixa, sair, usarCarteira } from "@/lib/data";
 import { emDemo, iniciarDemo } from "@/lib/demo";
 import Link from "next/link";
@@ -29,6 +30,8 @@ import LancamentoForm, { type Prefill } from "./LancamentoForm";
 import ExtratoModal from "./ExtratoModal";
 import ContaModal from "./ContaModal";
 import CotacaoCard from "./CotacaoCard";
+import SincronizarCalendario from "./SincronizarCalendario";
+import PagasSemLancamento from "./PagasSemLancamento";
 import PagamentoModal, { type AlvoPagamento } from "./PagamentoModal";
 import { useCotacoes } from "@/lib/cotacoes";
 import GerenciarModal from "./GerenciarModal";
@@ -73,6 +76,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const [pagando, setPagando] = useState<AlvoPagamento | null>(null);
   const [contaAberta, setContaAberta] = useState<Conta | null>(null);
   const [extratoConta, setExtratoConta] = useState<{ conta: string; mes: string } | null>(null);
+  const [extratoFiltro, setExtratoFiltro] = useState<FiltroExtrato | null>(null);
   const [dividaPrefill, setDividaPrefill] = useState<PrefillParcelado | null>(null);
   const [aviso, setAviso] = useState("");
 
@@ -162,6 +166,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const fechar = useCallback(() => {
     setJanela(null);
     setExtratoConta(null);
+    setExtratoFiltro(null);
   }, []);
 
   function lancarFixa(p: ContaFixaPendente) {
@@ -192,8 +197,17 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
     }
   }
 
-  function irPara(d: Destino) {
-    if (d === "extrato") setJanela("extrato");
+  function abrirExtrato(f: FiltroExtrato) {
+    setExtratoConta(null);
+    setExtratoFiltro(f);
+    setJanela("extrato");
+  }
+
+  function irPara(d: Destino, filtro?: FiltroExtrato) {
+    if (d === "extrato") {
+      if (filtro) abrirExtrato(filtro);
+      else setJanela("extrato");
+    }
     else if (d === "gerenciar") setJanela("gerenciar");
     else if (d === "lancar") setJanela("lancar");
     else setAba("planejar");
@@ -451,7 +465,9 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
             )}
             <Saudacao nome={nomeExibicao} resumo={resumoDaSemana(proximosVencimentos({ fixas: dados.fixas, transacoes: dados.transacoes, dividas: dados.dividas }, hoje, 7))} />
             <ContasFixasPendentes pendentes={resumo.pendentes} onLancar={podeLancar ? lancarFixa : undefined} onBaixa={podeLancar ? (p) => setPagando({ tipo: "fixa", fixa: p.fixa }) : undefined} />
+            {podeLancar && <PagasSemLancamento dados={dados} hoje={hoje} onRegistrar={(fixa) => setPagando({ tipo: "fixa", fixa })} />}
             <Vencimentos dados={dados} sessao={sessao} hoje={hoje} onAviso={(m) => { setAviso(m); recarregar(); }} onPagar={podeLancar ? pagarVencimento : undefined} />
+            {sessao && pode(permissoes, "ver") && <SincronizarCalendario compacto userId={sessao.userId} avisos={dados.avisos} />}
             <CalendarioVencimentos dados={dados} hoje={hoje} />
             <ResumoDividas dados={dados} onAbrir={() => setAba("dividas")} />
             <ResumoVoz
@@ -470,17 +486,17 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
               }
             />
             <Assistente insights={resumo.insights} onIr={irPara} permitidos={destinosPermitidos} />
-            <Patrimonio kpis={resumo.kpis} />
+            <Patrimonio kpis={resumo.kpis} onIr={(sec) => rolarParaSecao(`sec-${sec}`)} />
 
             <div className="grid gap-6 lg:grid-cols-12">
               <div className="space-y-6 lg:col-span-7">
-                <Bancos contas={dados.contas} taxas={taxas} onAbrir={setContaAberta} />
-                <Cartoes contas={dados.contas} membros={dados.membros} onAbrir={setContaAberta} />
-                <Investimentos contas={dados.contas} taxas={taxas} />
+                <div id="sec-bancos"><Bancos contas={dados.contas} taxas={taxas} onAbrir={setContaAberta} /></div>
+                <div id="sec-cartoes"><Cartoes contas={dados.contas} membros={dados.membros} onAbrir={setContaAberta} /></div>
+                <div id="sec-investimentos"><Investimentos contas={dados.contas} taxas={taxas} /></div>
               </div>
               <div className="space-y-6 lg:col-span-5">
                 <CotacaoCard cotacoes={cotacoes} carregando={Object.keys(cotacoes).length === 0} />
-                <GastosDoMes mes={mes} gastos={resumo.gastos} receitas={resumo.totais.receitas} despesas={resumo.totais.despesas} />
+                <GastosDoMes mes={mes} gastos={resumo.gastos} receitas={resumo.totais.receitas} despesas={resumo.totais.despesas} onAbrir={(categoria) => abrirExtrato({ mes, tipo: "despesa", categoria })} />
                 <Evolucao serie={resumo.serie} mesAtual={mes} />
               </div>
             </div>
@@ -570,7 +586,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
         />
       )}
       {janela === "extrato" && dados && (
-        <ExtratoModal dados={dados} mesInicial={extratoConta?.mes ?? mes} contaInicial={extratoConta?.conta} podeEditar={podeEditar} onClose={fechar} onMudou={depoisDeMudar} />
+        <ExtratoModal dados={dados} mesInicial={extratoFiltro?.mes ?? extratoConta?.mes ?? mes} contaInicial={extratoConta?.conta} filtroInicial={extratoFiltro ?? undefined} podeEditar={podeEditar} onClose={fechar} onMudou={depoisDeMudar} />
       )}
       {janela === "gerenciar" && dados && podeGerenciar && (
         <GerenciarModal dados={dados} onClose={fechar} onMudou={depoisDeMudar} />
@@ -593,6 +609,8 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
         <PerfilModal
           nomeAtual={meuNome ?? ""}
           email={sessao.email}
+          userId={sessao.userId}
+          avisos={dados?.avisos}
           onClose={fechar}
           onFeito={() => {
             setJanela(null);

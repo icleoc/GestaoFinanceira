@@ -88,6 +88,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
   const [dias, setDias] = useState(0);
   const [parcelas, setParcelas] = useState(1);
   const [comTaxa, setComTaxa] = useState(false);
+  const [historico, setHistorico] = useState(false);
   const [total, setTotal] = useState("");
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -302,6 +303,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
       diasResgate: operacao === "investimento" ? dias : 0,
       comTaxa: operacao !== "receita" && comTaxa,
       totalCobrado: lerValor(total),
+      semSaldo: !ehTransf && historico,
     });
     if (estrangeira && !(taxa > 0)) return setErro("Informe a cotação para converter em reais.");
     if (moedasIncompativeis) return setErro("Para mover dinheiro entre duas moedas estrangeiras, passe pelo real: faça duas movimentações.");
@@ -662,6 +664,16 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
               </button>
             </div>
           </div>
+        )}
+
+        {!ehTransf && (
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-sunken p-3 text-sm">
+            <input type="checkbox" checked={historico} onChange={(e) => setHistorico(e.target.checked)} className="mt-0.5 size-4 accent-[rgb(var(--accent))]" />
+            <span>
+              <span className="font-medium">Lançamento de histórico</span>
+              <span className="block text-muted">Registra no extrato e nas parcelas, mas não mexe no saldo nem na fatura atual. Use para justificar o que já estava na conta ou no cartão antes de começar a usar o app.</span>
+            </span>
+          </label>
         )}
 
         {operacao !== "receita" && (

@@ -73,6 +73,10 @@ export interface Transacao {
   categoria_id: Id | null;
   /** Quem fez o lançamento (vazio nos lançamentos antigos). */
   criado_por?: string | null;
+  /** As duas pontas de uma transferência compartilham este código. */
+  vinculo?: string | null;
+  /** Lançamento de histórico: não mexe no saldo da conta. */
+  sem_saldo?: boolean | null;
 }
 
 export interface DespesaFixa {
@@ -103,6 +107,8 @@ export interface NovaTransacao {
   taxa_cambio?: number | null;
   /** Valor na moeda da conta (com sinal), quando a conta é em moeda estrangeira. */
   valor_conta?: number | null;
+  vinculo?: string | null;
+  sem_saldo?: boolean;
 }
 
 export type FormaCompra = "avista" | "parcelado" | "financiado";

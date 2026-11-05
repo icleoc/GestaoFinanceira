@@ -2,21 +2,71 @@
 
 import { useEffect, useRef, useState } from "react";
 
-/** Botão que lê em voz alta o resumo do painel (voz do próprio aparelho, sem custo). */
+const CHAVE = "vozResumo";
+
+/** Quanto mais natural a voz costuma soar, maior a nota (vozes neurais "Natural", "Online", do Google, Premium/Aprimorada). */
+function nota(v: SpeechSynthesisVoice): number {
+  const n = v.name.toLowerCase();
+  let p = 0;
+  if (/natural/.test(n)) p += 50;
+  if (/online/.test(n)) p += 30;
+  if (/google/.test(n)) p += 25;
+  if (/premium|enhanced|aprimorad|siri/.test(n)) p += 35;
+  if (/francisca|antonio|thalita|luciana|fernanda|vit[oó]ria|felipe/.test(n)) p += 10;
+  if (v.lang.toLowerCase() === "pt-br") p += 20;
+  return p;
+}
+
+function vozesPt(): SpeechSynthesisVoice[] {
+  return window.speechSynthesis
+    .getVoices()
+    .filter((v) => v.lang.toLowerCase().startsWith("pt"))
+    .sort((a, b) => nota(b) - nota(a));
+}
+
+/** Divide em frases: a voz respira entre elas e soa menos corrida. */
+function frases(texto: string): string[] {
+  return texto
+    .split(/(?<=[.!?])\s+/)
+    .map((f) => f.trim())
+    .filter(Boolean);
+}
+
+/** Botão que lê em voz alta o resumo do painel. Usa as vozes do próprio aparelho, de graça; escolhendo uma voz "Natural" (Edge/Windows) ou "Google" (Chrome) fica bem menos robótica. */
 export default function ResumoVoz({ montarTexto }: { montarTexto: () => string }) {
   const [falando, setFalando] = useState(false);
   const [texto, setTexto] = useState("");
   const [suporta, setSuporta] = useState(true);
-  const fim = useRef<() => void>(() => undefined);
+  const [vozes, setVozes] = useState<SpeechSynthesisVoice[]>([]);
+  const [escolhida, setEscolhida] = useState("");
+  const ativo = useRef(false);
 
   useEffect(() => {
-    setSuporta(typeof window !== "undefined" && "speechSynthesis" in window);
+    const ok = typeof window !== "undefined" && "speechSynthesis" in window;
+    setSuporta(ok);
+    if (!ok) return;
+    const carregar = () => {
+      const lista = vozesPt();
+      setVozes(lista);
+      let salva = "";
+      try {
+        salva = localStorage.getItem(CHAVE) ?? "";
+      } catch {
+        /* ignora */
+      }
+      setEscolhida((atual) => atual || (lista.some((v) => v.name === salva) ? salva : (lista[0]?.name ?? "")));
+    };
+    carregar();
+    window.speechSynthesis.addEventListener("voiceschanged", carregar);
     return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+      ativo.current = false;
+      window.speechSynthesis.removeEventListener("voiceschanged", carregar);
+      window.speechSynthesis.cancel();
     };
   }, []);
 
   function parar() {
+    ativo.current = false;
     window.speechSynthesis.cancel();
     setFalando(false);
   }
@@ -25,18 +75,41 @@ export default function ResumoVoz({ montarTexto }: { montarTexto: () => string }
     if (falando) return parar();
     const t = montarTexto();
     setTexto(t);
-    const fala = new SpeechSynthesisUtterance(t);
-    fala.lang = "pt-BR";
-    fala.rate = 1;
-    // Prefere uma voz em português do Brasil quando o aparelho tem.
-    const voz = window.speechSynthesis.getVoices().find((v) => v.lang.toLowerCase() === "pt-br") ?? window.speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith("pt"));
-    if (voz) fala.voice = voz;
-    fim.current = () => setFalando(false);
-    fala.onend = fim.current;
-    fala.onerror = fim.current;
+    const voz = vozes.find((v) => v.name === escolhida) ?? vozes[0];
+    const lista = frases(t);
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(fala);
+    ativo.current = true;
     setFalando(true);
+    lista.forEach((frase, i) => {
+      const fala = new SpeechSynthesisUtterance(frase);
+      fala.lang = "pt-BR";
+      fala.rate = 0.97;
+      fala.pitch = 1;
+      if (voz) fala.voice = voz;
+      if (i === lista.length - 1) {
+        fala.onend = () => {
+          ativo.current = false;
+          setFalando(false);
+        };
+      }
+      fala.onerror = (e) => {
+        if (e.error !== "canceled" && e.error !== "interrupted") {
+          ativo.current = false;
+          setFalando(false);
+        }
+      };
+      window.speechSynthesis.speak(fala);
+    });
+  }
+
+  function trocarVoz(nome: string) {
+    setEscolhida(nome);
+    try {
+      localStorage.setItem(CHAVE, nome);
+    } catch {
+      /* ignora */
+    }
+    if (falando) parar();
   }
 
   if (!suporta) return null;
@@ -56,7 +129,20 @@ export default function ResumoVoz({ montarTexto }: { montarTexto: () => string }
         </svg>
         {falando ? "Parar" : "Ouvir meu resumo"}
       </button>
-      <p className="min-w-0 flex-1 text-sm text-muted">{falando || texto ? "" : "O assistente fala como estão suas contas hoje."}</p>
+      {vozes.length > 1 ? (
+        <label className="flex min-w-0 items-center gap-2 text-sm text-muted">
+          Voz
+          <select value={escolhida} onChange={(e) => trocarVoz(e.target.value)} className="field w-auto max-w-[14rem] py-1.5 text-sm" aria-label="Escolher a voz">
+            {vozes.map((v) => (
+              <option key={v.name} value={v.name}>
+                {v.name.replace(/^Microsoft\s+/i, "").replace(/\s*-\s*Portuguese.*$/i, "")}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <p className="min-w-0 flex-1 text-sm text-muted">{falando || texto ? "" : "O assistente fala como estão suas contas hoje."}</p>
+      )}
       {texto && (
         <p className="w-full text-sm text-muted" role="status">
           {texto}

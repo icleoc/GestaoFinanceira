@@ -21,12 +21,25 @@ import { money } from "./format";
 export type Nivel = "alerta" | "atencao" | "info" | "bom";
 export type Destino = "extrato" | "planejar" | "gerenciar" | "lancar";
 
+/** Filtro com que o extrato abre (vindo de um card do assistente ou de "Para onde foi"). */
+export interface FiltroExtrato {
+  conta?: string;
+  mes?: string;
+  tipo?: "todos" | "despesa" | "receita";
+  /** Nome da categoria (agrupa categorias de mesmo nome), "__transf" ou "__sem". */
+  categoria?: string;
+  tipoConta?: "Corrente" | "Crédito" | "Investimento";
+  busca?: string;
+}
+
 export interface Insight {
   id: string;
   nivel: Nivel;
   titulo: string;
   texto: string;
   destino?: Destino;
+  /** Quando o destino é o extrato, abre já filtrado. */
+  filtro?: FiltroExtrato;
 }
 
 export interface PontoMensal {
@@ -157,6 +170,7 @@ export function gerarInsights(dados: Dados, hoje: string): Insight[] {
       titulo: `${topo.nome} é onde você mais gasta`,
       texto: `${money(topo.total)} neste mês, ${pct}% de tudo o que saiu.${media ? ` Sua média nos meses anteriores é ${money(media)}.` : ""}`,
       destino: "extrato",
+      filtro: { mes, tipo: "despesa", categoria: topo.nome },
     });
   }
 
@@ -174,6 +188,7 @@ export function gerarInsights(dados: Dados, hoje: string): Insight[] {
         titulo: `${g.nome} está ${Math.round((dif / media) * 100)}% acima da média`,
         texto: `${money(g.total)} contra ${money(media)} de média. São ${money(dif)} a mais do que o normal.`,
         destino: "extrato",
+        filtro: { mes, tipo: "despesa", categoria: g.nome },
       });
     }
   }
@@ -191,6 +206,7 @@ export function gerarInsights(dados: Dados, hoje: string): Insight[] {
         titulo: "O mês está caminhando para fechar mais caro",
         texto: `No ritmo de hoje, as despesas chegam a cerca de ${money(projetado)}. Sua média é ${money(mediaDespesas)}.`,
         destino: "extrato",
+        filtro: { mes, tipo: "despesa" },
       });
     } else if (projetado < mediaDespesas * 0.9) {
       saida.push({
@@ -213,6 +229,7 @@ export function gerarInsights(dados: Dados, hoje: string): Insight[] {
         titulo: "Neste mês você gastou mais do que recebeu",
         texto: `Entraram ${money(totais.receitas)} e saíram ${money(totais.despesas)}. Diferença de ${money(-sobra)}.`,
         destino: "extrato",
+        filtro: { mes, tipo: "despesa" },
       });
     } else if (pct >= 20) {
       saida.push({
@@ -242,6 +259,7 @@ export function gerarInsights(dados: Dados, hoje: string): Insight[] {
         titulo: `${c.nome} está com ${Math.round(u.pct)}% do limite usado`,
         texto: `Restam ${money(u.disponivel)} de ${money(u.limite)}. Evite novas compras parceladas nele.`,
         destino: "extrato",
+        filtro: { mes: "todos", conta: String(c.id) },
       });
     }
     if (c.dia_vencimento && u.usado > 0) {
@@ -311,6 +329,7 @@ export function gerarInsights(dados: Dados, hoje: string): Insight[] {
       titulo: "Seu maior gasto do mês",
       texto: `${maior.descricao}: ${money(-num(maior.valor))}.`,
       destino: "extrato",
+      filtro: { mes, tipo: "despesa", busca: maior.descricao },
     });
   }
 

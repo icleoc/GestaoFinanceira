@@ -7,7 +7,20 @@ import Guilloche from "./Guilloche";
  * número em champanhe. A barra mostra como os ativos (bancos + investimentos) se dividem;
  * a dívida dos cartões fica à parte, porque ela abate o patrimônio em vez de fazer parte dele.
  */
-export default function Patrimonio({ kpis, animar = false, compacto = false }: { kpis: Kpis; animar?: boolean; compacto?: boolean }) {
+export type SecaoPatrimonio = "bancos" | "investimentos" | "cartoes";
+
+export default function Patrimonio({
+  kpis,
+  animar = false,
+  compacto = false,
+  onIr,
+}: {
+  kpis: Kpis;
+  animar?: boolean;
+  compacto?: boolean;
+  /** Quando informado, cada item vira um atalho que rola até a sua seção. */
+  onIr?: (secao: SecaoPatrimonio) => void;
+}) {
   const ativos = Math.max(0, kpis.bancos) + Math.max(0, kpis.investimentos);
   const pctInvest = ativos > 0 ? (Math.max(0, kpis.investimentos) / ativos) * 100 : 0;
   const pctBancos = ativos > 0 ? 100 - pctInvest : 0;
@@ -48,9 +61,10 @@ export default function Patrimonio({ kpis, animar = false, compacto = false }: {
         </div>
 
         <dl className={`mt-6 grid grid-cols-1 gap-y-4 ${compacto ? "gap-x-6 sm:grid-cols-3" : "gap-x-10 sm:grid-cols-3"}`}>
-          <Item cor="bg-gold" nome="Bancos" valor={money(kpis.bancos)} compacto={compacto} />
-          <Item cor="bg-[rgb(88_198_168)]" nome="Investimentos" valor={money(kpis.investimentos)} compacto={compacto} />
+          <Item onIr={onIr && (() => onIr("bancos"))} cor="bg-gold" nome="Bancos" valor={money(kpis.bancos)} compacto={compacto} />
+          <Item onIr={onIr && (() => onIr("investimentos"))} cor="bg-[rgb(88_198_168)]" nome="Investimentos" valor={money(kpis.investimentos)} compacto={compacto} />
           <Item
+            onIr={onIr && (() => onIr("cartoes"))}
             cor="bg-[rgb(242_120_110)]"
             nome="Dívida nos cartões"
             valor={money(kpis.divida)}
@@ -65,6 +79,7 @@ export default function Patrimonio({ kpis, animar = false, compacto = false }: {
 }
 
 function Item({
+  onIr,
   cor,
   nome,
   valor,
@@ -72,6 +87,7 @@ function Item({
   negativo,
   compacto,
 }: {
+  onIr?: () => void;
   cor: string;
   nome: string;
   valor: string;
@@ -79,16 +95,21 @@ function Item({
   negativo?: boolean;
   compacto?: boolean;
 }) {
+  const Raiz = onIr ? "button" : "div";
   return (
-    <div className="border-t border-paper/15 pt-3">
+    <Raiz
+      {...(onIr ? { type: "button" as const, onClick: onIr, "aria-label": `Ir para ${nome}` } : {})}
+      className={"border-t border-paper/15 pt-3 text-left " + (onIr ? "group cursor-pointer transition-colors hover:border-gold/60" : "")}
+    >
       <dt className="flex items-center gap-2 text-sm text-paper/70">
         <span className={`inline-block size-2 rounded-full ${cor}`} aria-hidden />
         {nome}
+        {onIr && <span aria-hidden className="text-gold opacity-0 transition-opacity group-hover:opacity-100">↓</span>}
       </dt>
       <dd className={`font-display num mt-1 ${compacto ? "text-xl" : "text-2xl"} ${negativo ? "text-[rgb(242_150_140)]" : "text-paper"}`}>
         {valor}
         {nota && <span className="mt-0.5 block font-sans text-sm font-normal text-paper/60">{nota}</span>}
       </dd>
-    </div>
+    </Raiz>
   );
 }

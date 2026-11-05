@@ -1,6 +1,7 @@
 // Testes simples das regras de negócio. Rode com: npm run check
 import assert from "node:assert/strict";
 import {
+  parceiroDaTransferencia,
   addDaysISO,
   addMonthsISO,
   agruparInvestimentos,
@@ -103,6 +104,9 @@ test("investimento: sai da origem e entra no destino após os dias de resgate", 
   assert.ok(r.ok);
   if (!r.ok) return;
   assert.equal(r.linhas.length, 2);
+  assert.ok(r.linhas[0].vinculo && r.linhas[0].vinculo === r.linhas[1].vinculo, "as duas pontas da transferência compartilham o vínculo");
+  delete r.linhas[0].vinculo;
+  delete r.linhas[1].vinculo;
   assert.deepEqual(r.linhas[0], {
     data: "2026-10-14", descricao: "Resgate CDB", valor: -2000, conta_origem_id: 10, categoria_id: null,
   });
@@ -264,6 +268,21 @@ test("totais do mês ignoram transferências e incluem taxas", () => {
 test("meses disponíveis: mais recente primeiro e sempre com o mês atual", () => {
   assert.deepEqual(mesesDisponiveis(movs, "2026-10-14"), ["2026-10", "2026-09"]);
   assert.deepEqual(mesesDisponiveis([], "2026-10-14"), ["2026-10"]);
+});
+
+test("transferência: acha a outra ponta (com vínculo e sem vínculo, das antigas)", () => {
+  const T = (id: number, desc: string, valor: number, conta: number, vinculo?: string): Transacao => ({ id, data: "2026-10-10", descricao: desc, valor, conta_origem_id: conta, categoria_id: null, ...(vinculo ? { vinculo } : {}) });
+  const novas = [T(1, "Pix", -1000, 1, "v"), T(2, "Recebido: Pix", 1000, 2, "v"), T(3, "Outra", -50, 1, "w")];
+  assert.equal(parceiroDaTransferencia(novas[0], novas)?.id, 2);
+  assert.equal(parceiroDaTransferencia(novas[1], novas)?.id, 1);
+  const antigas = [T(1, "Reserva", -300, 1), T(2, "Recebido: Reserva", 300, 2)];
+  assert.equal(parceiroDaTransferencia(antigas[0], antigas)?.id, 2);
+  assert.equal(parceiroDaTransferencia(antigas[1], antigas)?.id, 1);
+  assert.equal(parceiroDaTransferencia({ ...antigas[0], categoria_id: 5 }, antigas), null);
+});
+test("lançamento de histórico marca as linhas sem saldo", () => {
+  const r = montarLancamento({ operacao: "despesa", data: "2026-09-01", descricao: "TV", valor: 900, parcelas: 3, origemId: 1, categoriaId: 2, semSaldo: true });
+  assert.ok(r.ok && r.linhas.every((l) => l.sem_saldo === true));
 });
 
 console.log(`\n${total} testes passaram.`);

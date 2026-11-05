@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { atualizarMeuNome } from "@/lib/data";
+import type { Aviso } from "@/lib/types";
 import Modal from "./Modal";
+import SincronizarCalendario from "./SincronizarCalendario";
 
 /** Nome com que a pessoa aparece no app (saudação, extrato, equipe). */
-export default function PerfilModal({ nomeAtual, email, onClose, onFeito }: { nomeAtual: string; email: string; onClose: () => void; onFeito: (nome: string) => void }) {
+export default function PerfilModal({ nomeAtual, email, userId, avisos, onClose, onFeito }: { nomeAtual: string; email: string; userId?: string; avisos?: Aviso[]; onClose: () => void; onFeito: (nome: string) => void }) {
   const [nome, setNome] = useState(nomeAtual);
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -45,6 +47,11 @@ export default function PerfilModal({ nomeAtual, email, onClose, onFeito }: { no
           {ocupado ? "Salvando…" : "Salvar"}
         </button>
       </form>
+      {userId && (
+        <div className="border-t border-line p-5">
+          <SincronizarCalendario userId={userId} avisos={avisos} />
+        </div>
+      )}
     </Modal>
   );
 }

@@ -160,6 +160,21 @@ export async function inserirTransacoes(linhas: NovaTransacao[]): Promise<Id[]> 
   const completas = linhas.map((l) => ({ ...l, carteira_id: carteiraAtual }));
   let { data, error } = await db.from("transacoes").insert(completas).select("id");
   // Banco ainda sem a migração 002: o lançamento entra, só sem os itens lidos da nota.
+  // Banco ainda sem a migração 009: o lançamento entra, só sem vínculo e sem a marca de histórico.
+  if (error && /vinculo|sem_saldo/.test(error.message)) {
+    if (completas.some((l) => l.sem_saldo)) throw new Error("Lançamento retroativo precisa da atualização 009 do banco.");
+    ({ data, error } = await db
+      .from("transacoes")
+      .insert(
+        completas.map((l) => {
+          const { vinculo, sem_saldo, ...resto } = l;
+          void vinculo;
+          void sem_saldo;
+          return resto;
+        }),
+      )
+      .select("id"));
+  }
   if (error && /nota_dados/.test(error.message) && completas.some((l) => l.nota_dados)) {
     ({ data, error } = await db
       .from("transacoes")
@@ -187,7 +202,13 @@ export async function atualizarTransacoes(itens: AtualizacaoTransacao[]): Promis
   for (const it of itens) {
     const { error } = await db
       .from("transacoes")
-      .update({ data: it.data, descricao: it.descricao, valor: it.valor, ...(it.conta_origem_id !== undefined ? { conta_origem_id: it.conta_origem_id } : {}) })
+      .update({
+        data: it.data,
+        descricao: it.descricao,
+        valor: it.valor,
+        ...(it.conta_origem_id !== undefined ? { conta_origem_id: it.conta_origem_id } : {}),
+        ...(it.valor_conta !== undefined ? { valor_conta: it.valor_conta } : {}),
+      })
       .eq("id", it.id);
     if (error) throw falha("Não foi possível salvar a edição", error);
   }

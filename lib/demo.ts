@@ -164,27 +164,28 @@ export function demoInserir(linhas: NovaTransacao[]): Id[] {
     store!.transacoes.unshift(novo);
     // O saldo da conta acompanha o lançamento, como no banco de verdade.
     const c = store!.contas.find((x) => x.id === l.conta_origem_id);
-    aplicar(c, Number(l.valor), l.valor_conta, 1);
+    if (!l.sem_saldo) aplicar(c, Number(l.valor), l.valor_conta, 1);
   }
   return ids;
 }
 export function demoExcluir(ids: Id[]) {
   for (const t of store!.transacoes.filter((x) => ids.some((i) => String(i) === String(x.id)))) {
     const c = store!.contas.find((x) => x.id === t.conta_origem_id);
-    aplicar(c, Number(t.valor), (t as { valor_conta?: number | null }).valor_conta, -1);
+    if (!t.sem_saldo) aplicar(c, Number(t.valor), (t as { valor_conta?: number | null }).valor_conta, -1);
   }
   store!.transacoes = store!.transacoes.filter((x) => !ids.some((i) => String(i) === String(x.id)));
 }
-export function demoAtualizar(itens: { id: Id; data: string; descricao: string; valor: number; conta_origem_id?: Id | null }[]) {
+export function demoAtualizar(itens: { id: Id; data: string; descricao: string; valor: number; conta_origem_id?: Id | null; valor_conta?: number | null }[]) {
   for (const it of itens) {
     const t = store!.transacoes.find((x) => String(x.id) === String(it.id));
     if (!t) continue;
     const antiga = store!.contas.find((x) => x.id === t.conta_origem_id);
-    aplicar(antiga, Number(t.valor), (t as { valor_conta?: number | null }).valor_conta, -1);
+    if (!t.sem_saldo) aplicar(antiga, Number(t.valor), (t as { valor_conta?: number | null }).valor_conta, -1);
     const destino = it.conta_origem_id !== undefined ? it.conta_origem_id : t.conta_origem_id;
     const nova = store!.contas.find((x) => x.id === destino);
-    aplicar(nova, it.valor, (t as { valor_conta?: number | null }).valor_conta, 1);
-    Object.assign(t, { data: it.data, descricao: it.descricao, valor: it.valor, conta_origem_id: destino ?? null });
+    const vc = it.valor_conta !== undefined ? it.valor_conta : (t as { valor_conta?: number | null }).valor_conta;
+    if (!t.sem_saldo) aplicar(nova, it.valor, vc, 1);
+    Object.assign(t, { data: it.data, descricao: it.descricao, valor: it.valor, conta_origem_id: destino ?? null, ...(vc !== undefined ? { valor_conta: vc } : {}) });
   }
 }
 export function demoCategoria(ids: Id[], categoriaId: Id | null) {

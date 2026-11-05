@@ -6,10 +6,12 @@ interface Props {
   gastos: GastoPorCategoria[];
   receitas: number;
   despesas: number;
+  /** Abre o extrato filtrado nesta categoria. */
+  onAbrir?: (categoria: string) => void;
 }
 
 /** Para onde o dinheiro foi no mês, da maior categoria para a menor. */
-export default function GastosDoMes({ mes, gastos, receitas, despesas }: Props) {
+export default function GastosDoMes({ mes, gastos, receitas, despesas, onAbrir }: Props) {
   const total = gastos.reduce((s, g) => s + g.total, 0);
   const maior = gastos[0]?.total ?? 0;
   const resultado = receitas - despesas;
@@ -36,6 +38,7 @@ export default function GastosDoMes({ mes, gastos, receitas, despesas }: Props) 
         <ul className="mt-5 space-y-3">
           {gastos.map((g) => (
             <li key={g.nome}>
+              <Linha onAbrir={onAbrir && (() => onAbrir(g.nome))} nome={g.nome}>
               <div className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="truncate font-medium">{g.nome}</span>
                 <span className="num shrink-0">
@@ -46,6 +49,7 @@ export default function GastosDoMes({ mes, gastos, receitas, despesas }: Props) 
               <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-sunken">
                 <div className="h-full rounded-full bg-ink" style={{ width: `${(g.total / maior) * 100}%` }} />
               </div>
+              </Linha>
             </li>
           ))}
         </ul>
@@ -60,5 +64,14 @@ function Resumo({ nome, valor, cor = "" }: { nome: string; valor: string; cor?: 
       <dt className="text-muted">{nome}</dt>
       <dd className={`num font-display mt-0.5 text-lg sm:text-xl ${cor}`}>{valor}</dd>
     </div>
+  );
+}
+
+function Linha({ onAbrir, nome, children }: { onAbrir?: () => void; nome: string; children: React.ReactNode }) {
+  if (!onAbrir) return <>{children}</>;
+  return (
+    <button type="button" onClick={onAbrir} aria-label={`Ver lançamentos de ${nome} no extrato`} className="-mx-2 block w-[calc(100%+1rem)] rounded-lg px-2 py-1 text-left transition-colors hover:bg-sunken">
+      {children}
+    </button>
   );
 }

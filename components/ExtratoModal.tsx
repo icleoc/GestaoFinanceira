@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Dados, DadosNota, Transacao } from "@/lib/types";
-import { mesesDisponiveis, montarEdicao, num, parseParcela, todayISO } from "@/lib/finance";
+import type { Dados, DadosNota, Id, Transacao } from "@/lib/types";
+import type { FiltroExtrato } from "@/lib/assistente";
+import type { AtualizacaoTransacao } from "@/lib/finance";
+import { escalarValorConta, mesesDisponiveis, montarEdicao, num, parceiroDaTransferencia, parseParcela, todayISO } from "@/lib/finance";
 import { atualizarTransacoes, excluirTransacoes, mudarCategoria, removerNotas } from "@/lib/data";
 import { dateBR, money, monthLabel } from "@/lib/format";
 import { formatarEstrangeira, formatarTaxa } from "@/lib/cambio";
@@ -14,6 +16,8 @@ interface Props {
   mesInicial: string;
   /** Abre já filtrado nesta conta. */
   contaInicial?: string;
+  /** Abre já com estes filtros (cards do assistente, "Para onde foi"). */
+  filtroInicial?: FiltroExtrato;
   /** Pode corrigir e apagar lançamentos. */
   podeEditar: boolean;
   onClose: () => void;
@@ -22,12 +26,14 @@ interface Props {
 
 const POR_PAGINA = 100;
 
-export default function ExtratoModal({ dados, mesInicial, contaInicial, podeEditar, onClose, onMudou }: Props) {
+export default function ExtratoModal({ dados, mesInicial, contaInicial, filtroInicial, podeEditar, onClose, onMudou }: Props) {
   const { contas, categorias, transacoes } = dados;
-  const [conta, setConta] = useState(contaInicial ?? "todas");
-  const [tipo, setTipo] = useState<"todos" | "despesa" | "receita">("todos");
-  const [mes, setMes] = useState(mesInicial);
-  const [busca, setBusca] = useState("");
+  const [conta, setConta] = useState(filtroInicial?.conta ?? contaInicial ?? "todas");
+  const [tipo, setTipo] = useState<"todos" | "despesa" | "receita">(filtroInicial?.tipo ?? "todos");
+  const [mes, setMes] = useState(filtroInicial?.mes ?? mesInicial);
+  const [busca, setBusca] = useState(filtroInicial?.busca ?? "");
+  const [categoria, setCategoria] = useState(filtroInicial?.categoria ?? "todas");
+  const [tipoConta, setTipoConta] = useState<string>(filtroInicial?.tipoConta ?? "todos");
   const [pessoa, setPessoa] = useState("todas");
   const [limite, setLimite] = useState(POR_PAGINA);
   const [marcados, setMarcados] = useState<Set<string>>(new Set());
@@ -38,6 +44,8 @@ export default function ExtratoModal({ dados, mesInicial, contaInicial, podeEdit
   const [nota, setNota] = useState<{ caminho: string; titulo: string; dados?: DadosNota | null } | null>(null);
 
   const nomeConta = useMemo(() => new Map(contas.map((c) => [String(c.id), c.nome])), [contas]);
+  const tipoDaConta = useMemo(() => new Map(contas.map((c) => [String(c.id), c.tipo as string])), [contas]);
+  const nomesCategorias = useMemo(() => [...new Set(categorias.map((c) => c.nome))].sort((a, b) => a.localeCompare(b, "pt-BR")), [categorias]);
   const nomeCategoria = useMemo(() => new Map(categorias.map((c) => [String(c.id), c.nome])), [categorias]);
   const meses = useMemo(() => mesesDisponiveis(transacoes, todayISO()), [transacoes]);
   const nomePessoa = useMemo(() => new Map((dados.membros ?? []).map((m) => [m.user_id, m.nome || m.email || "Pessoa"])), [dados.membros]);
@@ -54,10 +62,15 @@ export default function ExtratoModal({ dados, mesInicial, contaInicial, podeEdit
       if (tipo === "receita" && v <= 0) return false;
       if (q && !t.descricao.toLowerCase().includes(q)) return false;
       if (pessoa !== "todas" && t.criado_por !== pessoa) return false;
+      if (categoria === "__sem" ? t.categoria_id != null : categoria === "__transf" ? t.categoria_id != null || t.conta_origem_id == null : categoria !== "todas" && nomeCategoria.get(String(t.categoria_id)) !== categoria) return false;
+      if (tipoConta !== "todos" && tipoDaConta.get(String(t.conta_origem_id)) !== tipoConta) return false;
       return true;
     });
-  }, [transacoes, mes, conta, tipo, busca, pessoa]);
+  }, [transacoes, mes, conta, tipo, busca, pessoa, categoria, tipoConta, nomeCategoria, tipoDaConta]);
 
+  const totalFiltrado = useMemo(() => filtradas.reduce((s, t) => s + num(t.valor), 0), [filtradas]);
+
+  const temTransferencia = useMemo(() => transacoes.some((t) => marcados.has(String(t.id)) && parceiroDaTransferencia(t, transacoes)), [transacoes, marcados]);
   const visiveis = filtradas.slice(0, limite);
   const todosMarcados = visiveis.length > 0 && visiveis.every((t) => marcados.has(String(t.id)));
 
@@ -79,7 +92,14 @@ export default function ExtratoModal({ dados, mesInicial, contaInicial, podeEdit
     setOcupado(true);
     setErro("");
     try {
-      const apagadas = transacoes.filter((t) => marcados.has(String(t.id)));
+      const escolhidas = transacoes.filter((t) => marcados.has(String(t.id)));
+      // Apagar uma ponta de uma transferência apaga a outra também, para os saldos não ficarem soltos.
+      const extras = new Map<string, Transacao>();
+      for (const t of escolhidas) {
+        const par = parceiroDaTransferencia(t, transacoes);
+        if (par && !marcados.has(String(par.id))) extras.set(String(par.id), par);
+      }
+      const apagadas = [...escolhidas, ...extras.values()];
       const ids = apagadas.map((t) => t.id);
       await excluirTransacoes(ids);
       // Foto de nota que nenhum outro lançamento usa mais também sai do armazenamento.
@@ -161,6 +181,32 @@ export default function ExtratoModal({ dados, mesInicial, contaInicial, podeEdit
             <option value="receita">Só entradas</option>
           </select>
         </div>
+        <div>
+          <label htmlFor="x-categoria" className="label">
+            Categoria
+          </label>
+          <select id="x-categoria" value={categoria} onChange={(e) => setCategoria(e.target.value)} className="field">
+            <option value="todas">Todas</option>
+            {nomesCategorias.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+            <option value="__transf">Transferências e aportes</option>
+            <option value="__sem">Sem categoria (inclui taxas)</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="x-tipoconta" className="label">
+            Tipo de conta
+          </label>
+          <select id="x-tipoconta" value={tipoConta} onChange={(e) => setTipoConta(e.target.value)} className="field">
+            <option value="todos">Todos</option>
+            <option value="Corrente">Contas bancárias</option>
+            <option value="Crédito">Cartões de crédito</option>
+            <option value="Investimento">Investimentos</option>
+          </select>
+        </div>
         {autores.length > 1 && (
           <div>
             <label htmlFor="x-pessoa" className="label">
@@ -193,6 +239,10 @@ export default function ExtratoModal({ dados, mesInicial, contaInicial, podeEdit
         ) : (
           <span className="text-sm text-muted">{filtradas.length} lançamentos</span>
         )}
+        <span className="num text-sm text-muted" aria-live="polite">
+          {filtradas.length} {filtradas.length === 1 ? "lançamento" : "lançamentos"} · soma {totalFiltrado < 0 ? "−" : ""}
+          {money(Math.abs(totalFiltrado))}
+        </span>
         <div className="flex items-center gap-2">
           {erro && (
             <span role="alert" className="text-sm font-medium text-neg">
@@ -202,6 +252,7 @@ export default function ExtratoModal({ dados, mesInicial, contaInicial, podeEdit
           {marcados.size > 0 &&
             (confirmando ? (
               <>
+                {temTransferencia && <span className="text-sm text-muted">A outra ponta da transferência também será excluída.</span>}
                 <button onClick={() => setConfirmando(false)} className="btn btn-quiet px-3 py-1.5" disabled={ocupado}>
                   Cancelar
                 </button>
@@ -240,6 +291,11 @@ export default function ExtratoModal({ dados, mesInicial, contaInicial, podeEdit
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">
                     {p ? p.base : t.descricao}
+                    {t.sem_saldo && (
+                      <span className="ml-2 rounded-md bg-sunken px-1.5 py-0.5 text-xs font-medium text-muted" title="Lançamento de histórico: não alterou o saldo">
+                        histórico
+                      </span>
+                    )}
                     {p && (
                       <span className="num ml-2 rounded-md bg-sunken px-1.5 py-0.5 text-xs font-medium text-muted">
                         {p.indice}/{p.total}
@@ -335,37 +391,121 @@ function Edicao({
       }).length
     : 0;
 
-  async function salvar(e: React.FormEvent) {
+  const parceiro = useMemo(() => parceiroDaTransferencia(t, todas), [t, todas]);
+  const [confirmando, setConfirmando] = useState(false);
+  const [plano, setPlano] = useState<{ itens: AtualizacaoTransacao[]; resumo: string[] } | null>(null);
+
+  function nomeConta(id: Id | null | undefined) {
+    return contas.find((c) => String(c.id) === String(id))?.nome ?? "Sem conta";
+  }
+
+  /** Monta o que vai mudar (inclusive a outra ponta da transferência) e pede a confirmação. */
+  function revisar(e: React.FormEvent) {
     e.preventDefault();
     const v = num(valor.includes(",") ? valor.replace(/\./g, "").replace(",", ".") : valor);
     if (!descricao.trim()) return setErro("Informe a descrição.");
     if (!(v > 0)) return setErro("Informe um valor maior que zero.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return setErro("Informe a data.");
+    setErro("");
+    const mudouConta = comum && contaId !== (t.conta_origem_id != null ? String(t.conta_origem_id) : "");
+    const novaConta = contas.find((c) => String(c.id) === contaId)?.id ?? null;
+    const mudouTipo = comum && tipoLanc !== (num(t.valor) < 0 ? "saida" : "entrada");
+    const itens: AtualizacaoTransacao[] = montarEdicao(t, todas, { data, descricao, valorAbs: v }, cascata).map((i) => {
+      const orig = todas.find((x) => String(x.id) === String(i.id));
+      const valorFinal = mudouTipo ? (tipoLanc === "saida" ? -1 : 1) * Math.abs(i.valor) : i.valor;
+      return {
+        ...i,
+        valor: valorFinal,
+        ...(orig && orig.valor_conta != null ? { valor_conta: escalarValorConta(orig, valorFinal) } : {}),
+        ...(mudouConta ? { conta_origem_id: novaConta } : {}),
+      };
+    });
+
+    // A outra ponta da transferência acompanha: mesmo valor (com o sinal dela) e mesmo nome.
+    const principal = itens.find((i) => String(i.id) === String(t.id));
+    if (parceiro && principal) {
+      const sinalPar = num(parceiro.valor) < 0 ? -1 : 1;
+      const novoValorPar = sinalPar * Math.abs(principal.valor);
+      const ehSaida = num(t.valor) < 0;
+      const descPar = ehSaida ? `Recebido: ${principal.descricao}` : principal.descricao.replace(/^Recebido: /, "");
+      itens.push({
+        id: parceiro.id,
+        data: parceiro.data,
+        descricao: descPar,
+        valor: novoValorPar,
+        ...(parceiro.valor_conta != null ? { valor_conta: escalarValorConta(parceiro, novoValorPar) } : {}),
+      });
+    }
+
+    const resumo: string[] = [];
+    const antigoAbs = Math.abs(num(t.valor));
+    if (Math.abs(v - antigoAbs) > 0.004) resumo.push(`Valor: ${money(antigoAbs)} → ${money(v)}`);
+    if (data !== t.data) resumo.push(`Data: ${dateBR(t.data)} → ${dateBR(data)}`);
+    const descAntiga = info ? info.base : t.descricao;
+    if (descricao.trim() !== descAntiga) resumo.push(`Descrição: “${descAntiga}” → “${descricao.trim()}”`);
+    if (mudouConta) resumo.push(`Conta: ${nomeConta(t.conta_origem_id)} → ${nomeConta(novaConta)}`);
+    if (mudouTipo) resumo.push(`Tipo: ${tipoLanc === "saida" ? "entrada → saída" : "saída → entrada"}`);
+    if (categoriaId !== (t.categoria_id != null ? String(t.categoria_id) : "")) {
+      const n = (id: string) => categorias.find((c) => String(c.id) === id)?.nome ?? "Sem categoria";
+      resumo.push(`Categoria: ${n(t.categoria_id != null ? String(t.categoria_id) : "")} → ${n(categoriaId)}`);
+    }
+    if (parceiro && Math.abs(v - antigoAbs) > 0.004) {
+      resumo.push(`Transferência ligada: a entrada/saída em ${nomeConta(parceiro.conta_origem_id)} também vai para ${money(v)} e o saldo dela é ajustado.`);
+    }
+    const cascataN = itens.filter((i) => String(i.id) !== String(t.id) && String(i.id) !== String(parceiro?.id)).length;
+    if (cascataN > 0) resumo.push(`Vale também para as outras ${cascataN} parcelas da compra.`);
+    if (resumo.length === 0) return setErro("Nada foi alterado.");
+    setPlano({ itens, resumo });
+    setConfirmando(true);
+  }
+
+  async function salvar() {
+    if (!plano) return;
     setSalvando(true);
     setErro("");
     try {
-      const mudouConta = comum && contaId !== (t.conta_origem_id != null ? String(t.conta_origem_id) : "");
-      const novaConta = contas.find((c) => String(c.id) === contaId)?.id ?? null;
-      const mudouTipo = comum && tipoLanc !== (num(t.valor) < 0 ? "saida" : "entrada");
-      const itens = montarEdicao(t, todas, { data, descricao, valorAbs: v }, cascata).map((i) => ({
-        ...i,
-        ...(mudouTipo ? { valor: (tipoLanc === "saida" ? -1 : 1) * Math.abs(i.valor) } : {}),
-        ...(mudouConta ? { conta_origem_id: novaConta } : {}),
-      }));
+      const { itens } = plano;
       await atualizarTransacoes(itens);
       if (categoriaId !== (t.categoria_id != null ? String(t.categoria_id) : "")) {
         const nova = categorias.find((c) => String(c.id) === categoriaId)?.id ?? null;
-        await mudarCategoria(itens.map((i) => i.id), nova);
+        await mudarCategoria(itens.filter((i) => String(i.id) !== String(parceiro?.id)).map((i) => i.id), nova);
       }
-      onSalvo(itens.length > 1 ? `${itens.length} parcelas atualizadas.` : "Lançamento atualizado.");
+      onSalvo(itens.length > 1 ? `${itens.length} lançamentos atualizados.` : "Lançamento atualizado.");
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Não foi possível salvar.");
       setSalvando(false);
     }
   }
 
+  if (confirmando && plano) {
+    return (
+      <div className="space-y-4 p-5">
+        <h3 className="font-display text-lg">Confirmar a edição?</h3>
+        <p className="text-sm text-muted">{t.descricao}</p>
+        <ul className="space-y-2 rounded-xl bg-sunken p-4 text-sm">
+          {plano.resumo.map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
+        {erro && (
+          <p role="alert" className="text-sm font-medium text-neg">
+            {erro}
+          </p>
+        )}
+        <div className="flex gap-3">
+          <button type="button" onClick={() => setConfirmando(false)} className="btn btn-quiet flex-1" disabled={salvando}>
+            Voltar e revisar
+          </button>
+          <button type="button" onClick={salvar} className="btn btn-primary flex-1" disabled={salvando}>
+            {salvando ? "Salvando…" : "Confirmar edição"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={salvar} className="space-y-4 p-5" noValidate>
+    <form onSubmit={revisar} className="space-y-4 p-5" noValidate>
       <div>
         <label htmlFor="e-data" className="label">
           Data{info ? ` desta parcela (${info.indice}/${info.total})` : ""}
@@ -409,6 +549,11 @@ function Edicao({
         </label>
         <input id="e-valor" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} className="field num" />
         {!comum && <p className="mt-1 text-sm text-muted">{num(t.valor) < 0 ? "Continua como saída." : "Continua como entrada."}</p>}
+        {parceiro && (
+          <p className="mt-1 text-sm text-muted">
+            Transferência ligada a {nomeConta(parceiro.conta_origem_id)}: mudar o valor aqui corrige a outra conta também.
+          </p>
+        )}
       </div>
       {comum && (
         <div>
@@ -462,7 +607,7 @@ function Edicao({
           Voltar
         </button>
         <button type="submit" className="btn btn-primary flex-1" disabled={salvando}>
-          {salvando ? "Salvando…" : "Salvar alterações"}
+          Revisar e salvar
         </button>
       </div>
     </form>

@@ -105,6 +105,8 @@ export interface EntradaLancamento {
   comTaxa?: boolean;
   /** Total cobrado no cartão, já com a taxa. Só vale se comTaxa. */
   totalCobrado?: number;
+  /** Lançamento de histórico: registra o gasto sem mexer no saldo da conta. */
+  semSaldo?: boolean;
 }
 
 export type ResultadoPlano =
@@ -148,6 +150,7 @@ export function montarLancamento(e: EntradaLancamento): ResultadoPlano {
   }
 
   const sinal = e.operacao === "receita" ? 1 : -1;
+  const vinculo = ehTransf && typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : null;
   const partes = splitInstallments(bruto, parcelas);
   const linhas: NovaTransacao[] = partes.map((p, i) => ({
     data: addMonthsISO(e.data, i),
@@ -155,6 +158,8 @@ export function montarLancamento(e: EntradaLancamento): ResultadoPlano {
     valor: sinal * p,
     conta_origem_id: e.origemId as Id,
     categoria_id: ehTransf ? null : (e.categoriaId as Id),
+    ...(vinculo ? { vinculo } : {}),
+    ...(e.semSaldo ? { sem_saldo: true } : {}),
   }));
 
   if (ehTransf) {
@@ -164,6 +169,8 @@ export function montarLancamento(e: EntradaLancamento): ResultadoPlano {
       valor: liquido,
       conta_origem_id: e.destinoId as Id,
       categoria_id: null,
+      ...(vinculo ? { vinculo } : {}),
+      ...(e.semSaldo ? { sem_saldo: true } : {}),
     });
   }
 
@@ -174,6 +181,7 @@ export function montarLancamento(e: EntradaLancamento): ResultadoPlano {
       valor: -round2(bruto - liquido),
       conta_origem_id: null,
       categoria_id: null,
+      ...(e.semSaldo ? { sem_saldo: true } : {}),
     });
   }
 
@@ -189,6 +197,46 @@ export interface AtualizacaoTransacao {
   valor: number;
   /** Só quando a conta de origem também muda. */
   conta_origem_id?: Id | null;
+  /** Novo valor na moeda da conta (contas em moeda estrangeira). */
+  valor_conta?: number | null;
+}
+
+/**
+ * A outra ponta de uma transferência. Usa o código de vínculo; nas antigas (sem código)
+ * procura a linha "Recebido: ..." de sinal oposto e mesmo valor, em outra conta.
+ */
+export function parceiroDaTransferencia(t: Transacao, todas: Transacao[]): Transacao | null {
+  if (t.categoria_id != null || t.conta_origem_id == null || /^Taxa: /.test(t.descricao)) return null;
+  if (t.vinculo) {
+    return todas.find((x) => x.vinculo === t.vinculo && String(x.id) !== String(t.id) && x.conta_origem_id != null && !/^Taxa: /.test(x.descricao)) ?? null;
+  }
+  const v = num(t.valor);
+  const saida = v < 0;
+  const base = saida ? t.descricao : t.descricao.replace(/^Recebido: /, "");
+  if (!saida && base === t.descricao) return null;
+  const alvo = saida ? `Recebido: ${base}` : base;
+  const candidatas = todas.filter(
+    (x) =>
+      String(x.id) !== String(t.id) &&
+      !x.vinculo &&
+      x.categoria_id == null &&
+      x.conta_origem_id != null &&
+      String(x.conta_origem_id) !== String(t.conta_origem_id) &&
+      x.descricao === alvo &&
+      num(x.valor) * v < 0,
+  );
+  if (candidatas.length === 0) return null;
+  // Prefere o mesmo valor; depois a data mais próxima.
+  const dist = (x: Transacao) => Math.abs(Date.parse(x.data) - Date.parse(t.data));
+  return candidatas.sort((a, b) => Number(Math.abs(Math.abs(num(b.valor)) - Math.abs(v)) < 0.005) - Number(Math.abs(Math.abs(num(a.valor)) - Math.abs(v)) < 0.005) || dist(a) - dist(b))[0];
+}
+
+/** Novo valor na moeda da conta, proporcional à mudança de valor em reais. */
+export function escalarValorConta(t: Transacao, novoValor: number): number | null {
+  if (t.valor_conta == null) return null;
+  const antigo = num(t.valor);
+  if (!antigo) return num(t.valor_conta);
+  return round2(num(t.valor_conta) * (novoValor / antigo));
 }
 
 /**

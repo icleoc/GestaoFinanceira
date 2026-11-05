@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Destino, Insight, Nivel } from "@/lib/assistente";
+import type { Destino, FiltroExtrato, Insight, Nivel } from "@/lib/assistente";
 
 const ESTILO: Record<Nivel, { barra: string; ponto: string; rotulo: string }> = {
   alerta: { barra: "border-l-neg", ponto: "bg-neg", rotulo: "Urgente" },
@@ -19,7 +19,7 @@ const ACAO: Record<Destino, string> = {
 
 interface Props {
   insights: Insight[];
-  onIr: (destino: Destino) => void;
+  onIr: (destino: Destino, filtro?: FiltroExtrato) => void;
   /** Destinos que a pessoa pode usar (os outros não mostram botão). */
   permitidos: Destino[];
 }
@@ -47,8 +47,13 @@ export default function Assistente({ insights, onIr, permitidos }: Props) {
       <ul className="grid gap-3 md:grid-cols-2">
         {lista.map((i) => {
           const e = ESTILO[i.nivel];
+          const clicavel = Boolean(i.destino && permitidos.includes(i.destino));
           return (
-            <li key={i.id} className={`panel pop-in border-l-4 p-4 ${e.barra}`}>
+            <li
+              key={i.id}
+              className={`panel pop-in border-l-4 p-4 ${e.barra} ${clicavel ? "cursor-pointer transition-shadow hover:shadow-md" : ""}`}
+              onClick={clicavel ? () => onIr(i.destino!, i.filtro) : undefined}
+            >
               <p className="flex items-center gap-2 text-[13px] font-semibold text-muted">
                 <span className={`size-2 rounded-full ${e.ponto}`} aria-hidden />
                 {e.rotulo}
@@ -56,7 +61,7 @@ export default function Assistente({ insights, onIr, permitidos }: Props) {
               <h3 className="mt-1.5 font-display text-base font-semibold leading-snug">{i.titulo}</h3>
               <p className="mt-1 text-sm text-muted">{i.texto}</p>
               {i.destino && permitidos.includes(i.destino) && (
-                <button onClick={() => onIr(i.destino!)} className="mt-3 text-sm font-semibold text-accent hover:underline">
+                <button onClick={(ev) => { ev.stopPropagation(); onIr(i.destino!, i.filtro); }} className="mt-3 text-sm font-semibold text-accent hover:underline">
                   {ACAO[i.destino]} →
                 </button>
               )}
