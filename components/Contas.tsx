@@ -138,6 +138,11 @@ export function Cartoes({ contas, membros = [], onAbrir }: { contas: Conta[]; me
                     Disponível <b className="font-semibold text-accent">{money(u.disponivel)}</b> de {money(u.limite)}
                   </span>
                 </p>
+                {u.credito > 0 && (
+                  <p className="num mt-1 text-sm text-accent">
+                    Crédito de {money(u.credito)} (pagamento acima da fatura): somado ao limite disponível.
+                  </p>
+                )}
                 {onAbrir && <p className="mt-1.5 text-xs font-medium text-accent">Ver lançamentos e detalhes ›</p>}
                 </Abrivel>
               </li>

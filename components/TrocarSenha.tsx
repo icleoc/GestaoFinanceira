@@ -4,7 +4,11 @@ import { useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import Modal from "./Modal";
 
-export default function TrocarSenha({ onClose, onFeito }: { onClose: () => void; onFeito: () => void }) {
+function Casca({ embutido, titulo, onClose, children }: { embutido?: boolean; titulo: string; onClose: () => void; children: React.ReactNode }) {
+  return embutido ? <>{children}</> : <Modal titulo={titulo} onClose={onClose} largura="md">{children}</Modal>;
+}
+
+export default function TrocarSenha({ onClose, onFeito, embutido = false }: { onClose: () => void; onFeito: () => void; embutido?: boolean }) {
   const [nova, setNova] = useState("");
   const [repete, setRepete] = useState("");
   const [erro, setErro] = useState("");
@@ -25,7 +29,7 @@ export default function TrocarSenha({ onClose, onFeito }: { onClose: () => void;
   }
 
   return (
-    <Modal titulo="Alterar minha senha" onClose={onClose} largura="md">
+    <Casca embutido={embutido} titulo="Alterar minha senha" onClose={onClose}>
       <form onSubmit={salvar} className="space-y-4 p-5" noValidate>
         <div>
           <label htmlFor="s-nova" className="label">
@@ -48,6 +52,6 @@ export default function TrocarSenha({ onClose, onFeito }: { onClose: () => void;
           {ocupado ? "Salvando…" : "Salvar nova senha"}
         </button>
       </form>
-    </Modal>
+    </Casca>
   );
 }

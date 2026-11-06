@@ -128,7 +128,7 @@ export async function carregarDados(): Promise<Dados> {
     db.from("despesas_fixas").select("*").eq("carteira_id", carteiraAtual).order("dia_vencimento"),
     db.from("pretensoes").select("*").eq("carteira_id", carteiraAtual).order("criado_em", { ascending: false }),
     todasTransacoes(),
-    db.from("membros").select("user_id, nome, email").eq("carteira_id", carteiraAtual),
+    db.from("membros").select("user_id, nome, email, foto_url").eq("carteira_id", carteiraAtual),
     // Antes da migração 003 a tabela não existe: segue sem limites, sem quebrar o painel.
     db.from("limites").select("user_id, valor_mensal").eq("carteira_id", carteiraAtual),
     // Antes da migração 004 a tabela não existe: segue sem financiamentos, sem quebrar o painel.
@@ -136,12 +136,18 @@ export async function carregarDados(): Promise<Dados> {
     // Antes da migração 005 a tabela não existe: segue sem avisos, sem quebrar o painel.
     db.from("avisos").select("user_id, ativo, dias, contas").eq("carteira_id", carteiraAtual),
   ]);
+  // Antes da migração 010 a coluna da foto não existe: recarrega só os nomes.
+  let membrosLinhas = mb.data;
+  if (mb.error) {
+    const r = await db.from("membros").select("user_id, nome, email").eq("carteira_id", carteiraAtual);
+    membrosLinhas = r.data;
+  }
   if (co.error) throw falha("Não foi possível carregar as contas", co.error);
   if (ca.error) throw falha("Não foi possível carregar as categorias", ca.error);
   if (fi.error) throw falha("Não foi possível carregar as contas fixas", fi.error);
   if (pr.error) throw falha("Não foi possível carregar as pretensões de compra", pr.error);
   return {
-    membros: (mb.data ?? []) as NonNullable<Dados["membros"]>,
+    membros: (membrosLinhas ?? []) as NonNullable<Dados["membros"]>,
     limites: li.error ? [] : ((li.data ?? []) as Limite[]),
     dividas: dv.error ? [] : ((dv.data ?? []) as Divida[]),
     avisos: av.error ? [] : ((av.data ?? []) as Aviso[]),
@@ -510,6 +516,36 @@ export async function atualizarMeuNome(nome: string): Promise<void> {
   if (error) {
     throw /atualizar_meu_nome|schema cache|does not exist/i.test(error.message) ? new Error("Esta função precisa da atualização 006 do banco.") : falha("Não foi possível salvar o nome", error);
   }
+}
+
+/** Troca a minha foto de perfil (já recortada e reduzida). Devolve o endereço público. */
+export async function enviarMinhaFoto(foto: Blob): Promise<string> {
+  if (demo.emDemo()) {
+    const url = URL.createObjectURL(foto);
+    demo.demoFoto(url);
+    return url;
+  }
+  const db = supabaseBrowser();
+  const { data: auth } = await db.auth.getUser();
+  if (!auth.user) throw new Error("Entre de novo para trocar a foto.");
+  const caminho = `${auth.user.id}/perfil.jpg`;
+  const { error } = await db.storage.from("avatares").upload(caminho, foto, { contentType: "image/jpeg", upsert: true });
+  if (error) {
+    throw /bucket|not found|row-level|policy/i.test(error.message) ? new Error("A foto de perfil precisa da atualização 010 do banco.") : falha("Não foi possível enviar a foto", error);
+  }
+  const url = `${db.storage.from("avatares").getPublicUrl(caminho).data.publicUrl}?v=${Date.now()}`;
+  const { error: e2 } = await db.rpc("atualizar_minha_foto", { p_url: url });
+  if (e2) throw falha("Não foi possível salvar a foto", e2);
+  return url;
+}
+
+export async function removerMinhaFoto(): Promise<void> {
+  if (demo.emDemo()) return demo.demoFoto(null);
+  const db = supabaseBrowser();
+  const { data: auth } = await db.auth.getUser();
+  if (auth.user) await db.storage.from("avatares").remove([`${auth.user.id}/perfil.jpg`]);
+  const { error } = await db.rpc("atualizar_minha_foto", { p_url: null });
+  if (error) throw falha("Não foi possível remover a foto", error);
 }
 
 /* ---------- avisos de vencimento ---------- */

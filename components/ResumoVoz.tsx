@@ -5,9 +5,21 @@ import { useEffect, useRef, useState } from "react";
 const CHAVE = "vozResumo";
 
 /** Quanto mais natural a voz costuma soar, maior a nota (vozes neurais "Natural", "Online", do Google, Premium/Aprimorada). */
+function plataforma(): "ios" | "android" | "outra" {
+  if (typeof navigator === "undefined") return "outra";
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "ios";
+  if (/Android/.test(ua)) return "android";
+  return "outra";
+}
+
 function nota(v: SpeechSynthesisVoice): number {
   const n = v.name.toLowerCase();
   let p = 0;
+  // iPhone: a voz da Siri (ou a "Aprimorada") é a mais natural; Android: a voz do Google.
+  const so = plataforma();
+  if (so === "ios" && /siri|aprimorad|premium|enhanced/.test(n)) p += 60;
+  if (so === "android" && /google/.test(n)) p += 60;
   if (/natural/.test(n)) p += 50;
   if (/online/.test(n)) p += 30;
   if (/google/.test(n)) p += 25;
@@ -142,6 +154,15 @@ export default function ResumoVoz({ montarTexto }: { montarTexto: () => string }
         </label>
       ) : (
         <p className="min-w-0 flex-1 text-sm text-muted">{falando || texto ? "" : "O assistente fala como estão suas contas hoje."}</p>
+      )}
+      {!falando && !texto && vozes.length > 0 && !vozes.some((v) => nota(v) >= 60) && (
+        <p className="w-full text-xs text-muted">
+          {plataforma() === "ios"
+            ? "Para a voz da Siri: Ajustes › Acessibilidade › Conteúdo Falado › Vozes › Português (Brasil) e baixe uma voz “Aprimorada”. Ela aparece aqui sozinha."
+            : plataforma() === "android"
+              ? "Para a voz do Google: Configurações › Sistema › Idiomas › Saída de texto para voz › Google, e baixe o português do Brasil."
+              : "Escolha uma voz “Natural” (Edge) ou “Google” (Chrome) para soar menos robótico."}
+        </p>
       )}
       {texto && (
         <p className="w-full text-sm text-muted" role="status">

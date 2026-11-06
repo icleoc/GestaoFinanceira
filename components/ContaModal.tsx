@@ -90,6 +90,11 @@ export default function ContaModal({
                   <dd className="font-display text-xl">{money(u.limite)}</dd>
                 </div>
               </dl>
+              {u.credito > 0 && (
+                <p className="num mt-2 rounded-lg bg-sunken px-3 py-2 text-sm">
+                  <b className="text-accent">Crédito de {money(u.credito)}</b>: você pagou mais do que a fatura. O valor soma ao limite disponível e abate as próximas compras.
+                </p>
+              )}
               <p className="mt-2 text-sm text-muted">
                 {conta.dia_fechamento ? `Fecha dia ${conta.dia_fechamento} · ` : ""}
                 {conta.dia_vencimento ? `vence dia ${conta.dia_vencimento}` : "sem dia de vencimento cadastrado"}

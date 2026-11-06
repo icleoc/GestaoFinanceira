@@ -103,6 +103,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
   const [foto, setFoto] = useState<Blob | null>(null);
   const [fotoUrl, setFotoUrl] = useState("");
   const entradaFoto = useRef<HTMLInputElement>(null);
+  const galeriaFoto = useRef<HTMLInputElement>(null);
   // Leitura automática da nota (empresa, itens, valor, data e categoria).
   const [leitura, setLeitura] = useState<{ estado: "parado" | "lendo" | "ok" | "erro"; dados?: DadosNota; msg?: string }>({ estado: "parado" });
   const atual = useRef({ descAuto: true, valor: "", operacao: "despesa" as Operacao });
@@ -720,6 +721,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
               id="f-foto"
               tabIndex={-1}
             />
+            <input ref={galeriaFoto} type="file" accept="image/*" onChange={escolherFoto} className="sr-only" id="f-foto-galeria" tabIndex={-1} />
             {foto ? (
               <div className="flex items-center gap-3 rounded-xl bg-sunken p-3">
                 {fotoUrl ? (
@@ -744,6 +746,7 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
                 </button>
               </div>
             ) : (
+              <>
               <button
                 type="button"
                 onClick={() => entradaFoto.current?.click()}
@@ -755,6 +758,10 @@ export default function LancamentoForm({ dados, prefill, onSalvo, onDivida, onCa
                 </svg>
                 Tirar foto da nota
               </button>
+              <button type="button" onClick={() => galeriaFoto.current?.click()} className="btn btn-quiet mt-2 w-full py-2.5">
+                Escolher da galeria
+              </button>
+              </>
             )}
             {foto && leitura.estado === "lendo" && (
               <p role="status" className="mt-2 animate-pulse text-sm text-muted">

@@ -208,3 +208,13 @@
   border-radius: 1.5rem;
   animation: destaque-ouro 2.2s ease-out;
 }
+
+/* Sinal de conta vencendo hoje: pisca em vermelho; sem animação para quem prefere menos movimento. */
+@keyframes alerta-vence {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgb(220 38 38 / 0.55); }
+  50% { opacity: 0.45; box-shadow: 0 0 0 8px rgb(220 38 38 / 0); }
+}
+.alerta-vence { animation: alerta-vence 1.1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .alerta-vence { animation: none; }
+}

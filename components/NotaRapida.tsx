@@ -49,6 +49,7 @@ export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; 
   const [parcelas, setParcelas] = useState(1);
   const [fase, setFase] = useState<Fase>({ f: "inicio" });
   const entrada = useRef<HTMLInputElement>(null);
+  const galeria = useRef<HTMLInputElement>(null);
   const jaRegistrou = useRef(false);
 
   // Conta usada na última nota; senão, a primeira conta corrente.
@@ -190,6 +191,7 @@ export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; 
     <Modal titulo="Lançar por foto" onClose={fechar} largura="md">
       <div className="space-y-4 p-5">
         <input ref={entrada} type="file" accept="image/*" capture="environment" onChange={aoEscolher} className="sr-only" id="nota-rapida" tabIndex={-1} />
+        <input ref={galeria} type="file" accept="image/*" onChange={aoEscolher} className="sr-only" id="nota-rapida-galeria" tabIndex={-1} />
 
         {(fase.f === "inicio" || fase.f === "erro" || fase.f === "pronto") && (
           <div>
@@ -247,6 +249,9 @@ export default function NotaRapida({ dados, onClose, onMudou }: { dados: Dados; 
 
         <button type="button" onClick={() => entrada.current?.click()} disabled={ocupado || contas.length === 0} className="btn btn-gold w-full py-3.5 text-base">
           {fase.f === "pronto" ? "Fotografar outra nota" : fase.f === "erro" ? "Tentar outra foto" : "Tirar foto da nota"}
+        </button>
+        <button type="button" onClick={() => galeria.current?.click()} disabled={ocupado || contas.length === 0} className="btn btn-quiet w-full py-3">
+          Escolher da galeria
         </button>
         <p className="text-center text-xs text-muted">O valor, a empresa e a categoria saem da própria nota. Confira o resultado e desfaça se algo estiver errado.</p>
       </div>

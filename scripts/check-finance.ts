@@ -199,7 +199,7 @@ test("KPIs: patrimônio = bancos − dívida + investimentos", () => {
 });
 test("uso do cartão", () => {
   const u = usoCartao(contas[2]);
-  assert.deepEqual(u, { usado: 800, limite: 4000, disponivel: 3200, pct: 20 });
+  assert.deepEqual(u, { usado: 800, credito: 0, limite: 4000, disponivel: 3200, pct: 20 });
   assert.equal(usoCartao({ ...contas[2], saldo_atual: -9000 }).pct, 100);
   assert.equal(usoCartao({ ...contas[2], saldo_atual: 50 }).usado, 0);
 });
@@ -283,6 +283,15 @@ test("transferência: acha a outra ponta (com vínculo e sem vínculo, das antig
 test("lançamento de histórico marca as linhas sem saldo", () => {
   const r = montarLancamento({ operacao: "despesa", data: "2026-09-01", descricao: "TV", valor: 900, parcelas: 3, origemId: 1, categoriaId: 2, semSaldo: true });
   assert.ok(r.ok && r.linhas.every((l) => l.sem_saldo === true));
+});
+
+test("cartão pago a mais vira crédito e soma ao limite disponível", () => {
+  const c = { id: 1, nome: "Cartão", tipo: "Crédito", saldo_atual: 300, limite_total: 1000 } as Conta;
+  const u = usoCartao(c);
+  assert.equal(u.usado, 0);
+  assert.equal(u.credito, 300);
+  assert.equal(u.disponivel, 1300);
+  assert.equal(usoCartao({ ...c, saldo_atual: -200 }).disponivel, 800);
 });
 
 console.log(`\n${total} testes passaram.`);

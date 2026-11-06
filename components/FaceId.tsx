@@ -4,9 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { ativarBiometria, listarAparelhos, removerAparelho, rotuloBiometria, type Aparelho } from "@/lib/passkey";
 import Modal from "./Modal";
 
+function Casca({ embutido, titulo, onClose, children }: { embutido?: boolean; titulo: string; onClose: () => void; children: React.ReactNode }) {
+  return embutido ? <>{children}</> : <Modal titulo={titulo} onClose={onClose} largura="md">{children}</Modal>;
+}
+
 const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("pt-BR") : "nunca");
 
-export default function FaceId({ onClose }: { onClose: () => void }) {
+export default function FaceId({ onClose, embutido = false }: { onClose: () => void; embutido?: boolean }) {
   const rotulo = rotuloBiometria();
   const [aparelhos, setAparelhos] = useState<Aparelho[] | null>(null);
   const [erro, setErro] = useState("");
@@ -52,7 +56,7 @@ export default function FaceId({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal titulo={`Entrar com ${rotulo}`} onClose={onClose} largura="md">
+    <Casca embutido={embutido} titulo={`Entrar com ${rotulo}`} onClose={onClose}>
       <div className="space-y-4 p-5">
         <p className="text-sm text-muted">
           Ative neste aparelho para entrar no app só com o rosto ou a digital, sem digitar e-mail e senha. A sua biometria fica no
@@ -92,6 +96,6 @@ export default function FaceId({ onClose }: { onClose: () => void }) {
           </div>
         )}
       </div>
-    </Modal>
+    </Casca>
   );
 }

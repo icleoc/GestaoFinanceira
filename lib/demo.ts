@@ -233,6 +233,9 @@ export function demoExcluirPretensao(id: string) {
 export function demoNome(nome: string) {
   store!.membros = (store!.membros ?? []).map((m, i) => (i === 0 ? { ...m, nome } : m));
 }
+export function demoFoto(url: string | null) {
+  store!.membros = (store!.membros ?? []).map((m, i) => (i === 0 ? { ...m, foto_url: url } : m));
+}
 export function demoAviso(userId: string, a: Omit<Aviso, "user_id">) {
   const resto = (store!.avisos ?? []).filter((x) => x.user_id !== userId);
   store!.avisos = [...resto, { user_id: userId, ...a }];

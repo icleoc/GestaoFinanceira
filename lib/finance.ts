@@ -317,13 +317,16 @@ export function calcularKpis(contas: Conta[], taxas: Record<string, number> = {}
 }
 
 /** Quanto do limite do cartão está comprometido. */
-export function usoCartao(c: Conta): { usado: number; limite: number; disponivel: number; pct: number } {
+export function usoCartao(c: Conta): { usado: number; credito: number; limite: number; disponivel: number; pct: number } {
   const usado = Math.max(0, -num(c.saldo_atual));
+  // Pagou a fatura com o cartão zerado (ou pagou a mais): o excedente vira crédito e soma ao limite disponível.
+  const credito = Math.max(0, num(c.saldo_atual));
   const limite = num(c.limite_total);
   return {
     usado,
+    credito,
     limite,
-    disponivel: Math.max(0, limite - usado),
+    disponivel: Math.max(0, limite + credito - usado),
     pct: limite > 0 ? Math.min(100, (usado / limite) * 100) : usado > 0 ? 100 : 0,
   };
 }

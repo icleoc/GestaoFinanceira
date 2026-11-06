@@ -38,10 +38,8 @@ import GerenciarModal from "./GerenciarModal";
 import Assistente from "./Assistente";
 import Evolucao from "./Evolucao";
 import Planejar from "./Planejar";
-import Equipe from "./Equipe";
-import TrocarSenha from "./TrocarSenha";
-import FaceId from "./FaceId";
-import PerfilModal from "./PerfilModal";
+import PerfilModal, { type AbaPerfil } from "./PerfilModal";
+import Avatar from "./Avatar";
 import Saudacao from "./Saudacao";
 import CalendarioVencimentos from "./CalendarioVencimentos";
 import { primeiroNome } from "@/lib/saudacao";
@@ -55,8 +53,8 @@ import NotaRapida from "./NotaRapida";
 import { aparelhoTemBiometria, dispensarConviteBiometria, biometriaDisponivel, rotuloBiometria } from "@/lib/passkey";
 import Modal from "./Modal";
 
-type Aba = "inicio" | "planejar" | "dividas" | "pessoas";
-type Janela = "extrato" | "gerenciar" | "lancar" | "senha" | "faceid" | "nota" | "divida" | "perfil" | null;
+type Aba = "inicio" | "planejar" | "dividas";
+type Janela = "extrato" | "gerenciar" | "lancar" | "nota" | "divida" | "perfil" | null;
 
 export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const router = useRouter();
@@ -64,6 +62,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
   const [dados, setDados] = useState<Dados | null>(null);
   const [erro, setErro] = useState("");
   const [aba, setAba] = useState<Aba>("inicio");
+  const [abaPerfil, setAbaPerfil] = useState<AbaPerfil>("perfil");
   const [mes, setMes] = useState(monthOf(todayISO()));
   const [janela, setJanela] = useState<Janela>(null);
   const [bio, setBio] = useState(false);
@@ -197,6 +196,11 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
     }
   }
 
+  function abrirPerfil(a: AbaPerfil) {
+    setAbaPerfil(a);
+    setJanela("perfil");
+  }
+
   function abrirExtrato(f: FiltroExtrato) {
     setExtratoConta(null);
     setExtratoFiltro(f);
@@ -270,10 +274,12 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
     { id: "inicio", nome: "Início" },
     { id: "planejar", nome: "Planejar" },
     { id: "dividas", nome: "Dívidas" },
-    ...(podeEquipe ? ([{ id: "pessoas", nome: "Pessoas" }] as { id: Aba; nome: string }[]) : []),
   ];
   const meuNome = dados?.membros?.find((m) => m.user_id === sessao.userId)?.nome ?? null;
   const nomeExibicao = primeiroNome(meuNome, sessao.email);
+  // Contas que vencem hoje (ou já venceram e seguem abertas): sinal vermelho piscando ao lado do Extrato.
+  const vencendoHoje = dados ? proximosVencimentos({ fixas: dados.fixas, transacoes: dados.transacoes, dividas: dados.dividas }, hoje, 0).filter((v) => v.dias <= 0) : [];
+  const minhaFoto = dados?.membros?.find((m) => m.user_id === sessao.userId)?.foto_url ?? null;
   const inicial = (nomeExibicao || sessao.email || "?").charAt(0).toUpperCase();
 
   return (
@@ -312,6 +318,22 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
           </div>
 
           <nav className="flex shrink-0 items-center gap-2" aria-label="Ações">
+            {vencendoHoje.length > 0 && (
+              <button
+                onClick={() => {
+                  setAba("inicio");
+                  window.setTimeout(() => rolarParaSecao("sec-vencimentos"), 60);
+                }}
+                className="alerta-vence relative grid size-10 shrink-0 place-items-center rounded-full text-neg"
+                aria-label={`${vencendoHoje.length} ${vencendoHoje.length === 1 ? "conta vence" : "contas vencem"} hoje ou estão atrasadas: ${vencendoHoje.map((v) => v.nome).join(", ")}`}
+                title={vencendoHoje.map((v) => `${v.nome}: ${v.dias === 0 ? "vence hoje" : "atrasada"}`).join("\n")}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M12 2.6 1.8 20.4a1 1 0 0 0 .87 1.5h18.66a1 1 0 0 0 .87-1.5zM11 9h2v6h-2zm0 8h2v2h-2z" />
+                </svg>
+                <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-neg px-1 text-[10px] font-bold leading-4 text-white">{vencendoHoje.length}</span>
+              </button>
+            )}
             <button onClick={() => setJanela("extrato")} disabled={!dados} className="btn btn-quiet">
               Extrato
             </button>
@@ -322,10 +344,10 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
             )}
             <details className="relative">
               <summary
-                className="grid size-10 cursor-pointer list-none place-items-center rounded-full bg-deep text-sm font-semibold text-gold-hi ring-1 ring-gold/40 [&::-webkit-details-marker]:hidden"
+                className="cursor-pointer list-none rounded-full [&::-webkit-details-marker]:hidden"
                 aria-label="Minha conta"
               >
-                {inicial}
+                <Avatar foto={minhaFoto} inicial={inicial} />
               </summary>
               <div className="panel absolute right-0 z-40 mt-2 w-64 p-3 shadow-xl">
                 <p className="truncate text-sm font-medium">{meuNome || sessao.email}</p>
@@ -339,17 +361,17 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
                       Gerenciar contas
                     </button>
                   )}
-                  {bio && !demo && (
-                    <button onClick={() => setJanela("faceid")} className="btn btn-quiet justify-start">
-                      Entrar com {rotuloBiometria()}
-                    </button>
-                  )}
-                  <button onClick={() => setJanela("perfil")} className="btn btn-quiet justify-start">
+                  <button onClick={() => abrirPerfil("perfil")} className="btn btn-quiet justify-start">
                     Meu perfil
                   </button>
-                  {!demo && (
-                    <button onClick={() => setJanela("senha")} className="btn btn-quiet justify-start">
-                      Trocar senha
+                  {(bio || !demo) && (
+                    <button onClick={() => abrirPerfil("seguranca")} className="btn btn-quiet justify-start">
+                      Segurança
+                    </button>
+                  )}
+                  {podeEquipe && (
+                    <button onClick={() => abrirPerfil("pessoas")} className="btn btn-quiet justify-start">
+                      Pessoas
                     </button>
                   )}
                   <button onClick={deslogar} className="btn btn-quiet justify-start">
@@ -418,9 +440,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
           </div>
         )}
 
-        {aba === "pessoas" && podeEquipe ? (
-          <Equipe sessao={sessao} dados={dados} onAviso={setAviso} onMudou={recarregar} />
-        ) : !dados || !resumo ? (
+        {!dados || !resumo ? (
           !erro && (
             <p className="py-20 text-center text-muted" role="status">
               Carregando suas contas…
@@ -457,7 +477,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
                   <button onClick={() => { dispensarConviteBiometria(); setConviteBio(false); }} className="btn btn-quiet px-3 py-1.5">
                     Agora não
                   </button>
-                  <button onClick={() => { setConviteBio(false); setJanela("faceid"); }} className="btn btn-gold px-3 py-1.5">
+                  <button onClick={() => { setConviteBio(false); abrirPerfil("seguranca"); }} className="btn btn-gold px-3 py-1.5">
                     Ativar
                   </button>
                 </span>
@@ -466,7 +486,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
             <Saudacao nome={nomeExibicao} resumo={resumoDaSemana(proximosVencimentos({ fixas: dados.fixas, transacoes: dados.transacoes, dividas: dados.dividas }, hoje, 7))} />
             <ContasFixasPendentes pendentes={resumo.pendentes} onLancar={podeLancar ? lancarFixa : undefined} onBaixa={podeLancar ? (p) => setPagando({ tipo: "fixa", fixa: p.fixa }) : undefined} />
             {podeLancar && <PagasSemLancamento dados={dados} hoje={hoje} onRegistrar={(fixa) => setPagando({ tipo: "fixa", fixa })} />}
-            <Vencimentos dados={dados} sessao={sessao} hoje={hoje} onAviso={(m) => { setAviso(m); recarregar(); }} onPagar={podeLancar ? pagarVencimento : undefined} />
+            <div id="sec-vencimentos"><Vencimentos dados={dados} sessao={sessao} hoje={hoje} onAviso={(m) => { setAviso(m); recarregar(); }} onPagar={podeLancar ? pagarVencimento : undefined} /></div>
             {sessao && pode(permissoes, "ver") && <SincronizarCalendario compacto userId={sessao.userId} avisos={dados.avisos} />}
             <CalendarioVencimentos dados={dados} hoje={hoje} />
             <ResumoDividas dados={dados} onAbrir={() => setAba("dividas")} />
@@ -504,7 +524,7 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
         )}
       </main>
 
-      {podeLancar && dados && aba !== "pessoas" && (
+      {podeLancar && dados && (
         <div className="fixed bottom-5 right-4 z-30 flex items-center gap-2 sm:right-8">
           <button
             onClick={() => setJanela("nota")}
@@ -604,13 +624,22 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
           />
         </Modal>
       )}
-      {janela === "faceid" && <FaceId onClose={fechar} />}
       {janela === "perfil" && (
         <PerfilModal
           nomeAtual={meuNome ?? ""}
           email={sessao.email}
           userId={sessao.userId}
           avisos={dados?.avisos}
+          foto={minhaFoto}
+          inicial={inicial}
+          abaInicial={abaPerfil}
+          sessao={sessao}
+          dados={dados}
+          podeEquipe={podeEquipe}
+          biometria={bio}
+          demo={demo}
+          onAviso={setAviso}
+          onMudou={recarregar}
           onClose={fechar}
           onFeito={() => {
             setJanela(null);
@@ -619,16 +648,6 @@ export default function Dashboard({ demo = false }: { demo?: boolean }) {
           }}
         />
       )}
-      {janela === "senha" && (
-        <TrocarSenha
-          onClose={fechar}
-          onFeito={() => {
-            setJanela(null);
-            setAviso("Senha alterada.");
-          }}
-        />
-      )}
-
       {aviso && (
         <div
           role="status"

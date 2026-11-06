@@ -171,7 +171,7 @@ export interface Aviso {
 export interface Dados {
   avisos?: Aviso[];
   /** Pessoas da carteira (para mostrar quem lançou e os limites). */
-  membros?: { user_id: string; nome: string | null; email: string | null }[];
+  membros?: { user_id: string; nome: string | null; email: string | null; foto_url?: string | null }[];
   limites?: Limite[];
   contas: Conta[];
   categorias: Categoria[];
@@ -189,6 +189,7 @@ export interface Membro {
   user_id: string;
   nome: string | null;
   email: string | null;
+  foto_url?: string | null;
   papel: Papel;
   permissoes: Permissao[];
 }
